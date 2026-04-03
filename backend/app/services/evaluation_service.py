@@ -17,9 +17,11 @@ def evaluate_transaction(db: Session, transaction: Transaction) -> dict:
     # Build transaction context dict consumed by the rule engine
     tx_ctx = {
         "agent_id": transaction.agent_id,
-        "recipient": transaction.recipient,
+        "destination": transaction.destination,
         "amount": transaction.amount,
-        "currency": transaction.currency,
+        "asset_symbol": transaction.asset_symbol,
+        "chain": transaction.chain,
+        "vendor": transaction.vendor,
     }
 
     # Gather active policies
