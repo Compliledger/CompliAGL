@@ -60,21 +60,36 @@ class TransactionResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+<<<<<<< copilot/implement-compliagl-rule-engine
 class ProofBundleSummary(BaseModel):
     proof_bundle_id: str
     proof_hash: str
     decision: str
     created_at: Optional[str] = None
+=======
+class OWSExecutionData(BaseModel):
+    """Mocked Open Wallet Standard execution data."""
+    prepare: Optional[dict[str, Any]] = None
+    sign: Optional[dict[str, Any]] = None
+    wallet_metadata: Optional[dict[str, Any]] = None
+>>>>>>> main
 
 
 class EvaluationResponse(BaseModel):
     transaction_id: str
+<<<<<<< copilot/implement-compliagl-rule-engine
     decision_result: str
     reason_codes: list[str] = []
     decision_summary: str = ""
     risk_level: str = "LOW"
     requires_approval: bool = False
     proof_bundle_summary: Optional[ProofBundleSummary] = None
+=======
+    decision: str
+    results: list[dict[str, Any]]
+    proof_bundle_id: Optional[str] = None
+    ows_execution: Optional[OWSExecutionData] = None
+>>>>>>> main
 class TransactionListResponse(BaseModel):
     """Paginated list of transactions."""
 

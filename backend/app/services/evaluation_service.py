@@ -84,6 +84,27 @@ def evaluate_transaction(db: Session, transaction_id: str) -> dict[str, Any]:
     Returns
     -------
     dict containing the decision, proof bundle summary, and transaction id.
+from app.services.ows_service import (
+    prepare_wallet_action,
+    sign_wallet_action,
+    get_wallet_metadata,
+)
+from app.utils.rule_engine import evaluate_policies
+
+
+def evaluate_transaction(
+    db: Session,
+    transaction: Transaction,
+    *,
+    include_ows: bool = False,
+) -> dict:
+    """Run all active policies against a transaction and persist the results.
+
+    Args:
+        db: Database session.
+        transaction: The transaction ORM object to evaluate.
+        include_ows: When ``True``, append mocked OWS execution data to the
+            response (prepare, sign, wallet metadata).
     """
 
     # --- Load transaction --------------------------------------------------
@@ -194,8 +215,12 @@ def evaluate_transaction(db: Session, transaction_id: str) -> dict[str, Any]:
         performed_by="system",
     )
 
+<<<<<<< copilot/implement-compliagl-rule-engine
     # --- Build response ----------------------------------------------------
     return {
+=======
+    response: dict = {
+>>>>>>> main
         "transaction_id": transaction.id,
         "decision_result": decision_result,
         "reason_codes": result["reason_codes"],
@@ -209,3 +234,21 @@ def evaluate_transaction(db: Session, transaction_id: str) -> dict[str, Any]:
             "created_at": str(proof.created_at),
         },
     }
+
+    # Optionally attach mocked OWS execution data
+    if include_ows:
+        tx_dict = {
+            "agent_id": transaction.agent_id,
+            "recipient": transaction.recipient,
+            "amount": transaction.amount,
+            "currency": transaction.currency,
+            "description": transaction.description,
+        }
+        prepared = prepare_wallet_action(tx_dict)
+        response["ows_execution"] = {
+            "prepare": prepared,
+            "sign": sign_wallet_action(tx_dict),
+            "wallet_metadata": get_wallet_metadata(prepared.get("wallet_address")),
+        }
+
+    return response
