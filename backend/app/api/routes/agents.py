@@ -37,7 +37,7 @@ def create_agent(payload: AgentCreate, db: Session = Depends(get_db)):
     except IntegrityError:
         raise HTTPException(
             status_code=409,
-            detail=f"An agent with wallet_address '{payload.wallet_address}' already exists.",
+            detail="An agent with this wallet address already exists.",
         )
     return _agent_to_response(agent)
 
@@ -71,7 +71,7 @@ def update_agent(agent_id: str, payload: AgentUpdate, db: Session = Depends(get_
     except IntegrityError:
         raise HTTPException(
             status_code=409,
-            detail=f"An agent with wallet_address '{payload.wallet_address}' already exists.",
+            detail="An agent with this wallet address already exists.",
         )
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found.")

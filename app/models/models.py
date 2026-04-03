@@ -8,6 +8,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     Float,
@@ -52,7 +53,7 @@ class Agent(Base):
     wallet_address = Column(String, unique=True, nullable=False)
     owner_name = Column(String, nullable=True)
     owner_email = Column(String, nullable=True)
-    is_active = Column(String, nullable=False, default="true")
+    is_active = Column(Boolean, nullable=False, default=True)
     metadata_json = Column(Text, nullable=True)
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
