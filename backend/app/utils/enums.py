@@ -23,6 +23,16 @@ class PolicyType(str, Enum):
     TIME_WINDOW = "TIME_WINDOW"
 
 
+class TransactionStatus(str, Enum):
+    SUBMITTED = "SUBMITTED"
+    EVALUATED = "EVALUATED"
+    APPROVED = "APPROVED"
+    DENIED = "DENIED"
+    ESCALATED = "ESCALATED"
+    EXECUTED = "EXECUTED"
+    FAILED = "FAILED"
+
+
 class ApprovalAction(str, Enum):
     APPROVE = "APPROVE"
     DENY = "DENY"
