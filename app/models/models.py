@@ -49,7 +49,11 @@ class Agent(Base):
     id = Column(String, primary_key=True, default=_generate_uuid)
     name = Column(String, nullable=False)
     actor_type = Column(String, nullable=False, default=ActorType.AGENT.value)
-    wallet_address = Column(String, nullable=True)
+    wallet_address = Column(String, unique=True, nullable=False)
+    owner_name = Column(String, nullable=True)
+    owner_email = Column(String, nullable=True)
+    is_active = Column(String, nullable=False, default="true")
+    metadata_json = Column(Text, nullable=True)
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
