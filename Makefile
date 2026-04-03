@@ -28,6 +28,7 @@ run-frontend: ## Start frontend on http://localhost:5173
 
 run: ## Start both backend and frontend (backend in background)
 	@echo "Starting backend on http://localhost:8000 …"
+	@echo "(Stop both services with Ctrl-C; the background backend may need: kill %1)"
 	@$(MAKE) run-backend &
 	@echo "Starting frontend on http://localhost:5173 …"
 	@$(MAKE) run-frontend
