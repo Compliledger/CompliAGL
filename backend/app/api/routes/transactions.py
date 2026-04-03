@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.models.transaction import Transaction
 from app.schemas.transaction import (
     TransactionCreate,
     TransactionListResponse,
@@ -60,9 +61,10 @@ def create(payload: TransactionCreate, db: Session = Depends(get_db)):
 @router.get("/", response_model=TransactionListResponse)
 def list_all(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """Return a paginated list of transactions."""
+    total = db.query(Transaction).count()
     txs = list_transactions(db, skip=skip, limit=limit)
     items = [_tx_to_response(tx) for tx in txs]
-    return TransactionListResponse(items=items, count=len(items))
+    return TransactionListResponse(items=items, count=total)
 
 
 @router.get("/{transaction_id}", response_model=TransactionResponse)

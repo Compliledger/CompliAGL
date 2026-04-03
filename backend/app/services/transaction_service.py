@@ -16,10 +16,14 @@ def create_transaction(db: Session, payload: TransactionCreate) -> Transaction:
     agent = db.query(Agent).filter(Agent.id == payload.agent_id).first()
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
+    if not agent.wallet_address:
+        raise HTTPException(
+            status_code=422, detail="Agent does not have a wallet address"
+        )
 
     tx = Transaction(
         agent_id=payload.agent_id,
-        wallet_address=agent.wallet_address or "",
+        wallet_address=agent.wallet_address,
         vendor=payload.vendor,
         chain=payload.chain,
         asset_symbol=payload.asset_symbol,
