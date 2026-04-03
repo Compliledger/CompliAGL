@@ -9,7 +9,7 @@ from app.schemas.audit import AuditLogListResponse
 from app.schemas.transaction import EvaluationResponse, TransactionCreate, TransactionResponse
 from app.services import audit_service
 from app.services.evaluation_service import evaluate_transaction
-from app.api.routes.audit import _to_response
+from app.api.routes.audit import build_audit_list_response
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
@@ -54,4 +54,4 @@ def list_transaction_audit_logs(
     logs = audit_service.list_audit_logs_for_transaction(
         db, transaction_id, skip=skip, limit=limit
     )
-    return _to_response(logs)
+    return build_audit_list_response(logs)

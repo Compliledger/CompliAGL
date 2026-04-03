@@ -1,7 +1,5 @@
 """Evaluation service — orchestrates rule engine, proof generation, and audit logging."""
 
-import json
-
 from sqlalchemy.orm import Session
 
 from app.models.transaction import Transaction
@@ -46,11 +44,11 @@ def evaluate_transaction(db: Session, transaction: Transaction) -> dict:
     # Audit log
     log_event(
         db,
-        entity_type="transaction",
-        entity_id=transaction.id,
-        action=f"EVALUATED:{decision.value}",
-        details=json.dumps({"results": results, "proof_id": proof.id}),
-        performed_by="system",
+        agent_id=transaction.agent_id,
+        transaction_id=transaction.id,
+        event_type=f"TRANSACTION_{decision.value}",
+        event_summary=f"Transaction evaluated: {decision.value}",
+        event_data={"results": results, "proof_id": proof.id},
     )
 
     return {

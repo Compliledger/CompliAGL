@@ -7,7 +7,7 @@ from app.core.database import get_db
 from app.schemas.agent import AgentCreate, AgentResponse, AgentUpdate
 from app.schemas.audit import AuditLogListResponse
 from app.services import agent_service, audit_service
-from app.api.routes.audit import _to_response
+from app.api.routes.audit import build_audit_list_response
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 
@@ -54,4 +54,4 @@ def list_agent_audit_logs(
 ):
     """Return audit log entries for a specific agent, newest first."""
     logs = audit_service.list_audit_logs_for_agent(db, agent_id, skip=skip, limit=limit)
-    return _to_response(logs)
+    return build_audit_list_response(logs)
