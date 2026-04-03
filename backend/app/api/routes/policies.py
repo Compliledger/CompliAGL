@@ -39,8 +39,9 @@ def update_policy(policy_id: str, payload: PolicyUpdate, db: Session = Depends(g
     return policy_to_dict(policy)
 
 
-@router.delete("/{policy_id}")
-def delete_policy(policy_id: str, db: Session = Depends(get_db)):
-    if not policy_service.delete_policy(db, policy_id):
+@router.delete("/{policy_id}", response_model=PolicyResponse)
+def deactivate_policy(policy_id: str, db: Session = Depends(get_db)):
+    policy = policy_service.deactivate_policy(db, policy_id)
+    if not policy:
         raise HTTPException(status_code=404, detail="Policy not found")
-    return {"detail": "Policy deleted"}
+    return policy_to_dict(policy)
