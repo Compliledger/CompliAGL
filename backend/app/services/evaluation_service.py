@@ -34,13 +34,19 @@ def evaluate_transaction(db: Session, transaction: Transaction) -> dict:
     db.commit()
     db.refresh(transaction)
 
-    # Create proof bundle
+    # Build reason codes from per-rule results
+    reason_codes = [r.get("reason", "") for r in results]
+
+    # Create proof bundle (exactly one per evaluation)
     proof = create_proof_bundle(
         db,
         transaction_id=transaction.id,
-        decision=decision.value,
-        policy_snapshot=policies,
-        evaluation_results=results,
+        agent_id=transaction.agent_id,
+        entity_id=transaction.id,
+        rule_version_used="1.0",
+        decision_result=decision.value,
+        evaluation_context=policies,
+        reason_codes=reason_codes,
     )
 
     # Audit log

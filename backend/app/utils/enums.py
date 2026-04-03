@@ -26,3 +26,9 @@ class PolicyType(str, Enum):
 class ApprovalAction(str, Enum):
     APPROVE = "APPROVE"
     DENY = "DENY"
+
+
+class ProofStatus(str, Enum):
+    GENERATED = "GENERATED"
+    ANCHORED = "ANCHORED"
+    FAILED = "FAILED"

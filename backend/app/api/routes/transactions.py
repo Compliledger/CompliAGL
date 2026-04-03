@@ -5,8 +5,10 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.transaction import Transaction
+from app.schemas.proof_bundle import ProofBundleResponse
 from app.schemas.transaction import EvaluationResponse, TransactionCreate, TransactionResponse
 from app.services.evaluation_service import evaluate_transaction
+from app.services import proof_service
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
@@ -34,3 +36,12 @@ def get_transaction(transaction_id: str, db: Session = Depends(get_db)):
     if not tx:
         raise HTTPException(status_code=404, detail="Transaction not found")
     return tx
+
+
+@router.get("/{transaction_id}/proof", response_model=ProofBundleResponse)
+def get_transaction_proof(transaction_id: str, db: Session = Depends(get_db)):
+    """Return the proof bundle associated with a transaction."""
+    proof = proof_service.get_proof_by_transaction(db, transaction_id)
+    if not proof:
+        raise HTTPException(status_code=404, detail="Proof bundle not found for this transaction")
+    return proof
