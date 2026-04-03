@@ -51,12 +51,19 @@ def delete_policy(db: Session, policy_id: str) -> bool:
     return True
 
 
-def _parse_policy(policy: Policy) -> dict:
-    """Return a dict with parameters deserialized from JSON."""
+def policy_to_dict(policy: Policy) -> dict:
+    """Return a dict with parameters deserialized from JSON.
+
+    Used by both route handlers (full serialization) and the evaluation
+    service (policy snapshot for the rule engine).
+    """
     return {
         "id": policy.id,
         "name": policy.name,
+        "description": policy.description,
         "policy_type": policy.policy_type,
         "parameters": json.loads(policy.parameters) if isinstance(policy.parameters, str) else policy.parameters,
         "is_active": policy.is_active,
+        "created_at": policy.created_at,
+        "updated_at": policy.updated_at,
     }
