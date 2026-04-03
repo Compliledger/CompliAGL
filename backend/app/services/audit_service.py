@@ -1,5 +1,8 @@
 """Audit service — append-only event logging."""
 
+import json
+from typing import Any
+
 from sqlalchemy.orm import Session
 
 from app.models.audit_log import AuditLog
@@ -8,18 +11,19 @@ from app.models.audit_log import AuditLog
 def log_event(
     db: Session,
     *,
-    entity_type: str,
-    entity_id: str,
-    action: str,
-    details: str | None = None,
-    performed_by: str | None = None,
+    agent_id: str,
+    event_type: str,
+    event_summary: str,
+    transaction_id: str | None = None,
+    event_data: dict[str, Any] | None = None,
 ) -> AuditLog:
+    """Write a single immutable audit event."""
     entry = AuditLog(
-        entity_type=entity_type,
-        entity_id=entity_id,
-        action=action,
-        details=details,
-        performed_by=performed_by,
+        agent_id=agent_id,
+        transaction_id=transaction_id,
+        event_type=event_type,
+        event_summary=event_summary,
+        event_data=json.dumps(event_data) if event_data is not None else None,
     )
     db.add(entry)
     db.commit()
@@ -29,18 +33,48 @@ def log_event(
 
 def list_audit_logs(
     db: Session,
-    entity_type: str | None = None,
-    entity_id: str | None = None,
     skip: int = 0,
     limit: int = 100,
 ) -> list[AuditLog]:
-    query = db.query(AuditLog)
-    if entity_type:
-        query = query.filter(AuditLog.entity_type == entity_type)
-    if entity_id:
-        query = query.filter(AuditLog.entity_id == entity_id)
-    return query.order_by(AuditLog.created_at.desc()).offset(skip).limit(limit).all()
+    """Return all audit log entries, newest first."""
+    return (
+        db.query(AuditLog)
+        .order_by(AuditLog.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
-def get_audit_log(db: Session, log_id: str) -> AuditLog | None:
-    return db.query(AuditLog).filter(AuditLog.id == log_id).first()
+def list_audit_logs_for_agent(
+    db: Session,
+    agent_id: str,
+    skip: int = 0,
+    limit: int = 100,
+) -> list[AuditLog]:
+    """Return audit log entries for a specific agent, newest first."""
+    return (
+        db.query(AuditLog)
+        .filter(AuditLog.agent_id == agent_id)
+        .order_by(AuditLog.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+
+def list_audit_logs_for_transaction(
+    db: Session,
+    transaction_id: str,
+    skip: int = 0,
+    limit: int = 100,
+) -> list[AuditLog]:
+    """Return audit log entries for a specific transaction, newest first."""
+    return (
+        db.query(AuditLog)
+        .filter(AuditLog.transaction_id == transaction_id)
+        .order_by(AuditLog.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )

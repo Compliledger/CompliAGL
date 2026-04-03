@@ -5,12 +5,13 @@ All status and type fields use the business enums defined in
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
 from app.utils.enums import (
     ActorType,
+    AuditEventType,
     ApprovalStatus,
     DecisionResult,
     PolicyStatus,
@@ -159,3 +160,25 @@ class ProofRecordResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# ---------------------------------------------------------------------------
+# Audit Log
+# ---------------------------------------------------------------------------
+
+
+class AuditLogResponse(BaseModel):
+    id: str
+    agent_id: str
+    transaction_id: Optional[str] = None
+    event_type: AuditEventType
+    event_summary: str
+    event_data: Optional[dict[str, Any]] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class AuditLogListResponse(BaseModel):
+    items: list[AuditLogResponse]
+    total: int

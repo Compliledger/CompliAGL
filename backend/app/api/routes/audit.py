@@ -1,29 +1,54 @@
-"""Audit log routes — read-only access to the event log."""
+"""Audit log routes — read-only access to the append-only event log."""
 
-from fastapi import APIRouter, Depends, HTTPException
+import json
+from typing import Any
+
+from fastapi import APIRouter, Depends
+from pydantic import model_validator
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.schemas.audit import AuditLogResponse
+from app.schemas.audit import AuditLogListResponse, AuditLogResponse
 from app.services import audit_service
 
 router = APIRouter(prefix="/audit", tags=["audit"])
 
 
-@router.get("/", response_model=list[AuditLogResponse])
+class _AuditLogOut(AuditLogResponse):
+    """Internal schema that deserialises the JSON text stored in event_data."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _parse_event_data(cls, data: Any) -> Any:
+        # Handle ORM objects (have __dict__) and plain dicts
+        if hasattr(data, "__dict__"):
+            raw = getattr(data, "event_data", None)
+        else:
+            raw = data.get("event_data") if isinstance(data, dict) else None
+        if isinstance(raw, str):
+            try:
+                parsed = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                parsed = None
+            if hasattr(data, "__dict__"):
+                object.__setattr__(data, "event_data", parsed)
+            else:
+                data["event_data"] = parsed
+        return data
+
+
+def _to_response(logs: list) -> AuditLogListResponse:
+    """Convert a list of ORM audit log entries to the list response schema."""
+    items = [_AuditLogOut.model_validate(log) for log in logs]
+    return AuditLogListResponse(items=items, total=len(items))
+
+
+@router.get("/", response_model=AuditLogListResponse)
 def list_audit_logs(
-    entity_type: str | None = None,
-    entity_id: str | None = None,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
 ):
-    return audit_service.list_audit_logs(db, entity_type=entity_type, entity_id=entity_id, skip=skip, limit=limit)
-
-
-@router.get("/{log_id}", response_model=AuditLogResponse)
-def get_audit_log(log_id: str, db: Session = Depends(get_db)):
-    log = audit_service.get_audit_log(db, log_id)
-    if not log:
-        raise HTTPException(status_code=404, detail="Audit log entry not found")
-    return log
+    """Return all audit log entries, newest first."""
+    logs = audit_service.list_audit_logs(db, skip=skip, limit=limit)
+    return _to_response(logs)

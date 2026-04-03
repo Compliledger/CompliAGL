@@ -5,8 +5,11 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.transaction import Transaction
+from app.schemas.audit import AuditLogListResponse
 from app.schemas.transaction import EvaluationResponse, TransactionCreate, TransactionResponse
+from app.services import audit_service
 from app.services.evaluation_service import evaluate_transaction
+from app.api.routes.audit import _to_response
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
@@ -34,3 +37,21 @@ def get_transaction(transaction_id: str, db: Session = Depends(get_db)):
     if not tx:
         raise HTTPException(status_code=404, detail="Transaction not found")
     return tx
+
+
+@router.get(
+    "/{transaction_id}/audit",
+    response_model=AuditLogListResponse,
+    tags=["audit"],
+)
+def list_transaction_audit_logs(
+    transaction_id: str,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+):
+    """Return audit log entries for a specific transaction, newest first."""
+    logs = audit_service.list_audit_logs_for_transaction(
+        db, transaction_id, skip=skip, limit=limit
+    )
+    return _to_response(logs)
