@@ -12,6 +12,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Integer,
     String,
     Text,
 )
@@ -112,9 +113,9 @@ class Decision(Base):
     )
     result = Column(String, nullable=False)
     reason = Column(Text, nullable=True)
-    rules_evaluated = Column(Float, nullable=True)
-    rules_passed = Column(Float, nullable=True)
-    rules_failed = Column(Float, nullable=True)
+    rules_evaluated = Column(Integer, nullable=True)
+    rules_passed = Column(Integer, nullable=True)
+    rules_failed = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=_utcnow)
 
     transaction = relationship("Transaction", back_populates="decision")
