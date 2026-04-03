@@ -28,19 +28,25 @@ CompliAGL adds a governance layer to agent wallets **before** any transaction ex
 git clone https://github.com/Compliledger/CompliAGL.git
 cd CompliAGL
 
-# 2. Install backend dependencies
-cd backend
+# 2. Create a virtual environment and install root dependencies
 python -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+
+# 3. Install backend dependencies
+cd backend
+pip install -r requirements.txt
 cd ..
 
-# 3. Install frontend dependencies
+# 4. Install frontend dependencies
 cd frontend
 npm install
 cd ..
 
-# 4. Run both services
+# 5. Initialise the database and seed demo data
+python -m app.db.init_db
+
+# 6. Run both services
 #    Backend  → http://localhost:8000
 #    Frontend → http://localhost:5173
 make run
@@ -82,6 +88,37 @@ make run               # Start both services
 
 ---
 
+## Database & Seed Data
+
+CompliAGL uses SQLite by default. A single command creates all tables and
+optionally seeds demo data so you can start exploring immediately.
+
+```bash
+# Create tables + insert demo seed data (default)
+python -m app.db.init_db
+
+# Create tables only — no seed data
+python -m app.db.init_db --no-seed
+
+# Use a custom database URL
+python -m app.db.init_db --db-url sqlite:///./my_dev.db
+```
+
+The seed data includes:
+
+| Agent | Wallet | Per-Tx Limit | Allowed Vendors | Chains |
+|---|---|---|---|---|
+| **TravelAgent-01** | `agent_wallet_travel_001` | $450 | airline_api, hotel_api, restaurant_api | xrpl, base, ethereum |
+| **ResearchAgent-01** | `agent_wallet_research_001` | $50 | firecrawl, news_api, research_api | base, ethereum |
+
+Plus four example transactions (approved, denied, escalated), decisions, proof
+records, and audit-log entries.
+
+> **Re-running is safe** — the seed function is idempotent and will skip if
+> data already exists.
+
+---
+
 ## Core Concepts
 
 | Concept | Description |
@@ -114,6 +151,12 @@ The current focus areas are:
 
 ```
 CompliAGL/
+├── app/              # Shared models, schemas, enums, and DB utilities
+│   ├── db/
+│   │   └── init_db.py  # DB init & seed (python -m app.db.init_db)
+│   ├── models/
+│   ├── schemas/
+│   └── utils/
 ├── backend/          # FastAPI service — policy engine, decisions, proofs
 │   └── README.md
 ├── frontend/         # React + Vite dashboard — governance UI
@@ -285,14 +328,30 @@ See [`docs/demo-flow.md`](./docs/demo-flow.md) for detailed scenarios and expect
 - Node.js 18+
 - (Optional) Docker
 
+### Install
+
+```bash
+# Root-level dependencies (shared models, schemas, enums)
+pip install -r requirements.txt
+
+# Backend dependencies
+cd backend
+pip install -r requirements.txt
+cd ..
+```
+
+### Seed the Database
+
+```bash
+python -m app.db.init_db            # tables + demo data
+python -m app.db.init_db --no-seed  # tables only
+```
+
 ### Backend
 
 ```bash
 cd backend
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn main:app --reload
+uvicorn app.main:app --reload --port 8000
 ```
 
 The API will be available at `http://localhost:8000`.
