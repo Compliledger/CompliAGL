@@ -8,11 +8,28 @@ from app.models.transaction import Transaction
 from app.services.policy_service import list_policies, policy_to_dict
 from app.services.proof_service import create_proof_bundle
 from app.services.audit_service import log_event
+from app.services.ows_service import (
+    prepare_wallet_action,
+    sign_wallet_action,
+    get_wallet_metadata,
+)
 from app.utils.rule_engine import evaluate_policies
 
 
-def evaluate_transaction(db: Session, transaction: Transaction) -> dict:
-    """Run all active policies against a transaction and persist the results."""
+def evaluate_transaction(
+    db: Session,
+    transaction: Transaction,
+    *,
+    include_ows: bool = False,
+) -> dict:
+    """Run all active policies against a transaction and persist the results.
+
+    Args:
+        db: Database session.
+        transaction: The transaction ORM object to evaluate.
+        include_ows: When ``True``, append mocked OWS execution data to the
+            response (prepare, sign, wallet metadata).
+    """
 
     # Build transaction context dict consumed by the rule engine
     tx_ctx = {
@@ -55,9 +72,27 @@ def evaluate_transaction(db: Session, transaction: Transaction) -> dict:
         performed_by="system",
     )
 
-    return {
+    response: dict = {
         "transaction_id": transaction.id,
         "decision": decision.value,
         "results": results,
         "proof_bundle_id": proof.id,
     }
+
+    # Optionally attach mocked OWS execution data
+    if include_ows:
+        tx_dict = {
+            "agent_id": transaction.agent_id,
+            "recipient": transaction.recipient,
+            "amount": transaction.amount,
+            "currency": transaction.currency,
+            "description": transaction.description,
+        }
+        prepared = prepare_wallet_action(tx_dict)
+        response["ows_execution"] = {
+            "prepare": prepared,
+            "sign": sign_wallet_action(tx_dict),
+            "wallet_metadata": get_wallet_metadata(prepared.get("wallet_address")),
+        }
+
+    return response
