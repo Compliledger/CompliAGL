@@ -140,6 +140,11 @@ def evaluate_transaction(db: Session, transaction_id: str) -> dict[str, Any]:
         "asset_symbol": transaction.asset_symbol,
         "recipient": transaction.recipient,
         "currency": transaction.currency,
+        "destination": transaction.destination,
+        "amount": transaction.amount,
+        "asset_symbol": transaction.asset_symbol,
+        "chain": transaction.chain,
+        "vendor": transaction.vendor,
     }
 
     # --- Evaluate rules ----------------------------------------------------
