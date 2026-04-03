@@ -135,7 +135,9 @@ def _get_daily_budget(db: Session) -> float | None:
     for p in spend_policies:
         try:
             params = json.loads(p.parameters) if isinstance(p.parameters, str) else p.parameters
-            limit_val = params.get("daily_limit") or params.get("limit")
+            limit_val = params.get("daily_limit")
+            if limit_val is None:
+                limit_val = params.get("limit")
             if limit_val is not None:
                 limits.append(float(limit_val))
         except (json.JSONDecodeError, TypeError, ValueError):
