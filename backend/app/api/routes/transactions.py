@@ -12,14 +12,22 @@ router = APIRouter(prefix="/transactions", tags=["transactions"])
 
 
 @router.post("/", response_model=EvaluationResponse, status_code=201)
-def create_and_evaluate(payload: TransactionCreate, db: Session = Depends(get_db)):
-    """Create a transaction and immediately evaluate it against active policies."""
+def create_and_evaluate(
+    payload: TransactionCreate,
+    include_ows: bool = False,
+    db: Session = Depends(get_db),
+):
+    """Create a transaction and immediately evaluate it against active policies.
+
+    If ``include_ows`` is ``True`` the response will contain mocked Open Wallet
+    Standard execution data (prepare, sign, wallet metadata).
+    """
     tx = Transaction(**payload.model_dump())
     db.add(tx)
     db.commit()
     db.refresh(tx)
 
-    result = evaluate_transaction(db, tx)
+    result = evaluate_transaction(db, tx, include_ows=include_ows)
     return result
 
 

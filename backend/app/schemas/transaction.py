@@ -28,8 +28,16 @@ class TransactionResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class OWSExecutionData(BaseModel):
+    """Mocked Open Wallet Standard execution data."""
+    prepare: Optional[dict[str, Any]] = None
+    sign: Optional[dict[str, Any]] = None
+    wallet_metadata: Optional[dict[str, Any]] = None
+
+
 class EvaluationResponse(BaseModel):
     transaction_id: str
     decision: str
     results: list[dict[str, Any]]
     proof_bundle_id: Optional[str] = None
+    ows_execution: Optional[OWSExecutionData] = None
