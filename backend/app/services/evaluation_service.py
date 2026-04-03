@@ -35,7 +35,7 @@ def evaluate_transaction(db: Session, transaction: Transaction) -> dict:
     db.refresh(transaction)
 
     # Build reason codes from per-rule results
-    reason_codes = [r.get("reason", "") for r in results]
+    reason_codes = [r.get("reason", "NO_REASON_PROVIDED") for r in results if r.get("reason")]
 
     # Create proof bundle (exactly one per evaluation)
     proof = create_proof_bundle(
