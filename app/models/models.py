@@ -8,6 +8,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     Float,
@@ -75,7 +76,7 @@ class Policy(Base):
     blocked_chains = Column(Text, nullable=False, default="[]")
     allowed_asset_symbols = Column(Text, nullable=False, default="[]")
     blocked_asset_symbols = Column(Text, nullable=False, default="[]")
-    require_approval_above_threshold = Column(Integer, nullable=False, default=0)
+    require_approval_above_threshold = Column(Boolean, nullable=False, default=False)
     require_identity_check_above_amount = Column(Float, nullable=True)
     max_transactions_per_day = Column(Integer, nullable=True)
     timezone = Column(String, nullable=False, default="UTC")
