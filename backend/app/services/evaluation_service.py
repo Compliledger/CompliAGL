@@ -86,11 +86,11 @@ def evaluate_transaction(
             "currency": transaction.currency,
             "description": transaction.description,
         }
-        wallet_address = prepare_wallet_action(tx_dict).get("wallet_address")
+        prepared = prepare_wallet_action(tx_dict)
         response["ows_execution"] = {
-            "prepare": prepare_wallet_action(tx_dict),
+            "prepare": prepared,
             "sign": sign_wallet_action(tx_dict),
-            "wallet_metadata": get_wallet_metadata(wallet_address),
+            "wallet_metadata": get_wallet_metadata(prepared.get("wallet_address")),
         }
 
     return response
