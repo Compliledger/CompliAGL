@@ -15,6 +15,12 @@ class AgentStatus(str, Enum):
     REVOKED = "REVOKED"
 
 
+class ActorType(str, Enum):
+    AGENT = "AGENT"
+    HUMAN = "HUMAN"
+    ORGANIZATION = "ORGANIZATION"
+
+
 class PolicyType(str, Enum):
     SPEND_LIMIT = "SPEND_LIMIT"
     ALLOWLIST = "ALLOWLIST"

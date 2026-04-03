@@ -28,14 +28,21 @@ from app.utils.enums import (
 class AgentCreate(BaseModel):
     name: str
     actor_type: ActorType = ActorType.AGENT
-    wallet_address: Optional[str] = None
+    wallet_address: str
+    owner_name: Optional[str] = None
+    owner_email: Optional[str] = None
+    metadata_json: Optional[str] = None
 
 
 class AgentResponse(BaseModel):
     id: str
     name: str
     actor_type: ActorType
-    wallet_address: Optional[str] = None
+    wallet_address: str
+    owner_name: Optional[str] = None
+    owner_email: Optional[str] = None
+    is_active: bool = True
+    metadata_json: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
