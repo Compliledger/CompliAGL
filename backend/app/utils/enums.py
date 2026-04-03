@@ -42,3 +42,9 @@ class TransactionStatus(str, Enum):
 class ApprovalAction(str, Enum):
     APPROVE = "APPROVE"
     DENY = "DENY"
+
+
+class RiskLevel(str, Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"

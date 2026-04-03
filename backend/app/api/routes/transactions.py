@@ -1,3 +1,4 @@
+"""Transaction routes — create, evaluate, and list."""
 """Transaction routes — create, list, and retrieve."""
 
 import json
@@ -69,6 +70,24 @@ def _tx_to_response(tx) -> dict:
     return data
 
 
+    result = evaluate_transaction(db, tx.id)
+    return result
+
+
+@router.post("/{transaction_id}/evaluate", response_model=EvaluationResponse)
+def evaluate_existing_transaction(transaction_id: str, db: Session = Depends(get_db)):
+    """Evaluate a submitted transaction against the agent's active policy."""
+    tx = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+    if not tx:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    if tx.status not in ("SUBMITTED", "PENDING"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Transaction is in '{tx.status}' state and cannot be re-evaluated",
+        )
+
+    result = evaluate_transaction(db, transaction_id)
+    return result
 @router.post("/", response_model=TransactionResponse, status_code=201)
 def create(payload: TransactionCreate, db: Session = Depends(get_db)):
     """Create a new transaction with status SUBMITTED."""
