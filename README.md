@@ -20,6 +20,28 @@ Policy enforcement · Spend controls · Escalation workflows · Auditability · 
 
 **CompliAGL** (CompliLedger Agent Governance Layer) is a governance, policy, and proof system for autonomous agent wallets.
 
+# 2. Create a virtual environment and install root dependencies
+python -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+# 3. Install backend dependencies
+cd backend
+pip install -r requirements.txt
+cd ..
+
+# 4. Install frontend dependencies
+cd frontend
+npm install
+cd ..
+
+# 5. Initialise the database and seed demo data
+python -m app.db.init_db
+
+# 6. Run both services
+#    Backend  → http://localhost:8000
+#    Frontend → http://localhost:5173
+make run
 As AI agents gain the ability to hold and spend digital assets, a critical gap emerges: **who governs what an agent is allowed to do?** CompliAGL fills that gap by sitting between an agent's intent and its wallet execution — enforcing policies, generating cryptographic compliance proofs, and escalating when human oversight is required.
 
 Every spend request is evaluated against configurable policies, producing a deterministic decision (`APPROVED`, `DENIED`, or `ESCALATED`) along with a cryptographic proof bundle for full auditability.
@@ -136,6 +158,38 @@ curl -s -X POST http://localhost:8000/api/policies/ \
 
 ---
 
+## Database & Seed Data
+
+CompliAGL uses SQLite by default. A single command creates all tables and
+optionally seeds demo data so you can start exploring immediately.
+
+```bash
+# Create tables + insert demo seed data (default)
+python -m app.db.init_db
+
+# Create tables only — no seed data
+python -m app.db.init_db --no-seed
+
+# Use a custom database URL
+python -m app.db.init_db --db-url sqlite:///./my_dev.db
+```
+
+The seed data includes:
+
+| Agent | Wallet | Per-Tx Limit | Allowed Vendors | Chains |
+|---|---|---|---|---|
+| **TravelAgent-01** | `agent_wallet_travel_001` | $450 | airline_api, hotel_api, restaurant_api | xrpl, base, ethereum |
+| **ResearchAgent-01** | `agent_wallet_research_001` | $50 | firecrawl, news_api, research_api | base, ethereum |
+
+Plus four example transactions (approved, denied, escalated), decisions, proof
+records, and audit-log entries.
+
+> **Re-running is safe** — the seed function is idempotent and will skip if
+> data already exists.
+
+---
+
+## Core Concepts
 ### 3. Submit a Transaction
 
 Submit a spend request. The backend **creates** the transaction and **immediately evaluates** it against all active policies.
@@ -191,6 +245,19 @@ curl -s -X POST http://localhost:8000/api/transactions/ \
     "description": "Enterprise license — annual renewal"
   }'
 ```
+CompliAGL/
+├── app/              # Shared models, schemas, enums, and DB utilities
+│   ├── db/
+│   │   └── init_db.py  # DB init & seed (python -m app.db.init_db)
+│   ├── models/
+│   ├── schemas/
+│   └── utils/
+├── backend/          # FastAPI service — policy engine, decisions, proofs
+│   └── README.md
+├── frontend/         # React + Vite dashboard — governance UI
+│   └── README.md
+├── Makefile          # Dev commands (install, run, etc.)
+└── README.md         # ← You are here
 
 **Response** `201 Created`
 
@@ -590,9 +657,29 @@ npm install
 
 ---
 
+### Install
 ## Run Instructions
 
 ### Start the backend
+
+```bash
+# Root-level dependencies (shared models, schemas, enums)
+pip install -r requirements.txt
+
+# Backend dependencies
+cd backend
+pip install -r requirements.txt
+cd ..
+```
+
+### Seed the Database
+
+```bash
+python -m app.db.init_db            # tables + demo data
+python -m app.db.init_db --no-seed  # tables only
+```
+
+### Backend
 
 ```bash
 cd backend
