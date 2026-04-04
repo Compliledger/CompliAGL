@@ -44,6 +44,10 @@ class ApprovalAction(str, Enum):
     DENY = "DENY"
 
 
+class ProofStatus(str, Enum):
+    GENERATED = "GENERATED"
+    ANCHORED = "ANCHORED"
+    FAILED = "FAILED"
 class AuditEventType(str, Enum):
     AGENT_CREATED = "AGENT_CREATED"
     AGENT_UPDATED = "AGENT_UPDATED"

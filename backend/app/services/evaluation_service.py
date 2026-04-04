@@ -189,6 +189,19 @@ def evaluate_transaction(
     db.commit()
     db.refresh(transaction)
 
+    # Build reason codes from per-rule results
+    reason_codes = [r.get("reason", "NO_REASON_PROVIDED") for r in results if r.get("reason")]
+
+    # Create proof bundle (exactly one per evaluation)
+    proof = create_proof_bundle(
+        db,
+        transaction_id=transaction.id,
+        agent_id=transaction.agent_id,
+        entity_id=transaction.id,
+        rule_version_used="1.0",
+        decision_result=decision.value,
+        evaluation_context=policies,
+        reason_codes=reason_codes,
     # --- Create proof bundle -----------------------------------------------
     proof = create_proof_bundle(
         db,
