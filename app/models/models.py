@@ -80,6 +80,9 @@ class Policy(Base):
     blocked_chains = Column(Text, nullable=False, default="[]")
     allowed_asset_symbols = Column(Text, nullable=False, default="[]")
     blocked_asset_symbols = Column(Text, nullable=False, default="[]")
+    require_approval_above_threshold = Column(
+        Boolean, nullable=False, default=False
+    )
     require_approval_above_threshold = Column(Boolean, nullable=False, default=False)
     require_identity_check_above_amount = Column(Float, nullable=True)
     max_transactions_per_day = Column(Integer, nullable=True)

@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from app.models.policy import Policy
 from app.schemas.policy import PolicyCreate, PolicyUpdate
 
+# JSON array column names that need serialization/deserialization
+_JSON_ARRAY_FIELDS = (
 # JSON array fields stored as Text in SQLite
 _JSON_FIELDS = (
     "allowed_vendors",
@@ -18,6 +20,11 @@ _JSON_FIELDS = (
     "blocked_asset_symbols",
 )
 
+
+def create_policy(db: Session, payload: PolicyCreate) -> Policy:
+    data = payload.model_dump()
+    for field in _JSON_ARRAY_FIELDS:
+        data[field] = json.dumps(data[field])
 
 def _serialize_json_fields(data: dict[str, Any]) -> dict[str, Any]:
     """Convert list values to JSON strings for storage."""
@@ -81,6 +88,7 @@ def get_policy(db: Session, policy_id: str) -> Policy | None:
 
 
 def get_policy_for_agent(db: Session, agent_id: str) -> Policy | None:
+    """Return the active policy for a given agent (one active per agent)."""
     """Return the active policy for the given agent (one active per agent)."""
     return (
         db.query(Policy)
@@ -103,7 +111,7 @@ def update_policy(db: Session, policy_id: str, payload: PolicyUpdate) -> Policy 
     updates = _serialize_json_fields(payload.model_dump(exclude_unset=True))
     for key, value in updates.items():
     for key, value in payload.model_dump(exclude_unset=True).items():
-        if key == "parameters" and value is not None:
+        if key in _JSON_ARRAY_FIELDS and value is not None:
             value = json.dumps(value)
         elif key in _JSON_LIST_FIELDS and value is not None:
             value = json.dumps(value)
@@ -114,6 +122,7 @@ def update_policy(db: Session, policy_id: str, payload: PolicyUpdate) -> Policy 
 
 
 def deactivate_policy(db: Session, policy_id: str) -> Policy | None:
+    """Soft-delete: set the policy status to INACTIVE."""
     """Soft-delete: set status to INACTIVE."""
     policy = get_policy(db, policy_id)
     if not policy:
@@ -127,13 +136,16 @@ def deactivate_policy(db: Session, policy_id: str) -> Policy | None:
 def delete_policy(db: Session, policy_id: str) -> bool:
     policy = get_policy(db, policy_id)
     if not policy:
-        return False
-    db.delete(policy)
+        return None
+    policy.status = "INACTIVE"
     db.commit()
-    return True
+    db.refresh(policy)
+    return policy
 
 
 def policy_to_dict(policy: Policy) -> dict:
+    """Return a dict with JSON array fields deserialized from JSON strings."""
+    data = {
     """Return a dict with JSON array fields deserialized.
     """Return a dict with parameters and JSON list fields deserialized.
 
@@ -159,6 +171,13 @@ def policy_to_dict(policy: Policy) -> dict:
         "max_transactions_per_day": policy.max_transactions_per_day,
         "timezone": policy.timezone,
         "rule_version": policy.rule_version,
+        "created_at": policy.created_at,
+        "updated_at": policy.updated_at,
+    }
+    for field in _JSON_ARRAY_FIELDS:
+        raw = getattr(policy, field)
+        data[field] = json.loads(raw) if isinstance(raw, str) else raw
+    return data
         "name": policy.name,
         "description": policy.description,
         "policy_type": policy.policy_type,

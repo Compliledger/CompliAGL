@@ -7,7 +7,7 @@ All status and type fields use the business enums defined in
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.utils.enums import (
     ActorType,
@@ -55,6 +55,12 @@ class AgentResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+def _validate_non_negative(value: float | None, field_name: str) -> float | None:
+    if value is not None and value < 0:
+        raise ValueError(f"{field_name} must be non-negative")
+    return value
+
+
 class PolicyCreate(BaseModel):
     agent_id: str
     policy_name: str
@@ -69,11 +75,57 @@ class PolicyCreate(BaseModel):
     allowed_asset_symbols: list[str] = Field(default_factory=list)
     blocked_asset_symbols: list[str] = Field(default_factory=list)
     require_approval_above_threshold: bool = False
+    require_identity_check_above_amount: Optional[float] = None
+    max_transactions_per_day: Optional[int] = None
     require_identity_check_above_amount: Optional[float] = Field(default=None, ge=0)
     max_transactions_per_day: Optional[int] = Field(default=None, ge=1)
     timezone: str = "UTC"
     rule_version: str = "v1"
     risk_level: RiskLevel = RiskLevel.LOW
+
+    @field_validator("require_identity_check_above_amount")
+    @classmethod
+    def _non_negative_identity_amount(cls, v: float | None) -> float | None:
+        return _validate_non_negative(v, "require_identity_check_above_amount")
+
+    @field_validator("max_transactions_per_day")
+    @classmethod
+    def _positive_max_tx(cls, v: int | None) -> int | None:
+        if v is not None and v < 0:
+            raise ValueError("max_transactions_per_day must be non-negative")
+        return v
+
+
+class PolicyUpdate(BaseModel):
+    policy_name: Optional[str] = None
+    status: Optional[PolicyStatus] = None
+    daily_budget: Optional[float] = Field(default=None, ge=0)
+    per_tx_limit: Optional[float] = Field(default=None, ge=0)
+    escalation_threshold: Optional[float] = Field(default=None, ge=0)
+    allowed_vendors: Optional[list[str]] = None
+    blocked_vendors: Optional[list[str]] = None
+    allowed_chains: Optional[list[str]] = None
+    blocked_chains: Optional[list[str]] = None
+    allowed_asset_symbols: Optional[list[str]] = None
+    blocked_asset_symbols: Optional[list[str]] = None
+    require_approval_above_threshold: Optional[bool] = None
+    require_identity_check_above_amount: Optional[float] = None
+    max_transactions_per_day: Optional[int] = None
+    timezone: Optional[str] = None
+    rule_version: Optional[str] = None
+    risk_level: Optional[RiskLevel] = None
+
+    @field_validator("require_identity_check_above_amount")
+    @classmethod
+    def _non_negative_identity_amount(cls, v: float | None) -> float | None:
+        return _validate_non_negative(v, "require_identity_check_above_amount")
+
+    @field_validator("max_transactions_per_day")
+    @classmethod
+    def _positive_max_tx(cls, v: int | None) -> int | None:
+        if v is not None and v < 0:
+            raise ValueError("max_transactions_per_day must be non-negative")
+        return v
 
 
 class PolicyResponse(BaseModel):
