@@ -16,6 +16,7 @@ from app.api.routes.transactions import router as transactions_router
 from app.api.routes.approvals import router as approvals_router
 from app.api.routes.audit import router as audit_router
 from app.api.routes.proofs import router as proofs_router
+from app.api.routes.dashboard import router as dashboard_router
 
 
 @asynccontextmanager
@@ -49,6 +50,7 @@ app.include_router(transactions_router, prefix="/api")
 app.include_router(approvals_router, prefix="/api")
 app.include_router(audit_router, prefix="/api")
 app.include_router(proofs_router, prefix="/api")
+app.include_router(dashboard_router, prefix="/api")
 
 
 @app.get("/", tags=["root"])

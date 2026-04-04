@@ -8,6 +8,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     Float,
@@ -49,7 +50,11 @@ class Agent(Base):
     id = Column(String, primary_key=True, default=_generate_uuid)
     name = Column(String, nullable=False)
     actor_type = Column(String, nullable=False, default=ActorType.AGENT.value)
-    wallet_address = Column(String, nullable=True)
+    wallet_address = Column(String, unique=True, nullable=False)
+    owner_name = Column(String, nullable=True)
+    owner_email = Column(String, nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    metadata_json = Column(Text, nullable=True)
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
@@ -64,14 +69,22 @@ class Policy(Base):
 
     id = Column(String, primary_key=True, default=_generate_uuid)
     agent_id = Column(String, ForeignKey("agents.id"), nullable=False)
-    name = Column(String, nullable=False)
-    description = Column(Text, nullable=True)
+    policy_name = Column(String, nullable=False)
     status = Column(String, nullable=False, default=PolicyStatus.ACTIVE.value)
-    max_spend_per_tx = Column(Float, nullable=True)
-    allowed_assets = Column(Text, nullable=True)
-    allowed_recipients = Column(Text, nullable=True)
-    allowed_hours_start_utc = Column(Float, nullable=True)
-    allowed_hours_end_utc = Column(Float, nullable=True)
+    daily_budget = Column(Float, nullable=False, default=0.0)
+    per_tx_limit = Column(Float, nullable=False, default=0.0)
+    escalation_threshold = Column(Float, nullable=False, default=0.0)
+    allowed_vendors = Column(Text, nullable=False, default="[]")
+    blocked_vendors = Column(Text, nullable=False, default="[]")
+    allowed_chains = Column(Text, nullable=False, default="[]")
+    blocked_chains = Column(Text, nullable=False, default="[]")
+    allowed_asset_symbols = Column(Text, nullable=False, default="[]")
+    blocked_asset_symbols = Column(Text, nullable=False, default="[]")
+    require_approval_above_threshold = Column(Boolean, nullable=False, default=False)
+    require_identity_check_above_amount = Column(Float, nullable=True)
+    max_transactions_per_day = Column(Integer, nullable=True)
+    timezone = Column(String, nullable=False, default="UTC")
+    rule_version = Column(String, nullable=False, default="v1")
     risk_level = Column(String, nullable=False, default=RiskLevel.LOW.value)
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)

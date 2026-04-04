@@ -1,4 +1,7 @@
-"""Transaction routes — create + evaluate."""
+"""Transaction routes — create, evaluate, and list."""
+"""Transaction routes — create, list, and retrieve."""
+
+import json
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -10,29 +13,75 @@ from app.schemas.transaction import EvaluationResponse, TransactionCreate, Trans
 from app.services import audit_service
 from app.services.evaluation_service import evaluate_transaction
 from app.api.routes.audit import build_audit_list_response
+from app.schemas.transaction import (
+    TransactionCreate,
+    TransactionListResponse,
+    TransactionResponse,
+)
+from app.services.transaction_service import (
+    create_transaction,
+    get_transaction,
+    list_transactions,
+)
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
 
 @router.post("/", response_model=EvaluationResponse, status_code=201)
-def create_and_evaluate(payload: TransactionCreate, db: Session = Depends(get_db)):
-    """Create a transaction and immediately evaluate it against active policies."""
+def create_and_evaluate(
+    payload: TransactionCreate,
+    include_ows: bool = False,
+    db: Session = Depends(get_db),
+):
+    """Create a transaction and immediately evaluate it against active policies.
+
+    If ``include_ows`` is ``True`` the response will contain mocked Open Wallet
+    Standard execution data (prepare, sign, wallet metadata).
+    """
     tx = Transaction(**payload.model_dump())
     db.add(tx)
     db.commit()
     db.refresh(tx)
 
-    result = evaluate_transaction(db, tx)
+    result = evaluate_transaction(db, tx, include_ows=include_ows)
+    return result
+def _tx_to_response(tx) -> dict:
+    """Convert a Transaction ORM instance to a response-ready dict."""
+    data = {
+        "id": tx.id,
+        "agent_id": tx.agent_id,
+        "wallet_address": tx.wallet_address,
+        "vendor": tx.vendor,
+        "chain": tx.chain,
+        "asset_symbol": tx.asset_symbol,
+        "amount": tx.amount,
+        "destination": tx.destination,
+        "memo": tx.memo,
+        "status": tx.status,
+        "decision_result": tx.decision_result,
+        "decision_reason_summary": tx.decision_reason_summary,
+        "submitted_at": tx.submitted_at,
+        "evaluated_at": tx.evaluated_at,
+        "executed_at": tx.executed_at,
+        "created_at": tx.created_at,
+        "updated_at": tx.updated_at,
+    }
+    # Deserialize metadata_json from stored JSON string to dict
+    raw = tx.metadata_json or "{}"
+    try:
+        data["metadata_json"] = json.loads(raw) if isinstance(raw, str) else raw
+    except (json.JSONDecodeError, TypeError):
+        data["metadata_json"] = {}
+    return data
+
+
+    result = evaluate_transaction(db, tx.id)
     return result
 
 
-@router.get("/", response_model=list[TransactionResponse])
-def list_transactions(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return db.query(Transaction).offset(skip).limit(limit).all()
-
-
-@router.get("/{transaction_id}", response_model=TransactionResponse)
-def get_transaction(transaction_id: str, db: Session = Depends(get_db)):
+@router.post("/{transaction_id}/evaluate", response_model=EvaluationResponse)
+def evaluate_existing_transaction(transaction_id: str, db: Session = Depends(get_db)):
+    """Evaluate a submitted transaction against the agent's active policy."""
     tx = db.query(Transaction).filter(Transaction.id == transaction_id).first()
     if not tx:
         raise HTTPException(status_code=404, detail="Transaction not found")
@@ -55,3 +104,34 @@ def list_transaction_audit_logs(
         db, transaction_id, skip=skip, limit=limit
     )
     return build_audit_list_response(logs)
+    if tx.status not in ("SUBMITTED", "PENDING"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Transaction is in '{tx.status}' state and cannot be re-evaluated",
+        )
+
+    result = evaluate_transaction(db, transaction_id)
+    return result
+@router.post("/", response_model=TransactionResponse, status_code=201)
+def create(payload: TransactionCreate, db: Session = Depends(get_db)):
+    """Create a new transaction with status SUBMITTED."""
+    tx = create_transaction(db, payload)
+    return _tx_to_response(tx)
+
+
+@router.get("/", response_model=TransactionListResponse)
+def list_all(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    """Return a paginated list of transactions."""
+    total = db.query(Transaction).count()
+    txs = list_transactions(db, skip=skip, limit=limit)
+    items = [_tx_to_response(tx) for tx in txs]
+    return TransactionListResponse(items=items, count=total)
+
+
+@router.get("/{transaction_id}", response_model=TransactionResponse)
+def get_by_id(transaction_id: str, db: Session = Depends(get_db)):
+    """Retrieve a single transaction by its ID."""
+    tx = get_transaction(db, transaction_id)
+    if not tx:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    return _tx_to_response(tx)

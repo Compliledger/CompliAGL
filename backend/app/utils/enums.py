@@ -15,12 +15,28 @@ class AgentStatus(str, Enum):
     REVOKED = "REVOKED"
 
 
+class ActorType(str, Enum):
+    AGENT = "AGENT"
+    HUMAN = "HUMAN"
+    ORGANIZATION = "ORGANIZATION"
+
+
 class PolicyType(str, Enum):
     SPEND_LIMIT = "SPEND_LIMIT"
     ALLOWLIST = "ALLOWLIST"
     BLOCKLIST = "BLOCKLIST"
     APPROVAL_THRESHOLD = "APPROVAL_THRESHOLD"
     TIME_WINDOW = "TIME_WINDOW"
+
+
+class TransactionStatus(str, Enum):
+    SUBMITTED = "SUBMITTED"
+    EVALUATED = "EVALUATED"
+    APPROVED = "APPROVED"
+    DENIED = "DENIED"
+    ESCALATED = "ESCALATED"
+    EXECUTED = "EXECUTED"
+    FAILED = "FAILED"
 
 
 class ApprovalAction(str, Enum):
@@ -41,3 +57,7 @@ class AuditEventType(str, Enum):
     APPROVAL_REQUESTED = "APPROVAL_REQUESTED"
     APPROVAL_COMPLETED = "APPROVAL_COMPLETED"
     PROOF_GENERATED = "PROOF_GENERATED"
+class RiskLevel(str, Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"

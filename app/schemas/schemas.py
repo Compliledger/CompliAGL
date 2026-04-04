@@ -29,14 +29,21 @@ from app.utils.enums import (
 class AgentCreate(BaseModel):
     name: str
     actor_type: ActorType = ActorType.AGENT
-    wallet_address: Optional[str] = None
+    wallet_address: str
+    owner_name: Optional[str] = None
+    owner_email: Optional[str] = None
+    metadata_json: Optional[str] = None
 
 
 class AgentResponse(BaseModel):
     id: str
     name: str
     actor_type: ActorType
-    wallet_address: Optional[str] = None
+    wallet_address: str
+    owner_name: Optional[str] = None
+    owner_email: Optional[str] = None
+    is_active: bool = True
+    metadata_json: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -50,28 +57,44 @@ class AgentResponse(BaseModel):
 
 class PolicyCreate(BaseModel):
     agent_id: str
-    name: str
-    description: Optional[str] = None
+    policy_name: str
     status: PolicyStatus = PolicyStatus.ACTIVE
-    max_spend_per_tx: Optional[float] = None
-    allowed_assets: Optional[str] = None
-    allowed_recipients: Optional[str] = None
-    allowed_hours_start_utc: Optional[float] = None
-    allowed_hours_end_utc: Optional[float] = None
+    daily_budget: float = Field(default=0.0, ge=0)
+    per_tx_limit: float = Field(default=0.0, ge=0)
+    escalation_threshold: float = Field(default=0.0, ge=0)
+    allowed_vendors: list[str] = Field(default_factory=list)
+    blocked_vendors: list[str] = Field(default_factory=list)
+    allowed_chains: list[str] = Field(default_factory=list)
+    blocked_chains: list[str] = Field(default_factory=list)
+    allowed_asset_symbols: list[str] = Field(default_factory=list)
+    blocked_asset_symbols: list[str] = Field(default_factory=list)
+    require_approval_above_threshold: bool = False
+    require_identity_check_above_amount: Optional[float] = Field(default=None, ge=0)
+    max_transactions_per_day: Optional[int] = Field(default=None, ge=1)
+    timezone: str = "UTC"
+    rule_version: str = "v1"
     risk_level: RiskLevel = RiskLevel.LOW
 
 
 class PolicyResponse(BaseModel):
     id: str
     agent_id: str
-    name: str
-    description: Optional[str] = None
+    policy_name: str
     status: PolicyStatus
-    max_spend_per_tx: Optional[float] = None
-    allowed_assets: Optional[str] = None
-    allowed_recipients: Optional[str] = None
-    allowed_hours_start_utc: Optional[float] = None
-    allowed_hours_end_utc: Optional[float] = None
+    daily_budget: float
+    per_tx_limit: float
+    escalation_threshold: float
+    allowed_vendors: list[str] = Field(default_factory=list)
+    blocked_vendors: list[str] = Field(default_factory=list)
+    allowed_chains: list[str] = Field(default_factory=list)
+    blocked_chains: list[str] = Field(default_factory=list)
+    allowed_asset_symbols: list[str] = Field(default_factory=list)
+    blocked_asset_symbols: list[str] = Field(default_factory=list)
+    require_approval_above_threshold: bool
+    require_identity_check_above_amount: Optional[float] = None
+    max_transactions_per_day: Optional[int] = None
+    timezone: str
+    rule_version: str
     risk_level: RiskLevel
     created_at: datetime
     updated_at: datetime
