@@ -1,5 +1,4 @@
-"""Transaction routes — create, evaluate, and list."""
-"""Transaction routes — create, list, and retrieve."""
+"""Transaction routes — create, evaluate, list, and retrieve."""
 
 import json
 
@@ -8,45 +7,26 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.transaction import Transaction
-from app.schemas.proof_bundle import ProofBundleResponse
 from app.schemas.audit import AuditLogListResponse
-from app.schemas.transaction import EvaluationResponse, TransactionCreate, TransactionResponse
-from app.services import audit_service
-from app.services.evaluation_service import evaluate_transaction
-from app.services import proof_service
-from app.api.routes.audit import build_audit_list_response
+from app.schemas.proof_bundle import ProofBundleResponse
 from app.schemas.transaction import (
+    EvaluationResponse,
     TransactionCreate,
     TransactionListResponse,
     TransactionResponse,
 )
+from app.services import audit_service, proof_service
+from app.services.evaluation_service import evaluate_transaction
 from app.services.transaction_service import (
     create_transaction,
     get_transaction,
     list_transactions,
 )
+from app.api.routes.audit import build_audit_list_response
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
 
-@router.post("/", response_model=EvaluationResponse, status_code=201)
-def create_and_evaluate(
-    payload: TransactionCreate,
-    include_ows: bool = False,
-    db: Session = Depends(get_db),
-):
-    """Create a transaction and immediately evaluate it against active policies.
-
-    If ``include_ows`` is ``True`` the response will contain mocked Open Wallet
-    Standard execution data (prepare, sign, wallet metadata).
-    """
-    tx = Transaction(**payload.model_dump())
-    db.add(tx)
-    db.commit()
-    db.refresh(tx)
-
-    result = evaluate_transaction(db, tx, include_ows=include_ows)
-    return result
 def _tx_to_response(tx) -> dict:
     """Convert a Transaction ORM instance to a response-ready dict."""
     data = {
@@ -77,8 +57,11 @@ def _tx_to_response(tx) -> dict:
     return data
 
 
-    result = evaluate_transaction(db, tx.id)
-    return result
+@router.post("/", response_model=TransactionResponse, status_code=201)
+def create(payload: TransactionCreate, db: Session = Depends(get_db)):
+    """Create a new transaction with status SUBMITTED."""
+    tx = create_transaction(db, payload)
+    return _tx_to_response(tx)
 
 
 @router.post("/{transaction_id}/evaluate", response_model=EvaluationResponse)
@@ -87,45 +70,13 @@ def evaluate_existing_transaction(transaction_id: str, db: Session = Depends(get
     tx = db.query(Transaction).filter(Transaction.id == transaction_id).first()
     if not tx:
         raise HTTPException(status_code=404, detail="Transaction not found")
-    return tx
-
-
-@router.get("/{transaction_id}/proof", response_model=ProofBundleResponse)
-def get_transaction_proof(transaction_id: str, db: Session = Depends(get_db)):
-    """Return the proof bundle associated with a transaction."""
-    proof = proof_service.get_proof_by_transaction(db, transaction_id)
-    if not proof:
-        raise HTTPException(status_code=404, detail="Proof bundle not found for this transaction")
-    return proof
-@router.get(
-    "/{transaction_id}/audit",
-    response_model=AuditLogListResponse,
-    tags=["audit"],
-)
-def list_transaction_audit_logs(
-    transaction_id: str,
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db),
-):
-    """Return audit log entries for a specific transaction, newest first."""
-    logs = audit_service.list_audit_logs_for_transaction(
-        db, transaction_id, skip=skip, limit=limit
-    )
-    return build_audit_list_response(logs)
     if tx.status not in ("SUBMITTED", "PENDING"):
         raise HTTPException(
             status_code=400,
             detail=f"Transaction is in '{tx.status}' state and cannot be re-evaluated",
         )
-
     result = evaluate_transaction(db, transaction_id)
     return result
-@router.post("/", response_model=TransactionResponse, status_code=201)
-def create(payload: TransactionCreate, db: Session = Depends(get_db)):
-    """Create a new transaction with status SUBMITTED."""
-    tx = create_transaction(db, payload)
-    return _tx_to_response(tx)
 
 
 @router.get("/", response_model=TransactionListResponse)
@@ -144,3 +95,30 @@ def get_by_id(transaction_id: str, db: Session = Depends(get_db)):
     if not tx:
         raise HTTPException(status_code=404, detail="Transaction not found")
     return _tx_to_response(tx)
+
+
+@router.get("/{transaction_id}/proof", response_model=ProofBundleResponse)
+def get_transaction_proof(transaction_id: str, db: Session = Depends(get_db)):
+    """Return the proof bundle associated with a transaction."""
+    proof = proof_service.get_proof_by_transaction(db, transaction_id)
+    if not proof:
+        raise HTTPException(status_code=404, detail="Proof bundle not found for this transaction")
+    return proof
+
+
+@router.get(
+    "/{transaction_id}/audit",
+    response_model=AuditLogListResponse,
+    tags=["audit"],
+)
+def list_transaction_audit_logs(
+    transaction_id: str,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+):
+    """Return audit log entries for a specific transaction, newest first."""
+    logs = audit_service.list_audit_logs_for_transaction(
+        db, transaction_id, skip=skip, limit=limit
+    )
+    return build_audit_list_response(logs)

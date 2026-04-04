@@ -64,7 +64,13 @@ def client(db):
 
 
 def _make_agent(db, *, name="TestAgent", status="ACTIVE", **kwargs):
-    agent = Agent(name=name, status=status, **kwargs)
+    is_active = status == "ACTIVE"
+    agent = Agent(
+        name=name,
+        wallet_address=kwargs.pop("wallet_address", f"0x{name}"),
+        is_active=is_active,
+        **kwargs,
+    )
     db.add(agent)
     db.commit()
     db.refresh(agent)
@@ -73,6 +79,7 @@ def _make_agent(db, *, name="TestAgent", status="ACTIVE", **kwargs):
 
 def _make_policy(db, *, name="Policy", policy_type="SPEND_LIMIT", is_active=True, parameters=None):
     policy = Policy(
+        policy_name=name,
         name=name,
         policy_type=policy_type,
         is_active=is_active,
@@ -87,7 +94,8 @@ def _make_policy(db, *, name="Policy", policy_type="SPEND_LIMIT", is_active=True
 def _make_transaction(db, agent_id, *, amount=100.0, status="PENDING", created_at=None):
     tx = Transaction(
         agent_id=agent_id,
-        recipient="0xRecipient",
+        wallet_address="0xTestWallet",
+        destination="0xRecipient",
         amount=amount,
         status=status,
     )
@@ -99,11 +107,11 @@ def _make_transaction(db, agent_id, *, amount=100.0, status="PENDING", created_a
     return tx
 
 
-def _make_audit_log(db, entity_id, *, entity_type="agent", action="TEST"):
+def _make_audit_log(db, agent_id, *, entity_type="agent", action="TEST"):
     entry = AuditLog(
-        entity_type=entity_type,
-        entity_id=entity_id,
-        action=action,
+        agent_id=agent_id,
+        event_type=f"{entity_type}_{action}",
+        event_summary=f"{entity_type} {action}",
     )
     db.add(entry)
     db.commit()

@@ -1,5 +1,6 @@
 """CompliAGL — FastAPI application entry point."""
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -18,11 +19,18 @@ from app.api.routes.audit import router as audit_router
 from app.api.routes.proofs import router as proofs_router
 from app.api.routes.dashboard import router as dashboard_router
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup / shutdown lifecycle hook."""
-    init_db()
+    try:
+        init_db()
+        logger.info("Database initialised successfully.")
+    except Exception:
+        logger.exception("Database initialisation failed — tables may be missing.")
+    print("CompliAGL backend started successfully")
     yield
 
 
@@ -34,8 +42,6 @@ app = FastAPI(
 )
 
 # --- CORS (permissive – hackathon demo) ---
-# TODO: Before production, replace allow_origins=["*"] with explicit origins
-#       and review allow_credentials setting. Wildcard + credentials is insecure.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
