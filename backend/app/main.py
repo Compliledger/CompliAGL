@@ -34,6 +34,8 @@ app = FastAPI(
 )
 
 # --- CORS (permissive – hackathon demo) ---
+# TODO: Before production, replace allow_origins=["*"] with explicit origins
+#       and review allow_credentials setting. Wildcard + credentials is insecure.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
