@@ -1,7 +1,5 @@
 """Approval service — handles escalation reviews."""
 
-import json
-
 from sqlalchemy.orm import Session
 
 from app.models.approval import Approval
@@ -28,11 +26,15 @@ def create_approval(db: Session, payload: ApprovalCreate) -> Approval:
 
     log_event(
         db,
-        entity_type="approval",
-        entity_id=approval.id,
-        action=payload.action,
-        details=json.dumps({"transaction_id": payload.transaction_id, "comments": payload.comments}),
-        performed_by=payload.reviewer_id or "unknown",
+        agent_id=tx.agent_id if tx else "unknown",
+        transaction_id=payload.transaction_id,
+        event_type=f"APPROVAL_{payload.action}",
+        event_summary=f"Approval action: {payload.action}",
+        event_data={
+            "approval_id": approval.id,
+            "comments": payload.comments,
+            "reviewer_id": payload.reviewer_id,
+        },
     )
 
     return approval

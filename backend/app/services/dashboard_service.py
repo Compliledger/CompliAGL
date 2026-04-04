@@ -26,6 +26,8 @@ def _policy_to_dict(policy: Policy) -> dict:
         params = {}
     return {
         "id": policy.id,
+        "agent_id": policy.agent_id,
+        "policy_name": policy.policy_name,
         "name": policy.name,
         "description": policy.description,
         "policy_type": policy.policy_type,
@@ -47,7 +49,7 @@ def get_dashboard_summary(db: Session) -> dict:
     total_agents = db.query(func.count(Agent.id)).scalar() or 0
     active_agents = (
         db.query(func.count(Agent.id))
-        .filter(Agent.status == "ACTIVE")
+        .filter(Agent.is_active.is_(True))
         .scalar()
         or 0
     )
@@ -198,7 +200,7 @@ def get_agent_summary(db: Session, agent_id: str) -> dict | None:
     # Most recent audit events for this agent (last 10)
     recent_audit_events = (
         db.query(AuditLog)
-        .filter(AuditLog.entity_id == agent_id)
+        .filter(AuditLog.agent_id == agent_id)
         .order_by(AuditLog.created_at.desc())
         .limit(10)
         .all()

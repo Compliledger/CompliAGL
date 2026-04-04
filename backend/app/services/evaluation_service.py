@@ -20,7 +20,7 @@ def _policy_to_eval_dict(policy: Policy) -> dict[str, Any]:
     return {
         "id": policy.id,
         "agent_id": policy.agent_id,
-        "name": policy.name,
+        "name": policy.policy_name,
         "blocked_vendors": policy.blocked_vendors,
         "blocked_chains": policy.blocked_chains,
         "blocked_asset_symbols": policy.blocked_asset_symbols,
@@ -73,38 +73,6 @@ def evaluate_transaction(db: Session, transaction_id: str) -> dict[str, Any]:
     """Load a submitted transaction, evaluate it against the agent's active
     policy, persist the decision, create an audit log entry and proof bundle,
     and return the evaluation result.
-
-    Parameters
-    ----------
-    db:
-        Active SQLAlchemy session.
-    transaction_id:
-        Primary key of the transaction to evaluate.
-
-    Returns
-    -------
-    dict containing the decision, proof bundle summary, and transaction id.
-from app.services.ows_service import (
-    prepare_wallet_action,
-    sign_wallet_action,
-    get_wallet_metadata,
-)
-from app.utils.rule_engine import evaluate_policies
-
-
-def evaluate_transaction(
-    db: Session,
-    transaction: Transaction,
-    *,
-    include_ows: bool = False,
-) -> dict:
-    """Run all active policies against a transaction and persist the results.
-
-    Args:
-        db: Database session.
-        transaction: The transaction ORM object to evaluate.
-        include_ows: When ``True``, append mocked OWS execution data to the
-            response (prepare, sign, wallet metadata).
     """
 
     # --- Load transaction --------------------------------------------------
@@ -131,7 +99,11 @@ def evaluate_transaction(
         .first()
     )
     agent_dict = (
-        {"id": agent.id, "name": agent.name, "status": agent.status}
+        {
+            "id": agent.id,
+            "name": agent.name,
+            "status": "ACTIVE" if agent.is_active else "INACTIVE",
+        }
         if agent
         else None
     )
@@ -159,13 +131,7 @@ def evaluate_transaction(
         "vendor": transaction.vendor,
         "chain": transaction.chain,
         "asset_symbol": transaction.asset_symbol,
-        "recipient": transaction.recipient,
-        "currency": transaction.currency,
         "destination": transaction.destination,
-        "amount": transaction.amount,
-        "asset_symbol": transaction.asset_symbol,
-        "chain": transaction.chain,
-        "vendor": transaction.vendor,
     }
 
     # --- Evaluate rules ----------------------------------------------------
@@ -180,6 +146,8 @@ def evaluate_transaction(
     # --- Persist decision on transaction -----------------------------------
     decision_result = result["decision_result"]
     transaction.decision_result = decision_result
+    transaction.decision_reason_summary = result["decision_summary"]
+    transaction.evaluated_at = datetime.now(timezone.utc)
     if decision_result == "APPROVED":
         transaction.status = "APPROVED"
     elif decision_result == "DENIED":
@@ -189,26 +157,16 @@ def evaluate_transaction(
     db.commit()
     db.refresh(transaction)
 
-    # Build reason codes from per-rule results
-    reason_codes = [r.get("reason", "NO_REASON_PROVIDED") for r in results if r.get("reason")]
-
-    # Create proof bundle (exactly one per evaluation)
+    # --- Create proof bundle -----------------------------------------------
     proof = create_proof_bundle(
         db,
         transaction_id=transaction.id,
         agent_id=transaction.agent_id,
         entity_id=transaction.id,
         rule_version_used="1.0",
-        decision_result=decision.value,
-        evaluation_context=policies,
-        reason_codes=reason_codes,
-    # --- Create proof bundle -----------------------------------------------
-    proof = create_proof_bundle(
-        db,
-        transaction_id=transaction.id,
-        decision=decision_result,
-        policy_snapshot=[policy_dict] if policy_dict else [],
-        evaluation_results=[result],
+        decision_result=decision_result,
+        evaluation_context=[policy_dict] if policy_dict else [],
+        reason_codes=result["reason_codes"],
     )
 
     # --- Audit log ---------------------------------------------------------
@@ -216,26 +174,17 @@ def evaluate_transaction(
         db,
         agent_id=transaction.agent_id,
         transaction_id=transaction.id,
-        event_type=f"TRANSACTION_{decision.value}",
-        event_summary=f"Transaction evaluated: {decision.value}",
-        event_data={"results": results, "proof_id": proof.id},
-        entity_type="transaction",
-        entity_id=transaction.id,
-        action=f"EVALUATED:{decision_result}",
-        details=json.dumps(
-            {
-                "reason_codes": result["reason_codes"],
-                "risk_level": result["risk_level"],
-                "proof_id": proof.id,
-            },
-            default=str,
-        ),
-        performed_by="system",
+        event_type=f"TRANSACTION_{decision_result}",
+        event_summary=f"Transaction evaluated: {decision_result}",
+        event_data={
+            "reason_codes": result["reason_codes"],
+            "risk_level": result["risk_level"],
+            "proof_id": proof.id,
+        },
     )
 
     # --- Build response ----------------------------------------------------
     return {
-    response: dict = {
         "transaction_id": transaction.id,
         "decision_result": decision_result,
         "reason_codes": result["reason_codes"],
@@ -244,26 +193,8 @@ def evaluate_transaction(
         "requires_approval": result["requires_approval"],
         "proof_bundle_summary": {
             "proof_bundle_id": proof.id,
-            "proof_hash": proof.proof_hash,
-            "decision": proof.decision,
-            "created_at": str(proof.created_at),
+            "proof_hash": proof.bundle_hash,
+            "decision": proof.decision_result,
+            "created_at": str(proof.timestamp),
         },
     }
-
-    # Optionally attach mocked OWS execution data
-    if include_ows:
-        tx_dict = {
-            "agent_id": transaction.agent_id,
-            "recipient": transaction.recipient,
-            "amount": transaction.amount,
-            "currency": transaction.currency,
-            "description": transaction.description,
-        }
-        prepared = prepare_wallet_action(tx_dict)
-        response["ows_execution"] = {
-            "prepare": prepared,
-            "sign": sign_wallet_action(tx_dict),
-            "wallet_metadata": get_wallet_metadata(prepared.get("wallet_address")),
-        }
-
-    return response

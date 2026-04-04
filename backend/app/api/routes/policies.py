@@ -42,7 +42,6 @@ def update_policy(policy_id: str, payload: PolicyUpdate, db: Session = Depends(g
     return policy_to_dict(policy)
 
 
-@router.delete("/{policy_id}", response_model=PolicyResponse)
 @router.delete("/policies/{policy_id}")
 def deactivate_policy(policy_id: str, db: Session = Depends(get_db)):
     policy = policy_service.deactivate_policy(db, policy_id)

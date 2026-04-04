@@ -48,6 +48,8 @@ class ProofStatus(str, Enum):
     GENERATED = "GENERATED"
     ANCHORED = "ANCHORED"
     FAILED = "FAILED"
+
+
 class AuditEventType(str, Enum):
     AGENT_CREATED = "AGENT_CREATED"
     AGENT_UPDATED = "AGENT_UPDATED"
@@ -61,6 +63,8 @@ class AuditEventType(str, Enum):
     APPROVAL_REQUESTED = "APPROVAL_REQUESTED"
     APPROVAL_COMPLETED = "APPROVAL_COMPLETED"
     PROOF_GENERATED = "PROOF_GENERATED"
+
+
 class RiskLevel(str, Enum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"
