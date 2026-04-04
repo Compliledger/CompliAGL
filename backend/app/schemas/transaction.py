@@ -1,9 +1,10 @@
 """Transaction Pydantic schemas."""
 
+import json
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.utils.enums import TransactionStatus
 
@@ -44,6 +45,25 @@ class TransactionResponse(BaseModel):
     updated_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _parse_metadata_json(cls, data: Any) -> Any:
+        """Deserialise metadata_json when it arrives as a JSON string."""
+        if hasattr(data, "__dict__"):
+            raw = getattr(data, "metadata_json", None)
+        else:
+            raw = data.get("metadata_json") if isinstance(data, dict) else None
+        if isinstance(raw, str):
+            try:
+                parsed = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                parsed = {}
+            if hasattr(data, "__dict__"):
+                object.__setattr__(data, "metadata_json", parsed)
+            else:
+                data["metadata_json"] = parsed
+        return data
 
 
 class EvaluationResponse(BaseModel):

@@ -77,7 +77,7 @@ class PolicyUpdate(BaseModel):
 
 class PolicyResponse(BaseModel):
     id: str
-    agent_id: str
+    agent_id: Optional[str] = None
     policy_name: Optional[str] = None
     status: Optional[str] = None
     daily_budget: Optional[float] = None
