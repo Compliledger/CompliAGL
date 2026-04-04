@@ -12,8 +12,14 @@ class ProofBundle(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     transaction_id = Column(String, ForeignKey("transactions.id"), nullable=False)
-    decision = Column(String, nullable=False)
-    policy_snapshot = Column(Text, nullable=False)  # JSON: policies evaluated
-    evaluation_results = Column(Text, nullable=False)  # JSON: per-rule results
-    proof_hash = Column(String, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    agent_id = Column(String, ForeignKey("agents.id"), nullable=False)
+    module = Column(String, nullable=False, default="CompliAGL")
+    entity_id = Column(String, nullable=False)
+    rule_version_used = Column(String, nullable=False)
+    decision_result = Column(String, nullable=False)
+    evaluation_context = Column(Text, nullable=False)  # JSON
+    reason_codes = Column(Text, nullable=False)  # JSON array
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    bundle_hash = Column(String, nullable=False)
+    proof_status = Column(String, nullable=False, default="GENERATED")
+    anchor_metadata = Column(Text, nullable=True)  # JSON, optional

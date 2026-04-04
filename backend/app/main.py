@@ -1,5 +1,6 @@
 """CompliAGL — FastAPI application entry point."""
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -16,12 +17,20 @@ from app.api.routes.transactions import router as transactions_router
 from app.api.routes.approvals import router as approvals_router
 from app.api.routes.audit import router as audit_router
 from app.api.routes.proofs import router as proofs_router
+from app.api.routes.dashboard import router as dashboard_router
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup / shutdown lifecycle hook."""
-    init_db()
+    try:
+        init_db()
+        logger.info("Database initialised successfully.")
+    except Exception:
+        logger.exception("Database initialisation failed — tables may be missing.")
+    print("CompliAGL backend started successfully")
     yield
 
 
@@ -32,7 +41,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# --- CORS (permissive for local dev) ---
+# --- CORS (permissive – hackathon demo) ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -49,6 +58,7 @@ app.include_router(transactions_router, prefix="/api")
 app.include_router(approvals_router, prefix="/api")
 app.include_router(audit_router, prefix="/api")
 app.include_router(proofs_router, prefix="/api")
+app.include_router(dashboard_router, prefix="/api")
 
 
 @app.get("/", tags=["root"])

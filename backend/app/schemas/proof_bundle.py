@@ -9,10 +9,16 @@ from pydantic import BaseModel
 class ProofBundleResponse(BaseModel):
     id: str
     transaction_id: str
-    decision: str
-    policy_snapshot: list[dict[str, Any]] | str
-    evaluation_results: list[dict[str, Any]] | str
-    proof_hash: str
-    created_at: Optional[datetime] = None
+    agent_id: str
+    module: str
+    entity_id: str
+    rule_version_used: str
+    decision_result: str
+    evaluation_context: Any
+    reason_codes: Any
+    timestamp: Optional[datetime] = None
+    bundle_hash: str
+    proof_status: str
+    anchor_metadata: Optional[Any] = None
 
     model_config = {"from_attributes": True}
