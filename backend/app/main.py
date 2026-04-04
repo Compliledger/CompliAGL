@@ -1,6 +1,5 @@
 """CompliAGL — FastAPI application entry point."""
 
-import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -34,21 +33,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# --- CORS (local dev + Lovable preview + tunnel) ---
-_cors_origins: list[str] = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
-
-# Public tunnel URL for backend access (e.g. ngrok, Cloudflare Tunnel)
-_tunnel_url = os.getenv("PUBLIC_TUNNEL_URL", "")
-if _tunnel_url and _tunnel_url.startswith(("http://", "https://")):
-    _cors_origins.append(_tunnel_url.rstrip("/"))
-
+# --- CORS (permissive – hackathon demo) ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_cors_origins,
-    allow_origin_regex=r"https://.*\.lovable\.app",
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
