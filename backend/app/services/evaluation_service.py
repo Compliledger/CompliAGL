@@ -201,6 +201,11 @@ def evaluate_transaction(
     # --- Audit log ---------------------------------------------------------
     log_event(
         db,
+        agent_id=transaction.agent_id,
+        transaction_id=transaction.id,
+        event_type=f"TRANSACTION_{decision.value}",
+        event_summary=f"Transaction evaluated: {decision.value}",
+        event_data={"results": results, "proof_id": proof.id},
         entity_type="transaction",
         entity_id=transaction.id,
         action=f"EVALUATED:{decision_result}",
@@ -215,12 +220,9 @@ def evaluate_transaction(
         performed_by="system",
     )
 
-<<<<<<< copilot/implement-compliagl-rule-engine
     # --- Build response ----------------------------------------------------
     return {
-=======
     response: dict = {
->>>>>>> main
         "transaction_id": transaction.id,
         "decision_result": decision_result,
         "reason_codes": result["reason_codes"],

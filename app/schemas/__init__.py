@@ -3,6 +3,8 @@ from app.schemas.schemas import (
     AgentResponse,
     ApprovalRequestCreate,
     ApprovalRequestResponse,
+    AuditLogListResponse,
+    AuditLogResponse,
     DecisionResponse,
     PolicyCreate,
     PolicyResponse,
@@ -24,4 +26,6 @@ __all__ = [
     "ApprovalRequestCreate",
     "ApprovalRequestResponse",
     "ProofRecordResponse",
+    "AuditLogResponse",
+    "AuditLogListResponse",
 ]

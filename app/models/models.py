@@ -185,10 +185,9 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
 
     id = Column(String, primary_key=True, default=_generate_uuid)
+    agent_id = Column(String, nullable=False)
+    transaction_id = Column(String, nullable=True)
     event_type = Column(String, nullable=False)
-    actor_type = Column(String, nullable=False)
-    actor_id = Column(String, nullable=False)
-    resource_type = Column(String, nullable=False)
-    resource_id = Column(String, nullable=False)
-    detail = Column(Text, nullable=True)
+    event_summary = Column(String, nullable=False)
+    event_data = Column(Text, nullable=True)  # JSON string
     created_at = Column(DateTime, default=_utcnow)
