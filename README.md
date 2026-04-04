@@ -12,6 +12,7 @@ Policy enforcement · Spend controls · Escalation workflows · Auditability · 
 - [Smoke Test](#smoke-test)
 - [Project Status](#project-status)
 - [Repository Structure](#repository-structure)
+- [Deploying to Railway](#deploying-to-railway)
 - [License](#license)
 
 ---
@@ -876,6 +877,41 @@ CompliAGL is designed to integrate with the broader agent wallet ecosystem:
 
 - **On-chain proof anchoring** — Proof bundles will be anchored on-chain (Ethereum, Solana, or any EVM chain) for tamper-proof, publicly verifiable audit trails.
 - **Zero-knowledge identity** — Agents will be able to prove they are authorized without revealing sensitive organizational data.
+
+---
+
+## Deploying to Railway
+
+The backend is ready for one-click deployment on [Railway](https://railway.app).
+
+### 1. Deploy from GitHub
+
+1. Log in to [railway.app](https://railway.app) and click **New Project → Deploy from GitHub repo**.
+2. Select the `CompliAGL` repository and choose the **`backend/`** directory as the root (Railway supports subdirectory deployments via the service settings).
+3. Railway will detect the `Procfile` / `railway.json` and use:
+   ```
+   uvicorn app.main:app --host 0.0.0.0 --port $PORT
+   ```
+
+### 2. Set Environment Variables
+
+In the Railway dashboard → **Variables**, add the following:
+
+| Variable | Example value | Notes |
+|---|---|---|
+| `DATABASE_URL` | `sqlite:///./compliagl.db` | Use a persistent volume or Postgres URL for production |
+| `SECRET_KEY` | *(generate a random string)* | Required — never use the default |
+| `APP_NAME` | `CompliAGL` | Optional, defaults to `CompliAGL` |
+| `APP_VERSION` | `0.1.0` | Optional |
+| `DEBUG` | `false` | Set to `false` in production |
+
+> `PORT` is injected automatically by Railway — do **not** set it manually.
+
+### 3. Generate a Public Domain
+
+1. In the Railway dashboard, open your service and click **Settings → Networking**.
+2. Click **Generate Domain** to get a public `*.up.railway.app` URL.
+3. The API docs will be available at `https://<your-domain>.up.railway.app/docs`.
 
 ---
 
