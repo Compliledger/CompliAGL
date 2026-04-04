@@ -50,7 +50,11 @@ class Agent(Base):
     id = Column(String, primary_key=True, default=_generate_uuid)
     name = Column(String, nullable=False)
     actor_type = Column(String, nullable=False, default=ActorType.AGENT.value)
-    wallet_address = Column(String, nullable=True)
+    wallet_address = Column(String, unique=True, nullable=False)
+    owner_name = Column(String, nullable=True)
+    owner_email = Column(String, nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    metadata_json = Column(Text, nullable=True)
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
@@ -79,6 +83,7 @@ class Policy(Base):
     require_approval_above_threshold = Column(
         Boolean, nullable=False, default=False
     )
+    require_approval_above_threshold = Column(Boolean, nullable=False, default=False)
     require_identity_check_above_amount = Column(Float, nullable=True)
     max_transactions_per_day = Column(Integer, nullable=True)
     timezone = Column(String, nullable=False, default="UTC")
