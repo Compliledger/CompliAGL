@@ -1,29 +1,27 @@
-"""Audit log routes — read-only access to the event log."""
+"""Audit log routes — read-only access to the append-only event log."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.schemas.audit import AuditLogResponse
+from app.schemas.audit import AuditLogListResponse, AuditLogResponse
 from app.services import audit_service
 
 router = APIRouter(prefix="/audit", tags=["audit"])
 
 
-@router.get("/", response_model=list[AuditLogResponse])
+def build_audit_list_response(logs: list) -> AuditLogListResponse:
+    """Convert a list of ORM audit log entries to the list response schema."""
+    items = [AuditLogResponse.model_validate(log) for log in logs]
+    return AuditLogListResponse(items=items, total=len(items))
+
+
+@router.get("/", response_model=AuditLogListResponse)
 def list_audit_logs(
-    entity_type: str | None = None,
-    entity_id: str | None = None,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
 ):
-    return audit_service.list_audit_logs(db, entity_type=entity_type, entity_id=entity_id, skip=skip, limit=limit)
-
-
-@router.get("/{log_id}", response_model=AuditLogResponse)
-def get_audit_log(log_id: str, db: Session = Depends(get_db)):
-    log = audit_service.get_audit_log(db, log_id)
-    if not log:
-        raise HTTPException(status_code=404, detail="Audit log entry not found")
-    return log
+    """Return all audit log entries, newest first."""
+    logs = audit_service.list_audit_logs(db, skip=skip, limit=limit)
+    return build_audit_list_response(logs)

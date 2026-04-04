@@ -1,5 +1,6 @@
 """CompliAGL — FastAPI application entry point."""
 
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -16,6 +17,7 @@ from app.api.routes.transactions import router as transactions_router
 from app.api.routes.approvals import router as approvals_router
 from app.api.routes.audit import router as audit_router
 from app.api.routes.proofs import router as proofs_router
+from app.api.routes.dashboard import router as dashboard_router
 
 
 @asynccontextmanager
@@ -32,10 +34,20 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# --- CORS (permissive for local dev) ---
+# --- CORS (local dev + Lovable preview) ---
+_cors_origins: list[str] = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+# Include Lovable local-preview origin when available
+_lovable_origin = os.getenv("LOVABLE_PREVIEW_ORIGIN", "")
+if _lovable_origin and _lovable_origin.startswith(("http://", "https://")):
+    _cors_origins.append(_lovable_origin)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -49,6 +61,7 @@ app.include_router(transactions_router, prefix="/api")
 app.include_router(approvals_router, prefix="/api")
 app.include_router(audit_router, prefix="/api")
 app.include_router(proofs_router, prefix="/api")
+app.include_router(dashboard_router, prefix="/api")
 
 
 @app.get("/", tags=["root"])
