@@ -18,3 +18,4 @@ class ExecutionAdapter(ABC):
     @abstractmethod
     def execute(self, transaction_id: str, **kwargs) -> ExecutionResult:
         """Execute a transaction and return an :class:`ExecutionResult`."""
+"""MVP 2 execution adapters — pluggable blockchain backends."""
