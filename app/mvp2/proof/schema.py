@@ -18,7 +18,7 @@ def build_proof_payload(
     actor: ActorIdentity,
     transaction: TransactionRequest,
     decision: DecisionResult,
-    execution: ExecutionResult,
+    execution: ExecutionResult | None,
     *,
     timestamp: str | None = None,
 ) -> dict:
@@ -38,7 +38,8 @@ def build_proof_payload(
     decision:
         The governance decision rendered for the transaction.
     execution:
-        The on-chain execution result of the transaction.
+        The on-chain execution result of the transaction, or *None*
+        for DENY / ESCALATE paths where no execution occurs.
     timestamp:
         Optional ISO-8601 timestamp.  When *None* (the default) the
         current UTC time is used.
@@ -66,8 +67,8 @@ def build_proof_payload(
         "reason_codes": decision.reason_codes,
         "policy_id": decision.policy_id,
         "policy_version": decision.policy_version,
-        "execution_tx_hash": execution.tx_hash,
-        "execution_chain": execution.chain,
-        "execution_status": execution.execution_status,
+        "execution_tx_hash": execution.tx_hash if execution else None,
+        "execution_chain": execution.chain if execution else None,
+        "execution_status": execution.execution_status if execution else None,
         "timestamp": timestamp or datetime.now(timezone.utc).isoformat(),
     }
