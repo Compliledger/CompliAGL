@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 from app.mvp2.execution.adapters.base import ExecutionAdapter
 from app.mvp2.schemas.transaction import ExecutionResult, TransactionRequest
 
@@ -21,6 +23,10 @@ class SolanaAdapter(ExecutionAdapter):
 
     async def execute(self, transaction: TransactionRequest) -> ExecutionResult:
         # TODO: implement real Solana transaction submission
+        random_suffix = uuid.uuid4().hex[:12]
+        return ExecutionResult(
+            execution_status="PENDING",
+            tx_hash=f"SOLANA_SIMULATED_{random_suffix}",
         return ExecutionResult(
             execution_status="PENDING",
             tx_hash=None,
