@@ -19,6 +19,8 @@ def build_proof_payload(
     transaction: TransactionRequest,
     decision: DecisionResult,
     execution: ExecutionResult,
+    *,
+    timestamp: str | None = None,
 ) -> dict:
     """Assemble a proof payload dictionary from governance artefacts.
 
@@ -37,6 +39,9 @@ def build_proof_payload(
         The governance decision rendered for the transaction.
     execution:
         The on-chain execution result of the transaction.
+    timestamp:
+        Optional ISO-8601 timestamp.  When *None* (the default) the
+        current UTC time is used.
 
     Returns
     -------
@@ -64,5 +69,5 @@ def build_proof_payload(
         "execution_tx_hash": execution.tx_hash,
         "execution_chain": execution.chain,
         "execution_status": execution.execution_status,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": timestamp or datetime.now(timezone.utc).isoformat(),
     }
