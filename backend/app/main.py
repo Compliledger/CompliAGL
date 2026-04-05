@@ -8,6 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.db.init_db import init_db
+from app.mvp2.identity.actors import seed_demo_actors
+from app.mvp2.core.policy_engine import seed_demo_policies
 
 # --- Route imports ---
 from app.api.routes.health import router as health_router
@@ -47,6 +49,9 @@ async def lifespan(app: FastAPI):
         logger.info("MVP 2 demo actors and policies seeded.")
     except Exception:
         logger.exception("MVP 2 seed failed — demo data may be unavailable.")
+    # MVP 2 in-memory demo data (idempotent – safe on every boot)
+    seed_demo_actors()
+    seed_demo_policies()
 
     print("CompliAGL backend started successfully")
     yield
