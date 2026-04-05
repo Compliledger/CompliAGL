@@ -2,20 +2,25 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel
+
+from app.mvp2.schemas.decision import DecisionResult
+from app.mvp2.schemas.proof import ProofBundle
+from app.mvp2.schemas.transaction import ExecutionResult, TransactionRequest
 
 
 class ExecuteRequest(BaseModel):
-    """Request to execute an approved transaction via a chain adapter."""
+    """Request to execute a governed transaction end-to-end."""
 
-    adapter: str = "mock"
+    transaction: TransactionRequest
+    adapter: Literal["mock", "solana"] = "mock"
 
 
 class ExecuteResponse(BaseModel):
-    """Response after executing a transaction on-chain."""
+    """Combined response containing decision, execution, and proof."""
 
-    transaction_id: str
-    execution_status: str
-    tx_hash: str | None = None
-    chain: str | None = None
-    outcome: str | None = None
+    decision: DecisionResult
+    execution: ExecutionResult | None = None
+    proof: ProofBundle
