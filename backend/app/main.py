@@ -19,6 +19,11 @@ from app.api.routes.audit import router as audit_router
 from app.api.routes.proofs import router as proofs_router
 from app.api.routes.dashboard import router as dashboard_router
 
+# --- MVP 2 route imports ---
+from app.mvp2.api.routes.decision import router as mvp2_decision_router
+from app.mvp2.api.routes.execution import router as mvp2_execution_router
+from app.mvp2.api.routes.proof import router as mvp2_proof_router
+
 logger = logging.getLogger(__name__)
 
 
@@ -59,6 +64,11 @@ app.include_router(approvals_router, prefix="/api")
 app.include_router(audit_router, prefix="/api")
 app.include_router(proofs_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
+
+# --- MVP 2 routers ---
+app.include_router(mvp2_decision_router, prefix="/api/v2")
+app.include_router(mvp2_execution_router, prefix="/api/v2")
+app.include_router(mvp2_proof_router, prefix="/api/v2")
 
 
 @app.get("/", tags=["root"])
