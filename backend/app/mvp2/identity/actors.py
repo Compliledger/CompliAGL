@@ -18,6 +18,10 @@ from app.mvp2.schemas.actor import ActorCreate, ActorRead, ActorType
 _ACTOR_REGISTRY: dict[UUID, ActorRead] = {}
 
 
+_DEMO_TRAVEL_AGENT_ID = UUID("00000000-0000-0000-0000-000000000001")
+_DEMO_OPS_MANAGER_ID = UUID("00000000-0000-0000-0000-000000000002")
+
+
 def seed_demo_actors() -> None:
     """Populate the registry with default demo actors.
 
@@ -26,13 +30,13 @@ def seed_demo_actors() -> None:
     """
     demo_actors = [
         ActorRead(
-            id=uuid4(),
+            id=_DEMO_TRAVEL_AGENT_ID,
             name="TravelAgent-01",
             actor_type=ActorType.AGENT,
             wallet_address="agent_wallet_travel_001",
         ),
         ActorRead(
-            id=uuid4(),
+            id=_DEMO_OPS_MANAGER_ID,
             name="OpsManager-01",
             actor_type=ActorType.HUMAN,
             wallet_address="human_wallet_ops_001",

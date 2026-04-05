@@ -20,6 +20,9 @@ from app.mvp2.schemas.policy import PolicyRead, PolicyStatus
 _POLICY_STORE: dict[UUID, PolicyRead] = {}
 
 
+_DEMO_TRAVEL_POLICY_ID = UUID("00000000-0000-0000-0000-000000000101")
+
+
 def seed_demo_policies() -> None:
     """Populate the in-memory registry with demo policies.
 
@@ -27,7 +30,7 @@ def seed_demo_policies() -> None:
     canonical demo data.
     """
     demo_policy = PolicyRead(
-        id=uuid4(),
+        id=_DEMO_TRAVEL_POLICY_ID,
         name="Travel Spend Policy",
         description="Governs travel-related agent spending.",
         policy_type="spend",
