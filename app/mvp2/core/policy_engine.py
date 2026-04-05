@@ -23,9 +23,12 @@ _POLICY_STORE: dict[str, PolicyDefinition] = {}
 def seed_demo_policies() -> None:
     """Populate the in-memory registry with demo policies.
 
-    Safe to call multiple times – existing entries are overwritten with the
-    canonical demo data.
+    Idempotent – if the store already contains entries the call is a
+    no-op so the function is safe to invoke on every application boot.
     """
+    if _POLICY_STORE:
+        return
+
     demo_policy = PolicyDefinition(
         policy_id="policy-1",
         policy_name="Travel Policy",

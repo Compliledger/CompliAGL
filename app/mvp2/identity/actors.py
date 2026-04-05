@@ -8,7 +8,14 @@ _ACTOR_REGISTRY: dict[str, ActorIdentity] = {}
 
 
 def seed_demo_actors() -> None:
-    """Populate the registry with default demo actors."""
+    """Populate the registry with default demo actors.
+
+    Idempotent – if the registry already contains entries the call is a
+    no-op so the function is safe to invoke on every application boot.
+    """
+    if _ACTOR_REGISTRY:
+        return
+
     demo_actors = [
         ActorIdentity(
             actor_id="actor-1",
