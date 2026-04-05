@@ -8,12 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from app.mvp2.core.policy_engine import (
-    amount_valid,
-    asset_allowed,
-    chain_allowed,
-    vendor_allowed,
-)
+from app.mvp2.core.policy_engine import amount_valid
 from app.mvp2.core.reason_codes import (
     ESCALATION_THRESHOLD_EXCEEDED,
     INVALID_AMOUNT,
@@ -41,7 +36,9 @@ def evaluate_transaction(
     7. Otherwise → **APPROVE**.
 
     Any hard-validation failure (steps 1-5) results in **DENY** with *all*
-    applicable reason codes collected by :func:`amount_valid`.
+    applicable reason codes.  The :func:`amount_valid` helper performs every
+    check (amount > 0, vendor, chain, asset, and max-amount) and returns
+    the aggregated list of reason codes.
     """
 
     is_valid, reason_codes = amount_valid(transaction, policy)
