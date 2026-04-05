@@ -36,10 +36,10 @@ def evaluate(request: TransactionRequest) -> DecisionResult:
     """Evaluate a transaction against the actor's governance policy."""
     actor = get_actor(request.actor_id)
     if actor is None:
-        raise HTTPException(status_code=404, detail="Actor not found")
+        raise HTTPException(status_code=404, detail=f"Actor not found: {request.actor_id}")
 
     policy = get_policy_for_actor(actor.actor_id)
     if policy is None:
-        raise HTTPException(status_code=404, detail="Policy not found for actor")
+        raise HTTPException(status_code=404, detail=f"Policy not found for actor: {actor.actor_id}")
 
     return evaluate_transaction(request, policy)
