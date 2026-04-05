@@ -30,3 +30,4 @@ class ExecutionAdapter(ABC):
             Outcome of the execution including status, optional tx hash,
             chain identifier, and human-readable outcome.
         """
+        ...
