@@ -27,6 +27,9 @@ class SolanaAdapter(ExecutionAdapter):
         return ExecutionResult(
             execution_status="PENDING",
             tx_hash=f"SOLANA_SIMULATED_{random_suffix}",
+        return ExecutionResult(
+            execution_status="PENDING",
+            tx_hash=None,
             chain="solana",
             outcome="solana_adapter_not_implemented",
         )
