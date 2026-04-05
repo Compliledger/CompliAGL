@@ -16,6 +16,7 @@ from app.mvp2.schemas.transaction import TransactionRequest
 # In-memory policy registry (MVP 2)
 # ---------------------------------------------------------------------------
 
+# Keyed by actor_id – one active policy per actor for MVP 2.
 _POLICY_STORE: dict[str, PolicyDefinition] = {}
 
 
