@@ -7,11 +7,51 @@ together with any triggered reason codes.
 
 from __future__ import annotations
 
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from app.mvp2.core import reason_codes
 from app.mvp2.schemas.decision import DecisionResult
 from app.mvp2.schemas.policy import PolicyRead, PolicyStatus
+
+# ---------------------------------------------------------------------------
+# In-memory policy registry (MVP 2)
+# ---------------------------------------------------------------------------
+
+_POLICY_STORE: dict[UUID, PolicyRead] = {}
+
+
+_DEMO_TRAVEL_POLICY_ID = UUID("00000000-0000-0000-0000-000000000101")
+
+
+def seed_demo_policies() -> None:
+    """Populate the in-memory registry with demo policies.
+
+    Safe to call multiple times — existing entries are overwritten with the
+    canonical demo data.
+    """
+    demo_policy = PolicyRead(
+        id=_DEMO_TRAVEL_POLICY_ID,
+        name="Travel Spend Policy",
+        description="Governs travel-related agent spending.",
+        policy_type="spend",
+        rules={
+            "max_amount": 500,
+            "escalation_threshold": 250,
+            "denied_currencies": ["BTC"],
+        },
+        status=PolicyStatus.ACTIVE,
+    )
+    _POLICY_STORE[demo_policy.id] = demo_policy
+
+
+def get_policy(policy_id: UUID) -> PolicyRead | None:
+    """Return a policy by *policy_id*, or ``None`` if not found."""
+    return _POLICY_STORE.get(policy_id)
+
+
+def list_policies() -> list[PolicyRead]:
+    """Return every policy currently held in the registry."""
+    return list(_POLICY_STORE.values())
 
 
 def evaluate_policies(

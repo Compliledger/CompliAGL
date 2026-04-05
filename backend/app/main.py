@@ -26,6 +26,10 @@ from app.mvp2.api.routes.decision import router as mvp2_decision_router
 from app.mvp2.api.routes.execution import router as mvp2_execution_router
 from app.mvp2.api.routes.proof import router as mvp2_proof_router
 
+# --- MVP 2 seed helpers ---
+from app.mvp2.identity.actors import seed_demo_actors
+from app.mvp2.core.policy_engine import seed_demo_policies
+
 logger = logging.getLogger(__name__)
 
 
@@ -38,6 +42,13 @@ async def lifespan(app: FastAPI):
     except Exception:
         logger.exception("Database initialisation failed — tables may be missing.")
 
+    # Seed MVP 2 in-memory demo data
+    try:
+        seed_demo_actors()
+        seed_demo_policies()
+        logger.info("MVP 2 demo actors and policies seeded.")
+    except Exception:
+        logger.exception("MVP 2 seed failed — demo data may be unavailable.")
     # MVP 2 in-memory demo data (idempotent – safe on every boot)
     seed_demo_actors()
     seed_demo_policies()
