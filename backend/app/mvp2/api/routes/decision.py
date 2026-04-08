@@ -31,7 +31,7 @@ def get_policies() -> list[PolicyRead]:
 
 
 @router.post("/evaluate", response_model=DecisionResponse)
-async def create_decision(request: DecisionRequest) -> DecisionResponse:
+def evaluate_decision(request: DecisionRequest) -> DecisionResponse:
     """Evaluate a transaction against all active policies."""
     actor = get_actor(request.actor_id)
     if actor is None:

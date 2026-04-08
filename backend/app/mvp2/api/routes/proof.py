@@ -20,7 +20,7 @@ _PROOF_STORE: dict[str, ProofResponse] = {}
 
 
 @router.post("/proofs/generate", response_model=ProofResponse)
-async def create_proof(request: ProofRequest) -> ProofResponse:
+def generate_and_store_proof(request: ProofRequest) -> ProofResponse:
     """Generate an audit proof bundle and store it in-memory."""
     proof = generate_proof(request)
     _PROOF_STORE[proof.proof_hash] = proof
