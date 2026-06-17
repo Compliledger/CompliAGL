@@ -116,6 +116,10 @@ mvp2/
 │   ├── generator.py       # Proof bundle builder
 │   ├── hashing.py         # SHA-256 canonical hashing
 │   └── schema.py          # ProofPayload model
+├── anchor/
+│   ├── algorand_adapter_service.py  # Thin wrapper over the shared
+│   │                                # compliledger-algorand-adapter
+│   └── README.md          # Adapter install + AIProof→ProofSchema mapping
 └── schemas/
     ├── actor.py           # ActorCreate, ActorRead, ActorType
     ├── decision.py        # DecisionRequest, DecisionResponse, DecisionResult

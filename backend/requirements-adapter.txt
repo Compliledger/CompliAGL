@@ -1,0 +1,17 @@
+# Shared Algorand anchoring adapter (optional, separate repository).
+#
+# CompliAGL reuses the shared `compliledger-algorand-adapter` for all
+# Algorand anchoring logic instead of reimplementing it. The adapter is an
+# OPTIONAL dependency: the backend installs and runs without it, and the
+# anchoring wrapper (app/mvp2/anchor/algorand_adapter_service.py) imports it
+# lazily.
+#
+# Preferred local/development option — editable install. Clone the adapter
+# next to this repository, then install this file:
+#
+#     git clone https://github.com/Compliledger/compliledger-algorand-adapter \
+#         ../compliledger-algorand-adapter
+#     pip install -r requirements-adapter.txt
+#
+# See app/mvp2/anchor/README.md for full instructions.
+-e ../compliledger-algorand-adapter
