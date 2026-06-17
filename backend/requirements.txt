@@ -5,3 +5,7 @@ pydantic==2.7.1
 pydantic-settings==2.2.1
 python-dotenv==1.0.1
 aiosqlite==0.20.0
+
+# Optional: shared Algorand anchoring adapter. Installed separately (see
+# requirements-adapter.txt and app/mvp2/anchor/README.md) so the backend can
+# run without it. Reused by app/mvp2/anchor/algorand_adapter_service.py.
