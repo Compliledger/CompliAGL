@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     X402_PRICE_USDC: float = 0.0
     # Network the payment is expected to settle on (e.g. "base-sepolia").
     X402_NETWORK: str = "base-sepolia"
+    # Force the built-in mock facilitator regardless of X402_FACILITATOR_URL.
+    # Keeps the Compli402 demo self-contained (no external services/secrets).
+    X402_MOCK_MODE: bool = True
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
