@@ -2,7 +2,7 @@
 
 ## Overview
 
-The CompliAGL backend is a **Python / FastAPI** service that powers the Agent Governance Layer. It is responsible for:
+The CompliAGL backend is a **Python / FastAPI** service that powers the control plane for autonomous execution. It is **chain-agnostic and payment-rail agnostic** — it governs autonomous actors before execution and proves outcomes after. It is responsible for:
 
 - **Policy Engine** — Evaluates spend-control rules, approval thresholds, and escalation triggers before any agent-initiated transaction is executed.
 - **Decision Service** — Returns a deterministic verdict (`APPROVED`, `DENIED`, or `ESCALATED`) for every transaction request.
