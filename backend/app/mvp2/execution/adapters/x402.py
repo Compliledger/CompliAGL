@@ -157,14 +157,19 @@ class HttpFacilitator(PaymentFacilitator):
 def build_facilitator(facilitator_url: str | None = None) -> PaymentFacilitator:
     """Return a facilitator instance based on configuration.
 
-    Falls back to :class:`MockFacilitator` when no facilitator URL is
-    configured or when it is explicitly set to ``"mock"`` — keeping local
-    development self-contained.
+    An explicitly supplied *facilitator_url* always takes precedence. When
+    no URL is supplied, the facilitator is resolved from configuration:
+    mock mode (``X402_MOCK_MODE``), an empty/``"mock"`` URL all select the
+    built-in :class:`MockFacilitator`, keeping local development and the
+    Compli402 demo self-contained.
     """
-    url = facilitator_url if facilitator_url is not None else settings.X402_FACILITATOR_URL
-    if not url or url.strip().lower() == "mock":
+    if facilitator_url is None:
+        if getattr(settings, "X402_MOCK_MODE", False):
+            return MockFacilitator()
+        facilitator_url = settings.X402_FACILITATOR_URL
+    if not facilitator_url or facilitator_url.strip().lower() == "mock":
         return MockFacilitator()
-    return HttpFacilitator(url)
+    return HttpFacilitator(facilitator_url)
 
 
 # ---------------------------------------------------------------------------
@@ -267,6 +272,11 @@ class X402Adapter(BaseExecutionAdapter):
             "payment_verified": payment_verified,
             "payment_reference": payment_reference,
             "execution_reference": execution_reference,
+            # Facilitator / network / amount describe the x402 payment context
+            # and round out the fields the Compli402 API surfaces.
+            "facilitator": settings.X402_FACILITATOR_URL or "mock",
+            "network": self.network,
+            "amount": self.price_usdc,
             "timestamp": _utc_now_iso(),
             # ``tx_hash`` keeps the result compatible with the generic
             # execution service, which reads ``tx_hash``/``status``.
