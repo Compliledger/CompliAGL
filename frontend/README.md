@@ -2,7 +2,7 @@
 
 ## Overview
 
-The CompliAGL frontend is a **React + Vite** single-page application that provides a governance dashboard for agent wallet operators. It is responsible for:
+The CompliAGL frontend is a **React + Vite** single-page application that provides the control plane dashboard for operators of autonomous actors across any chain or payment rail. It is responsible for:
 
 - **Transaction Feed** — Real-time view of incoming transaction requests and their current status.
 - **Decision Inspector** — Drill into any decision to see the policy that was evaluated, the verdict returned, and the proof bundle generated.

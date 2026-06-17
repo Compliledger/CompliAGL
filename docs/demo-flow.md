@@ -6,7 +6,7 @@ This document describes the three core governance flows demonstrated by CompliAG
 
 ## Overview
 
-Every agent wallet transaction passes through the CompliAGL governance layer before execution. The layer evaluates the transaction against active policies and returns one of three verdicts:
+Every autonomous action passes through the CompliAGL control plane before execution. CompliAGL is **chain-agnostic and payment-rail agnostic** — it governs autonomous actors before execution and proves outcomes after, with wallets, chains, and payment rails (x402, Open Wallets, Solana, Algorand, XRPL, and others) plugging in as execution adapters. The control plane evaluates each action against active policies and returns one of three verdicts:
 
 | Verdict | Symbol | Meaning |
 |---|---|---|
@@ -20,7 +20,7 @@ Every agent wallet transaction passes through the CompliAGL governance layer bef
 
 ### What happens
 
-The agent proposes a transaction. The decision engine evaluates all active policy rules. Every rule passes. The proof engine generates a signed approval record. The wallet executes the transaction.
+The agent proposes a transaction. The decision engine evaluates all active policy rules. Every rule passes. The proof engine generates a signed approval record. The execution adapter (for example, the agent's wallet) executes the transaction.
 
 ### Sequence
 
@@ -87,7 +87,7 @@ Agent ──► [Propose TX] ──► CompliAGL
 
 ### What happens
 
-The agent proposes a transaction that violates one or more policy rules. The decision engine identifies the failing rules. The proof engine generates a signed denial record. The wallet is blocked from executing.
+The agent proposes a transaction that violates one or more policy rules. The decision engine identifies the failing rules. The proof engine generates a signed denial record. The execution adapter is blocked from executing.
 
 ### Sequence
 
@@ -164,7 +164,7 @@ Agent ──► [Propose TX] ──► CompliAGL
 
 ### What happens
 
-The agent proposes a transaction that falls into a gray area — for example, an amount just above the automatic approval threshold, or a first-time recipient not yet on the allow-list. The decision engine cannot automatically approve or deny, so it escalates to a human reviewer. The wallet is paused until a human decision is recorded.
+The agent proposes a transaction that falls into a gray area — for example, an amount just above the automatic approval threshold, or a first-time recipient not yet on the allow-list. The decision engine cannot automatically approve or deny, so it escalates to a human reviewer. The execution adapter is paused until a human decision is recorded.
 
 ### Sequence
 
