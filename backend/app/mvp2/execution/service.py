@@ -5,6 +5,7 @@ from __future__ import annotations
 from app.mvp2.execution.adapters.base import BaseExecutionAdapter
 from app.mvp2.execution.adapters.mock import MockExecutionAdapter
 from app.mvp2.execution.adapters.solana import SolanaExecutionAdapter
+from app.mvp2.execution.adapters.x402 import X402Adapter
 from app.mvp2.schemas.execution import (
     ExecutionRequest,
     ExecutionResponse,
@@ -15,6 +16,7 @@ from app.mvp2.schemas.execution import (
 _ADAPTER_REGISTRY: dict[str, type[BaseExecutionAdapter]] = {
     "mock": MockExecutionAdapter,
     "solana": SolanaExecutionAdapter,
+    "x402": X402Adapter,
 }
 
 

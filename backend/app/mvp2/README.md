@@ -46,6 +46,7 @@ All adapters implement `BaseExecutionAdapter` (`execution/adapters/base.py`).
 |---------|--------|--------|
 | **mock** | `execution/adapters/mock.py` | Fully functional — returns a simulated `CONFIRMED` status with a random tx hash. |
 | **solana** | `execution/adapters/solana.py` | Stub — returns `PENDING` with an error message. Ready for Solana RPC integration. |
+| **x402** | `execution/adapters/x402.py` | Payment-gated execution — returns a `402`-style payment-required result until a payment is verified through a configurable facilitator, then executes the approved action. Uses a built-in mock facilitator for local development. |
 
 Register new adapters in `_ADAPTER_REGISTRY` inside `execution/service.py`.
 
