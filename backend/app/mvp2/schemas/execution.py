@@ -15,6 +15,7 @@ class ExecutionStatus(str, Enum):
     SUBMITTED = "SUBMITTED"
     CONFIRMED = "CONFIRMED"
     FAILED = "FAILED"
+    PAYMENT_REQUIRED = "PAYMENT_REQUIRED"
 
 
 class ExecutionRequest(BaseModel):
