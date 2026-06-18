@@ -113,6 +113,7 @@ mvp2/
 ├── identity/
 │   └── actors.py          # Actor factory & lookup helpers
 ├── proof/
+│   ├── aiproof.py         # AIProof bundle builder + deterministic hash
 │   ├── generator.py       # Proof bundle builder
 │   ├── hashing.py         # SHA-256 canonical hashing
 │   └── schema.py          # ProofPayload model
@@ -122,6 +123,7 @@ mvp2/
 │   └── README.md          # Adapter install + AIProof→ProofSchema mapping
 └── schemas/
     ├── actor.py           # ActorCreate, ActorRead, ActorType
+    ├── aiproof.py         # AIProofBundle (x402-challenge proof schema)
     ├── decision.py        # DecisionRequest, DecisionResponse, DecisionResult
     ├── execution.py       # ExecutionRequest, ExecutionResponse, ExecutionStatus
     ├── policy.py          # PolicyCreate, PolicyRead, PolicyStatus

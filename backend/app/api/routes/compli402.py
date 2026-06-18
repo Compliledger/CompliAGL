@@ -25,7 +25,6 @@ All state (proofs) is kept in-memory — this is a demo surface.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, HTTPException, Response, status
@@ -36,7 +35,7 @@ from app.mvp2.core.decision_engine import evaluate
 from app.mvp2.core.policy_engine import list_policies
 from app.mvp2.execution.adapters.x402 import X402Adapter
 from app.mvp2.identity.actors import get_actor
-from app.mvp2.proof.generator import generate_proof
+from app.mvp2.proof.aiproof import build_aiproof
 from app.mvp2.schemas.compli402 import (
     Compli402Decision,
     Compli402ExecuteResponse,
@@ -45,7 +44,6 @@ from app.mvp2.schemas.compli402 import (
     Compli402VerifyResponse,
 )
 from app.mvp2.schemas.decision import DecisionRequest, DecisionResult
-from app.mvp2.schemas.proof import ProofRequest
 
 logger = logging.getLogger(__name__)
 
@@ -63,11 +61,6 @@ def _store_proof(proof_hash: str, bundle: dict) -> None:
     if proof_hash not in _PROOF_STORE:
         _PROOF_ORDER.append(proof_hash)
     _PROOF_STORE[proof_hash] = bundle
-
-
-def _utc_now_iso() -> str:
-    """Return the current UTC time as an ISO 8601 string."""
-    return datetime.now(timezone.utc).isoformat()
 
 
 # ---------------------------------------------------------------------------
@@ -112,47 +105,45 @@ def _build_aiproof(
     decision,
     execution: dict,
 ) -> dict:
-    """Generate and assemble the AIProof bundle for an executed intent."""
-    actor = get_actor(intent.actor_id)
-    proof = generate_proof(
-        ProofRequest(
-            transaction_id=transaction_id,
-            decision_result=decision.result.value,
-            reason_codes=decision.reason_codes,
-            metadata={
-                "action": intent.action,
-                "amount": intent.amount,
-                "currency": intent.currency,
-                "execution_adapter": X402Adapter.name,
-                "payment_reference": execution.get("payment_reference"),
-            },
-        )
-    )
+    """Generate and assemble the AIProof bundle for an executed intent.
 
-    # Fields below mirror what app.mvp2.anchor.algorand_adapter_service reads
-    # when mapping an AIProof onto the shared adapter's ProofSchema.
-    return {
-        "proof_hash": proof.proof_hash,
-        "transaction_id": str(transaction_id),
-        "actor_id": str(intent.actor_id),
-        "intent_id": str(transaction_id),
-        "decision": decision.result.value,
-        "decision_reason": decision.reason_codes,
-        "reason_codes": decision.reason_codes,
-        "policy_version": "mvp2",
-        "created_at": _utc_now_iso(),
-        "actor": (actor.model_dump(mode="json") if actor is not None else None),
-        "intent": {
+    The bundle is hashed deterministically (excluding post-hash fields). The
+    post-hash fields ``anchor_tx_id`` and ``verification_url`` are populated
+    later, after the proof is anchored (see :func:`_finalise_aiproof`).
+    """
+    actor = get_actor(intent.actor_id)
+    matched_policies = decision.matched_policies or []
+    bundle = build_aiproof(
+        actor_id=str(intent.actor_id),
+        intent_id=str(transaction_id),
+        decision=decision.result.value,
+        decision_reason=decision.reason_codes,
+        actor_identity=(actor.model_dump(mode="json") if actor is not None else None),
+        intent={
             "action": intent.action,
             "amount": intent.amount,
             "currency": intent.currency,
         },
-        "execution_adapter": X402Adapter.name,
-        "payment_reference": execution.get("payment_reference"),
-        "x402_status": execution.get("status"),
-        "payload": proof.payload,
-        "status": proof.status.value,
-    }
+        policy_id=(str(matched_policies[0]) if matched_policies else None),
+        policy_version="mvp2",
+        execution_adapter=X402Adapter.name,
+        execution_status=execution.get("status"),
+        payment_protocol="x402",
+        payment_reference=execution.get("payment_reference"),
+        settlement_chain=execution.get("network"),
+    )
+    return bundle.model_dump(mode="json")
+
+
+def _finalise_aiproof(aiproof: dict, anchor_receipt: dict) -> dict:
+    """Populate post-hash fields on the AIProof bundle after anchoring.
+
+    ``anchor_tx_id`` and ``verification_url`` are set *after* the proof hash
+    is computed, so they are intentionally excluded from the hash itself.
+    """
+    aiproof["anchor_tx_id"] = anchor_receipt.get("txid")
+    aiproof["verification_url"] = f"/api/compli402/proofs/{aiproof.get('proof_hash')}"
+    return aiproof
 
 
 def _anchor_proof(aiproof: dict) -> dict:
@@ -314,6 +305,8 @@ async def execute(
         execution=execution,
     )
     anchor_receipt = _anchor_proof(aiproof)
+    # Populate post-hash fields (anchor_tx_id, verification_url) after anchoring.
+    aiproof = _finalise_aiproof(aiproof, anchor_receipt)
     _store_proof(aiproof["proof_hash"], aiproof)
 
     # 10. Return execution result, AIProof bundle, and anchor receipt.

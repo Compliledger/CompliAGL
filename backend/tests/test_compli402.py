@@ -127,10 +127,29 @@ def test_execute_with_payment_executes_and_anchors(client):
     assert data["status"] == "EXECUTED"
     assert data["payment"]["payment_verified"] is True
     assert data["proof"] is not None
-    assert data["proof"]["proof_hash"]
+    proof = data["proof"]
+    assert proof["proof_hash"]
     assert data["execution"]["execution_reference"]
     # Anchor receipt is always present (degrades gracefully when adapter absent).
     assert data["anchor"] is not None
+
+    # AIProof bundle exposes the full x402-challenge schema.
+    expected_fields = {
+        "proof_id", "proof_type", "actor_id", "actor_identity", "intent_id",
+        "intent", "policy_id", "policy_version", "decision", "decision_reason",
+        "execution_adapter", "execution_status", "payment_protocol",
+        "payment_reference", "settlement_chain", "anchor_chain", "anchor_tx_id",
+        "proof_hash", "created_at", "verification_url",
+    }
+    assert expected_fields.issubset(set(proof.keys()))
+    assert proof["decision"] == "APPROVED"
+    assert proof["execution_adapter"] == "x402"
+    assert proof["payment_protocol"] == "x402"
+    assert proof["execution_status"] == "CONFIRMED"
+    assert proof["payment_reference"]
+    assert proof["actor_id"] == DEMO_ACTOR_ID
+    # Post-hash field populated after anchoring.
+    assert proof["verification_url"] == f"/api/compli402/proofs/{proof['proof_hash']}"
 
 
 def test_execute_payment_failed(client):

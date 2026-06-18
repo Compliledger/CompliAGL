@@ -107,7 +107,8 @@ def _proof_schema_fields(proof_bundle: Any) -> dict[str, Any]:
     ``proof_snapshot_hash`` ``proof_hash``
     ``timestamp``         ``created_at``
     ``reason_codes``      ``decision_reason`` or ``reason_codes``
-    ``metadata``          actor, intent, execution adapter, payment ref, x402
+    ``metadata``          actor identity, intent, execution adapter, payment
+                          protocol/reference, settlement chain, x402 status
     ====================  ====================================================
     """
     asset_id = _field(proof_bundle, "actor_id") or _field(proof_bundle, "intent_id")
@@ -116,11 +117,14 @@ def _proof_schema_fields(proof_bundle: Any) -> dict[str, Any]:
     )
 
     metadata = {
-        "actor": _field(proof_bundle, "actor"),
+        "actor": _field(proof_bundle, "actor_identity") or _field(proof_bundle, "actor"),
         "intent": _field(proof_bundle, "intent"),
         "execution_adapter": _field(proof_bundle, "execution_adapter"),
+        "payment_protocol": _field(proof_bundle, "payment_protocol"),
         "payment_reference": _field(proof_bundle, "payment_reference"),
-        "x402_status": _field(proof_bundle, "x402_status"),
+        "settlement_chain": _field(proof_bundle, "settlement_chain"),
+        "x402_status": _field(proof_bundle, "execution_status")
+        or _field(proof_bundle, "x402_status"),
     }
 
     return {
