@@ -25,7 +25,6 @@ All state (proofs) is kept in-memory — this is a demo surface.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, HTTPException, Response, status
@@ -62,11 +61,6 @@ def _store_proof(proof_hash: str, bundle: dict) -> None:
     if proof_hash not in _PROOF_STORE:
         _PROOF_ORDER.append(proof_hash)
     _PROOF_STORE[proof_hash] = bundle
-
-
-def _utc_now_iso() -> str:
-    """Return the current UTC time as an ISO 8601 string."""
-    return datetime.now(timezone.utc).isoformat()
 
 
 # ---------------------------------------------------------------------------
