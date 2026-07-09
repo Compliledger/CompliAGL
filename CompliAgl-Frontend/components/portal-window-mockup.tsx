@@ -4,6 +4,9 @@ import React, { useState } from "react";
 import { CutButton } from "@/components/cut-button";
 import { executeIntent, getLatestProof, verifyIntent } from "@/lib/api";
 import { MotionDiv } from "@/lib/motion";
+
+const ANCHOR_CHAIN = process.env.NEXT_PUBLIC_ANCHOR_CHAIN || "Hedera / HCS";
+const POLICY_VERSION = process.env.NEXT_PUBLIC_POLICY_VERSION || "Travel Spend Policy v1.0";
 import {
   ArrowUpRight,
   BadgeCheck,
@@ -69,7 +72,7 @@ function getDynamicKpis(form: Intent, verifyResult: { decision: { result: string
     {
       label: "Proof Status",
       value: proof ? "Generated" : "Not available",
-      delta: proof?.policy_version || "v1.0",
+      delta: POLICY_VERSION,
       dir: "up",
       icon: ShieldCheck,
     },
@@ -358,6 +361,37 @@ export function PortalWindowMockup(): ReactNode {
                 kicker="Step 1"
               >
                 <div className="space-y-3">
+                  <div className="flex flex-wrap gap-2 pb-2 border-b border-border/50">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground self-center">Demo Presets:</span>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...EMPTY_INTENT, amount: 100, currency: "USDC" })}
+                      className="px-2 py-1 text-[10px] font-medium rounded bg-green-500/10 text-green-500 hover:bg-green-500/20 transition-colors"
+                    >
+                      100 USDC (APPROVED)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...EMPTY_INTENT, amount: 300, currency: "USDC" })}
+                      className="px-2 py-1 text-[10px] font-medium rounded bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20 transition-colors"
+                    >
+                      300 USDC (ESCALATED)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...EMPTY_INTENT, amount: 600, currency: "USDC" })}
+                      className="px-2 py-1 text-[10px] font-medium rounded bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors"
+                    >
+                      600 USDC (DENIED)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...EMPTY_INTENT, amount: 100, currency: "BTC" })}
+                      className="px-2 py-1 text-[10px] font-medium rounded bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors"
+                    >
+                      100 BTC (DENIED)
+                    </button>
+                  </div>
                   <label className="block">
                     <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1 block">Actor ID</span>
                     <input
@@ -428,6 +462,8 @@ export function PortalWindowMockup(): ReactNode {
                     <div className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium ${
                       verifyResult.decision.result === "APPROVED"
                         ? "bg-green-500/10 text-green-500"
+                        : verifyResult.decision.result === "ESCALATED"
+                        ? "bg-yellow-500/10 text-yellow-500"
                         : "bg-red-500/10 text-red-500"
                     }`}>
                       {verifyResult.decision.result}
@@ -441,10 +477,16 @@ export function PortalWindowMockup(): ReactNode {
                         <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Amount</span>
                         <span className="text-xs font-medium">{`${form.amount} ${form.currency}`}</span>
                       </div>
-                      {verifyResult.decision.reason_codes && (
-                        <div className="flex justify-between items-center py-1">
+                      {verifyResult.decision.reason_codes && verifyResult.decision.reason_codes.length > 0 && (
+                        <div className="flex flex-col gap-1 py-1">
                           <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Reason Codes</span>
-                          <span className="text-xs font-medium">{verifyResult.decision.reason_codes.join(", ")}</span>
+                          <div className="flex flex-wrap gap-1">
+                            {verifyResult.decision.reason_codes.map((code, idx) => (
+                              <span key={idx} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/80 text-foreground">
+                                {code}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -545,7 +587,7 @@ export function PortalWindowMockup(): ReactNode {
                       </div>
                       <div className="flex justify-between items-center py-1 border-b border-border/50">
                         <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Policy Version</span>
-                        <span className="text-xs font-medium">{proof.policy_version}</span>
+                        <span className="text-xs font-medium">{POLICY_VERSION}</span>
                       </div>
                       <div className="flex justify-between items-center py-1 border-b border-border/50">
                         <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Created At</span>
@@ -557,7 +599,12 @@ export function PortalWindowMockup(): ReactNode {
                       </div>
                       <div className="flex justify-between items-center py-1">
                         <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Anchor Chain</span>
-                        <span className="text-xs font-medium">{proof.anchor_chain || "—"}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium">{proof.anchor_chain || ANCHOR_CHAIN}</span>
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-yellow-500/10 text-yellow-500">
+                            Not live yet
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
