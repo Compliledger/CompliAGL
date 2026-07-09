@@ -5,7 +5,6 @@ import { CutButton } from "@/components/cut-button";
 import { executeIntent, getLatestProof, verifyIntent } from "@/lib/api";
 import { MotionDiv } from "@/lib/motion";
 
-const ANCHOR_CHAIN = process.env.NEXT_PUBLIC_ANCHOR_CHAIN || "Hedera / HCS";
 const POLICY_VERSION = process.env.NEXT_PUBLIC_POLICY_VERSION || "Travel Spend Policy v1.0";
 import {
   ArrowUpRight,
@@ -443,7 +442,7 @@ export function PortalWindowMockup(): ReactNode {
                   </label>
                   <div className="flex gap-2 pt-1">
                     <CutButton variant="solid" onClick={onVerify} disabled={loading} className="text-xs h-8">
-                      {loading ? "Verifying..." : "Verify Intent"}
+                      {loading ? "Evaluating..." : "Evaluate Intent"}
                     </CutButton>
                     <CutButton variant="outline" onClick={resetWorkspace} disabled={loading} className="text-xs h-8">
                       Reset
@@ -469,6 +468,10 @@ export function PortalWindowMockup(): ReactNode {
                       {verifyResult.decision.result}
                     </div>
                     <div className="space-y-1 pt-1">
+                      <div className="flex justify-between items-center py-1 border-b border-border/50">
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Policy</span>
+                        <span className="text-xs font-medium">{POLICY_VERSION}</span>
+                      </div>
                       <div className="flex justify-between items-center py-1 border-b border-border/50">
                         <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Action</span>
                         <span className="text-xs font-medium">{form.action}</span>
@@ -567,8 +570,8 @@ export function PortalWindowMockup(): ReactNode {
               </WorkflowCard>
 
               <WorkflowCard
-                title="Proof Summary"
-                subtitle="Canonical evidence package with identifiers"
+                title="Canonical Proof Package"
+                subtitle="Machine-verifiable evidence package with identifiers"
                 kicker="Step 4"
               >
                 {proof ? (
@@ -577,6 +580,10 @@ export function PortalWindowMockup(): ReactNode {
                       Proof Verified
                     </div>
                     <div className="space-y-1 pt-1">
+                      <div className="flex justify-between items-center py-1 border-b border-border/50">
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Verification Status</span>
+                        <span className="text-xs font-medium">Verified ✓</span>
+                      </div>
                       <div className="flex justify-between items-center py-1 border-b border-border/50">
                         <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Proof ID</span>
                         <span className="text-xs font-medium">{proof.proof_id}</span>
@@ -598,13 +605,8 @@ export function PortalWindowMockup(): ReactNode {
                         <span className="text-xs font-medium">{proof.settlement_chain || "—"}</span>
                       </div>
                       <div className="flex justify-between items-center py-1">
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Anchor Chain</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium">{proof.anchor_chain || ANCHOR_CHAIN}</span>
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-yellow-500/10 text-yellow-500">
-                            Not live yet
-                          </span>
-                        </div>
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Anchor</span>
+                        <span className="text-xs font-medium">Algorand (Coming Soon)</span>
                       </div>
                     </div>
                   </div>
