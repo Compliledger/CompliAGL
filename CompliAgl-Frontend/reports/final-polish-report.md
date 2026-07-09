@@ -21,23 +21,6 @@ All changes were implemented in `components/portal-window-mockup.tsx` and tested
 
 **Rationale:** The platform evaluates intent against policies. The user is not verifying it. This change aligns the UI with the actual platform function.
 
-**File:** `components/portal-window-mockup.tsx`
-**Lines:** 445-446
-
-**Before:**
-```tsx
-<CutButton variant="solid" onClick={onVerify} disabled={loading} className="text-xs h-8">
-  {loading ? "Verifying..." : "Verify Intent"}
-</CutButton>
-```
-
-**After:**
-```tsx
-<CutButton variant="solid" onClick={onVerify} disabled={loading} className="text-xs h-8">
-  {loading ? "Evaluating..." : "Evaluate Intent"}
-</CutButton>
-```
-
 **Impact:** The button now accurately reflects that the platform is evaluating the intent against applicable policies, not having the user verify it.
 
 ---
@@ -45,31 +28,6 @@ All changes were implemented in `components/portal-window-mockup.tsx` and tested
 ### 2. Add "Policy" Field to Decision Result
 
 **Rationale:** Immediately shows the decision is policy-driven, reinforcing the core value proposition of CompliAGL.
-
-**File:** `components/portal-window-mockup.tsx`
-**Lines:** 471-479
-
-**Before:**
-```tsx
-<div className="space-y-1 pt-1">
-  <div className="flex justify-between items-center py-1 border-b border-border/50">
-    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Action</span>
-    <span className="text-xs font-medium">{form.action}</span>
-  </div>
-```
-
-**After:**
-```tsx
-<div className="space-y-1 pt-1">
-  <div className="flex justify-between items-center py-1 border-b border-border/50">
-    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Policy</span>
-    <span className="text-xs font-medium">{POLICY_VERSION}</span>
-  </div>
-  <div className="flex justify-between items-center py-1 border-b border-border/50">
-    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Action</span>
-    <span className="text-xs font-medium">{form.action}</span>
-  </div>
-```
 
 **New Field Order:**
 - Decision (existing)
@@ -86,27 +44,6 @@ All changes were implemented in `components/portal-window-mockup.tsx` and tested
 
 **Rationale:** Matches platform terminology and reinforces that the proof is a machine-verifiable artifact, not just a summary.
 
-**File:** `components/portal-window-mockup.tsx`
-**Lines:** 573-576
-
-**Before:**
-```tsx
-<WorkflowCard
-  title="Proof Summary"
-  subtitle="Canonical evidence package with identifiers"
-  kicker="Step 4"
->
-```
-
-**After:**
-```tsx
-<WorkflowCard
-  title="Canonical Proof Package"
-  subtitle="Machine-verifiable evidence package with identifiers"
-  kicker="Step 4"
->
-```
-
 **Impact:** The terminology now aligns with the platform's core concept of AIProof as a canonical, machine-verifiable evidence package.
 
 ---
@@ -114,31 +51,6 @@ All changes were implemented in `components/portal-window-mockup.tsx` and tested
 ### 4. Add "Verification Status" Field to Proof Package
 
 **Rationale:** Reinforces the purpose of AIProof and provides immediate confirmation of verification state.
-
-**File:** `components/portal-window-mockup.tsx`
-**Lines:** 583-591
-
-**Before:**
-```tsx
-<div className="space-y-1 pt-1">
-  <div className="flex justify-between items-center py-1 border-b border-border/50">
-    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Proof ID</span>
-    <span className="text-xs font-medium">{proof.proof_id}</span>
-  </div>
-```
-
-**After:**
-```tsx
-<div className="space-y-1 pt-1">
-  <div className="flex justify-between items-center py-1 border-b border-border/50">
-    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Verification Status</span>
-    <span className="text-xs font-medium">Verified ✓</span>
-  </div>
-  <div className="flex justify-between items-center py-1 border-b border-border/50">
-    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Proof ID</span>
-    <span className="text-xs font-medium">{proof.proof_id}</span>
-  </div>
-```
 
 **Impact:** Users immediately see that the proof has been verified, reinforcing trust in the AIProof system.
 
@@ -148,47 +60,9 @@ All changes were implemented in `components/portal-window-mockup.tsx` and tested
 
 **Rationale:** Sounds intentional rather than unfinished. Indicates planned capability rather than incomplete implementation.
 
-**File:** `components/portal-window-mockup.tsx`
-**Lines:** 608-611
-
-**Before:**
-```tsx
-<div className="flex justify-between items-center py-1">
-  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Anchor Chain</span>
-  <div className="flex items-center gap-2">
-    <span className="text-xs font-medium">{proof.anchor_chain || ANCHOR_CHAIN}</span>
-    <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-yellow-500/10 text-yellow-500">
-      Not live yet
-    </span>
-  </div>
-</div>
-```
-
-**After:**
-```tsx
-<div className="flex justify-between items-center py-1">
-  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Anchor</span>
-  <span className="text-xs font-medium">Algorand (Coming Soon)</span>
-</div>
-```
-
-**Additional Change:** Removed unused `ANCHOR_CHAIN` constant (line 8) since it's no longer needed.
+**Additional Change:** Removed unused `ANCHOR_CHAIN` constant since it's no longer needed.
 
 **Impact:** The anchor capability is presented as a planned feature rather than an incomplete implementation, which is more appropriate for enterprise demos.
-
----
-
-### 6. Removed Unused Constant
-
-**File:** `components/portal-window-mockup.tsx`
-**Lines:** 8
-
-**Removed:**
-```tsx
-const ANCHOR_CHAIN = process.env.NEXT_PUBLIC_ANCHOR_CHAIN || "Hedera / HCS";
-```
-
-**Rationale:** The constant is no longer used after the anchor status change. Removing it eliminates a TypeScript linting warning.
 
 ---
 
