@@ -1,9 +1,17 @@
-"""Canonical AIProof service — persist and retrieve AIProof records.
+"""Legacy x402 AIProof-bundle persistence service (demo surface).
 
-This is the single source of truth for AIProof persistence. It maps the
+.. deprecated::
+    Superseded by the canonical AIProof service
+    :mod:`app.services.canonical.aiproof.service` (schema:
+    :class:`app.schemas.canonical.aiproof.AIProof`, storage:
+    :class:`app.models.canonical_aiproof.CanonicalAIProof`). Use the canonical
+    AIProof for the governance-lifecycle proof, canonical serialization, signing
+    and the CompliLedger handoff.
+
+This service persists the legacy compli402 x402 demo ``AIProofBundle`` and is
+retained only for that flow. It maps the
 :class:`app.mvp2.schemas.aiproof.AIProofBundle` domain model to and from the
-persistent :class:`app.models.aiproof.AIProof` ORM row so that proofs survive
-application restarts.
+legacy :class:`app.models.aiproof.AIProof` ORM row.
 """
 
 from __future__ import annotations

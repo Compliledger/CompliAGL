@@ -65,12 +65,22 @@ canonical engine only returns the three canonical outcomes).
 | Proof model | Location | Persistence | Status |
 | --- | --- | --- | --- |
 | `ProofBundle` ORM | `app/models/proof_bundle.py`, `app/services/proof_service.py`, `app/schemas/proof_bundle.py` | SQLAlchemy (persistent), transaction-scoped | **Deprecated** |
-| `AIProofBundle` (Pydantic) | `app/mvp2/schemas/aiproof.py`, `app/mvp2/proof/aiproof.py` | in-memory only (`_PROOF_STORE` at route level) | **Canonical domain model** |
+| `AIProofBundle` (Pydantic) | `app/mvp2/schemas/aiproof.py`, `app/mvp2/proof/aiproof.py` | legacy x402 demo bundle, persisted via `ai_proofs` | **Deprecated (legacy x402 demo)** |
 | `ProofResponse` (MVP2 route store) | `app/mvp2/api/routes/proof.py` (`_PROOF_STORE`) | in-memory dict | **Deprecated** |
+| **`AIProof`** (Pydantic) | `app/schemas/canonical/aiproof.py`, `app/services/canonical/aiproof/` | SQLAlchemy `canonical_ai_proofs` via `CanonicalAIProof` | **Canonical** |
 
-**Consolidated into:** the `AIProofBundle` domain model is now **persisted** via
-a new canonical `AIProof` ORM table (`app/models/aiproof.py`) and
-`app/services/aiproof_service.py`.
+**Consolidated into:** the single canonical **AIProof**
+(`app/schemas/canonical/aiproof.py::AIProof`), persisted via
+`app/models/canonical_aiproof.py::CanonicalAIProof` and
+`app/services/canonical/aiproof/`. It covers the complete governance lifecycle
+(approved+executed, approved-but-failed, denied, escalated, remediated+
+re-evaluated, terminated), stores canonical projections + references (evidence
+is referenced by id/hash/classification/validation-outcome/secure-retrieval
+reference, never embedded), is canonicalized with **RFC 8785 (JCS)**, hashed with
+**SHA-256** and **digitally signed**, publishes a **versioned JSON Schema**, and
+is handed to CompliLedger through the formal `CompliLedgerProofHandoff`. The
+earlier `ProofBundle` and `AIProofBundle` records are deprecated; the
+`ai_proofs` table remains only for the compli402 x402 hackathon-demo flow.
 
 ### 1.6 Execution adapters / x402 coupling
 
@@ -108,7 +118,7 @@ The ORM tables remain for backward compatibility.
 | Policy | `Policy` ORM (`policies` table) + `app/services/policy_repository.py` |
 | Deterministic evaluation | `app/services/decision_engine.py` (one engine, one rule core) |
 | Decision outcomes | `APPROVED` / `DENIED` / `ESCALATED` |
-| Proof | `AIProofBundle` domain model persisted via `AIProof` ORM (`ai_proofs` table) + `app/services/aiproof_service.py` |
+| Proof | `AIProof` (`app/schemas/canonical/aiproof.py`) persisted via `CanonicalAIProof` (`canonical_ai_proofs` table) + `app/services/canonical/aiproof/`. Legacy `ProofBundle` and x402 `AIProofBundle` deprecated. |
 | Execution | Adapter pattern; CompliAGL authorizes, external systems execute and return a result that CompliAGL validates + records |
 | x402 | One **optional** execution adapter (`X402Adapter`) |
 
@@ -119,7 +129,7 @@ The ORM tables remain for backward compatibility.
 | One active persistent actor implementation | `agents` table via `actor_registry`; in-memory registry deprecated |
 | One active persistent policy implementation | `policies` table via `policy_repository`; in-memory store deprecated |
 | One active decision engine | `app/services/decision_engine.py`; MVP2 engine shimmed/deprecated |
-| One canonical AIProof implementation | `AIProof` ORM + `aiproof_service`; `ProofBundle` deprecated |
+| One canonical AIProof implementation | Single `AIProof` (`app/schemas/canonical/aiproof.py`) + `CanonicalAIProof` ORM + `app/services/canonical/aiproof/`; `ProofBundle` and legacy x402 `AIProofBundle` deprecated |
 | Runtime state survives restart | actors, policies and proofs are all persisted in SQLAlchemy |
 | x402 is an adapter, not the core | `X402Adapter` registered as one optional adapter |
 | External execution separated from governance | decision (governance) and execution adapters are distinct layers |
