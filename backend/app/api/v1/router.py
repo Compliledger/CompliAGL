@@ -13,6 +13,7 @@ from app.api.v1 import (
     governance_packages,
     integration,
     intents,
+    monitoring,
     operational_contexts,
     policy_applicability,
     remediation,
@@ -32,3 +33,4 @@ api_v1_router.include_router(evidence.router)
 api_v1_router.include_router(remediation.router)
 api_v1_router.include_router(integration.router)
 api_v1_router.include_router(aiproofs.router)
+api_v1_router.include_router(monitoring.router)

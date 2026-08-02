@@ -134,6 +134,12 @@ _JSON_FIELDS: dict[str, tuple[str, ...]] = {
         "sensitive_digest",
     ),
     "EventDelivery": ("projection",),
+    "MonitoringEvent": ("provenance",),
+    "ReevaluationRun": (
+        "impact",
+        "invalidated_authorization_ids",
+        "reason_codes",
+    ),
 }
 
 

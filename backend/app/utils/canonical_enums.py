@@ -673,3 +673,55 @@ class SubscriberRole(str, Enum):
     AUDITOR = "AUDITOR"
     REGULATOR = "REGULATOR"
     COMPLILEDGER_SERVICE = "COMPLILEDGER_SERVICE"
+
+
+# --------------------------------------------------------------------------- #
+# Continuous monitoring & automated re-evaluation vocabulary
+# --------------------------------------------------------------------------- #
+class MonitoringChangeType(str, Enum):
+    """The canonical change categories the continuous monitor observes.
+
+    Each value is a discrete, auditable class of change that can invalidate a
+    prior governed outcome and therefore trigger impact analysis and (where
+    warranted) an automated re-evaluation.
+    """
+
+    POLICY_CHANGED = "POLICY_CHANGED"
+    GOVERNANCE_PACKAGE_CHANGED = "GOVERNANCE_PACKAGE_CHANGED"
+    OPERATIONAL_CONTEXT_CHANGED = "OPERATIONAL_CONTEXT_CHANGED"
+    EVIDENCE_CHANGED = "EVIDENCE_CHANGED"
+    EVIDENCE_EXPIRED = "EVIDENCE_EXPIRED"
+    EVIDENCE_REVOKED = "EVIDENCE_REVOKED"
+    FINDING_STATUS_CHANGED = "FINDING_STATUS_CHANGED"
+    REMEDIATION_STATUS_CHANGED = "REMEDIATION_STATUS_CHANGED"
+    AUTHORIZATION_EXPIRED = "AUTHORIZATION_EXPIRED"
+    AUTHORIZATION_REVOKED = "AUTHORIZATION_REVOKED"
+    EXTERNAL_EXECUTION_RESULT_CHANGED = "EXTERNAL_EXECUTION_RESULT_CHANGED"
+    TARGET_STATE_CHANGED = "TARGET_STATE_CHANGED"
+    ACTOR_AUTHORITY_CHANGED = "ACTOR_AUTHORITY_CHANGED"
+
+
+class MonitoringSeverity(str, Enum):
+    """Severity of a detected monitoring change."""
+
+    INFO = "INFO"
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+
+
+class ReevaluationStatus(str, Enum):
+    """Lifecycle status of an automated re-evaluation run.
+
+    A run is created ``PENDING``, moves to ``IN_PROGRESS`` while impact analysis
+    and record creation happen, and terminates as ``COMPLETED`` (new immutable
+    records produced), ``NO_ACTION`` (impact analysis found nothing affected) or
+    ``FAILED``.
+    """
+
+    PENDING = "PENDING"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    NO_ACTION = "NO_ACTION"
+    FAILED = "FAILED"

@@ -59,6 +59,9 @@ class CanonicalAIProof(CanonicalMixin, Base):
     intent_id = Column(String, nullable=True, index=True)
     decision_id = Column(String, nullable=True, index=True)
     prior_aiproof_id = Column(String, nullable=True, index=True)
+    # Forward supersession link: set on a prior proof when a re-evaluation
+    # produces a new proof that supersedes it (mirrors Decision supersession).
+    superseded_by_aiproof_id = Column(String, nullable=True, index=True)
 
     # Handoff metadata.
     requested_proof_policy = Column(String, nullable=True)

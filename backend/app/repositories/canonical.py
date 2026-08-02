@@ -40,6 +40,8 @@ from app.models.governance_evaluation import GovernanceEvaluation
 from app.models.governance_package import ExecutableGovernancePackage
 from app.models.intent import Intent
 from app.models.operational_context import OperationalContext
+from app.models.monitoring_event import MonitoringEvent
+from app.models.reevaluation_run import ReevaluationRun
 from app.models.policy_resolution import PolicyResolution
 from app.models.target import Target
 
@@ -125,6 +127,23 @@ class OperationalContextRepository(TenantRepository[OperationalContext]):
 class GovernanceEvaluationRepository(TenantRepository[GovernanceEvaluation]):
     model = GovernanceEvaluation
 
+    def list_for_intent(
+        self,
+        organization_id: str,
+        intent_id: str,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> Sequence[GovernanceEvaluation]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.intent_id == intent_id)
+            .order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
 
 class DecisionRepository(TenantRepository[Decision]):
     model = Decision
@@ -163,6 +182,40 @@ class DecisionRepository(TenantRepository[Decision]):
             .all()
         )
 
+    def list_for_intent(
+        self,
+        organization_id: str,
+        intent_id: str,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> Sequence[Decision]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.intent_id == intent_id)
+            .order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def current_for_intent(
+        self, organization_id: str, intent_id: str
+    ) -> Optional[Decision]:
+        """Return the current (non-superseded) decision for an intent."""
+        from app.utils.canonical_enums import DecisionSupersessionStatus
+
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.intent_id == intent_id)
+            .filter(
+                self.model.supersession_status
+                == DecisionSupersessionStatus.CURRENT.value
+            )
+            .order_by(self.model.created_at.desc())
+            .first()
+        )
+
 
 class ExecutionAuthorizationRepository(TenantRepository[ExecutionAuthorization]):
     model = ExecutionAuthorization
@@ -191,6 +244,23 @@ class ExecutionAuthorizationRepository(TenantRepository[ExecutionAuthorization])
         return (
             self._scoped(organization_id)
             .filter(self.model.decision_id == decision_id)
+            .order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def list_for_intent(
+        self,
+        organization_id: str,
+        intent_id: str,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> Sequence[ExecutionAuthorization]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.intent_id == intent_id)
             .order_by(self.model.created_at.asc())
             .offset(skip)
             .limit(limit)
@@ -463,6 +533,16 @@ class CanonicalEvidencePackageRepository(
             .filter(self.model.evaluation_id == evaluation_id)
             .order_by(self.model.created_at.desc())
             .first()
+        )
+
+    def list_for_evaluation(
+        self, organization_id: str, evaluation_id: str
+    ) -> Sequence[CanonicalEvidencePackage]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.evaluation_id == evaluation_id)
+            .order_by(self.model.created_at.asc())
+            .all()
         )
 
 
@@ -753,6 +833,41 @@ class EventDeliveryRepository(TenantRepository[EventDelivery]):
         )
         if status is not None:
             query = query.filter(self.model.status == status)
+        return (
+            query.order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def list_deliverable(
+        self,
+        organization_id: str,
+        *,
+        channel: Optional[str] = None,
+        limit: int = 100,
+    ) -> Sequence[EventDelivery]:
+        """Return PENDING or retryable FAILED deliveries for the tenant.
+
+        Dead-lettered and already-delivered rows are never returned.
+        """
+        from app.utils.canonical_enums import EventDeliveryStatus
+
+        query = self._scoped(organization_id).filter(
+            self.model.status.in_(
+                [
+                    EventDeliveryStatus.PENDING.value,
+                    EventDeliveryStatus.FAILED.value,
+                ]
+            )
+        )
+        if channel is not None:
+            query = query.filter(self.model.channel == channel)
+        return (
+            query.order_by(self.model.created_at.asc()).limit(limit).all()
+        )
+
+
 class CanonicalAIProofRepository(TenantRepository[CanonicalAIProof]):
     model = CanonicalAIProof
 
@@ -791,29 +906,92 @@ class CanonicalAIProofRepository(TenantRepository[CanonicalAIProof]):
             .all()
         )
 
-    def list_deliverable(
+    def current_for_intent(
+        self, organization_id: str, intent_id: str
+    ) -> Optional[CanonicalAIProof]:
+        """Return the newest non-superseded proof for an intent, if any."""
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.intent_id == intent_id)
+            .filter(self.model.superseded_by_aiproof_id.is_(None))
+            .order_by(self.model.created_at.desc())
+            .first()
+        )
+
+
+# --------------------------------------------------------------------------- #
+# Continuous monitoring & automated re-evaluation repositories
+# --------------------------------------------------------------------------- #
+class MonitoringEventRepository(TenantRepository[MonitoringEvent]):
+    model = MonitoringEvent
+
+    def get_by_event_uid(
+        self, organization_id: str, event_uid: str
+    ) -> Optional[MonitoringEvent]:
+        return self.find_one(organization_id, event_uid=event_uid)
+
+    def list_filtered(
         self,
         organization_id: str,
         *,
-        channel: Optional[str] = None,
+        change_type: Optional[str] = None,
+        affected_object_type: Optional[str] = None,
+        affected_object_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        skip: int = 0,
         limit: int = 100,
-    ) -> Sequence[EventDelivery]:
-        """Return PENDING or retryable FAILED deliveries for the tenant.
-
-        Dead-lettered and already-delivered rows are never returned.
-        """
-        from app.utils.canonical_enums import EventDeliveryStatus
-
-        query = self._scoped(organization_id).filter(
-            self.model.status.in_(
-                [
-                    EventDeliveryStatus.PENDING.value,
-                    EventDeliveryStatus.FAILED.value,
-                ]
+    ) -> Sequence[MonitoringEvent]:
+        query = self._scoped(organization_id)
+        if change_type is not None:
+            query = query.filter(self.model.change_type == change_type)
+        if affected_object_type is not None:
+            query = query.filter(
+                self.model.affected_object_type == affected_object_type
             )
-        )
-        if channel is not None:
-            query = query.filter(self.model.channel == channel)
+        if affected_object_id is not None:
+            query = query.filter(
+                self.model.affected_object_id == affected_object_id
+            )
+        if correlation_id is not None:
+            query = query.filter(self.model.correlation_id == correlation_id)
         return (
-            query.order_by(self.model.created_at.asc()).limit(limit).all()
+            query.order_by(self.model.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+
+class ReevaluationRunRepository(TenantRepository[ReevaluationRun]):
+    model = ReevaluationRun
+
+    def list_for_event(
+        self, organization_id: str, monitoring_event_id: str
+    ) -> Sequence[ReevaluationRun]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.monitoring_event_id == monitoring_event_id)
+            .order_by(self.model.created_at.asc())
+            .all()
+        )
+
+    def list_filtered(
+        self,
+        organization_id: str,
+        *,
+        status: Optional[str] = None,
+        intent_id: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> Sequence[ReevaluationRun]:
+        query = self._scoped(organization_id)
+        if status is not None:
+            query = query.filter(self.model.status == status)
+        if intent_id is not None:
+            query = query.filter(self.model.intent_id == intent_id)
+        return (
+            query.order_by(self.model.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
         )
