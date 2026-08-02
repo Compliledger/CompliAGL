@@ -20,14 +20,14 @@ from app.api.routes.proofs import router as proofs_router
 from app.api.routes.dashboard import router as dashboard_router
 from app.api.routes.compli402 import router as compli402_router
 
-# --- MVP 2 route imports ---
+# --- MVP 2 route imports (DEPRECATED — in-memory demo surface) ---
 from app.mvp2.api.routes.decision import router as mvp2_decision_router
 from app.mvp2.api.routes.execution import router as mvp2_execution_router
 from app.mvp2.api.routes.proof import router as mvp2_proof_router
 
-# --- MVP 2 seed helpers ---
-from app.mvp2.identity.actors import seed_demo_actors
-from app.mvp2.core.policy_engine import seed_demo_policies
+# --- Persistent demo seeding ---
+from app.core.database import SessionLocal
+from app.db.seed import seed_demo_data
 
 logger = logging.getLogger(__name__)
 
@@ -41,13 +41,17 @@ async def lifespan(app: FastAPI):
     except Exception:
         logger.exception("Database initialisation failed — tables may be missing.")
 
-    # Seed MVP 2 in-memory demo data (idempotent — safe on every boot)
+    # Seed canonical demo actors and policies into the PERSISTENT database
+    # (idempotent — safe on every boot; survives restarts).
     try:
-        seed_demo_actors()
-        seed_demo_policies()
-        logger.info("MVP 2 demo actors and policies seeded.")
+        db = SessionLocal()
+        try:
+            seed_demo_data(db)
+        finally:
+            db.close()
+        logger.info("Canonical demo actors and policies seeded (persistent).")
     except Exception:
-        logger.exception("MVP 2 seed failed — demo data may be unavailable.")
+        logger.exception("Persistent seed failed — demo data may be unavailable.")
 
     print("CompliAGL backend started successfully")
     yield
@@ -79,7 +83,7 @@ app.include_router(audit_router, prefix="/api")
 app.include_router(proofs_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
 
-# --- MVP 2 routers (prefix already set in each router) ---
+# --- MVP 2 routers (prefix already set in each router; DEPRECATED) ---
 app.include_router(mvp2_decision_router)
 app.include_router(mvp2_execution_router)
 app.include_router(mvp2_proof_router)

@@ -1,25 +1,26 @@
 """Compli402 — public, competition-ready x402 governance API.
 
-This route layer exposes CompliAGL's governance engine combined with the
-x402 "HTTP 402 Payment Required" execution flow through a small, demo-ready
-public surface.
+This route layer exposes CompliAGL's **persistent** governance runtime combined
+with the x402 "HTTP 402 Payment Required" execution flow through a small,
+demo-ready public surface.
 
 Flow
 ----
 1. An actor submits an intent.
-2. CompliAGL evaluates governance policy for that intent.
-3. If the decision is ``DENIED`` → stop and return the denial.
-4. If the decision is ``ESCALATED`` → return *escalation required*.
-5. If the decision is ``APPROVED`` → an x402 payment is required.
-6. If the payment is missing → a ``402``-style *payment required* response.
-7. If the payment is verified → the approved action is executed.
-8. An AIProof bundle is generated for the execution.
-9. The AIProof is anchored via the shared ``compliledger-algorand-adapter``
-   through :mod:`app.mvp2.anchor.algorand_adapter_service`.
-10. The execution result, AIProof bundle, and Algorand anchor receipt are
-    returned together.
+2. CompliAGL evaluates governance policy for that intent (persistent actors +
+   policies, single deterministic decision engine).
+3. If the decision is ``DENIED`` -> stop and return the denial.
+4. If the decision is ``ESCALATED`` -> return *escalation required*.
+5. If the decision is ``APPROVED`` -> an x402 payment is required.
+6. If the payment is missing -> a ``402``-style *payment required* response.
+7. If the payment is verified -> the approved action is executed by the
+   external x402 adapter and the result is recorded.
+8. A canonical AIProof is generated and **persisted** (``ai_proofs`` table).
+9. The AIProof is anchored via the shared ``compliledger-algorand-adapter``.
+10. The execution result, AIProof, and Algorand anchor receipt are returned.
 
-All state (proofs) is kept in-memory — this is a demo surface.
+x402 is one *optional* execution adapter here; the governance runtime
+(actors, policies, decision, proof) does not depend on it.
 """
 
 from __future__ import annotations
@@ -27,14 +28,13 @@ from __future__ import annotations
 import logging
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.database import get_db
 from app.mvp2.anchor.algorand_adapter_service import anchor_ai_proof_bundle
-from app.mvp2.core.decision_engine import evaluate
-from app.mvp2.core.policy_engine import list_policies
 from app.mvp2.execution.adapters.x402 import X402Adapter
-from app.mvp2.identity.actors import get_actor
 from app.mvp2.proof.aiproof import build_aiproof
 from app.mvp2.schemas.compli402 import (
     Compli402Decision,
@@ -43,24 +43,12 @@ from app.mvp2.schemas.compli402 import (
     Compli402Status,
     Compli402VerifyResponse,
 )
-from app.mvp2.schemas.decision import DecisionRequest, DecisionResult
+from app.mvp2.schemas.decision import DecisionResult
+from app.services import actor_registry, aiproof_service, decision_engine
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/compli402", tags=["compli402"])
-
-# ---------------------------------------------------------------------------
-# In-memory proof store (demo surface)
-# ---------------------------------------------------------------------------
-_PROOF_STORE: dict[str, dict] = {}
-_PROOF_ORDER: list[str] = []
-
-
-def _store_proof(proof_hash: str, bundle: dict) -> None:
-    """Persist a proof bundle in-memory, tracking insertion order."""
-    if proof_hash not in _PROOF_STORE:
-        _PROOF_ORDER.append(proof_hash)
-    _PROOF_STORE[proof_hash] = bundle
 
 
 # ---------------------------------------------------------------------------
@@ -68,24 +56,24 @@ def _store_proof(proof_hash: str, bundle: dict) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _evaluate_intent(intent: Compli402Intent) -> tuple[UUID, object]:
+def _evaluate_intent(db: Session, intent: Compli402Intent) -> tuple[UUID, object]:
     """Resolve the actor, evaluate policy, and return (transaction_id, decision)."""
-    actor = get_actor(intent.actor_id)
+    actor = actor_registry.get_actor(db, intent.actor_id)
     if actor is None:
         raise HTTPException(
             status_code=404, detail=f"Actor not found: {intent.actor_id}"
         )
 
     transaction_id = intent.transaction_id or uuid4()
-    decision_request = DecisionRequest(
-        transaction_id=transaction_id,
+    decision = decision_engine.evaluate_intent(
+        db,
         actor_id=intent.actor_id,
         action=intent.action,
         amount=intent.amount,
         currency=intent.currency,
+        transaction_id=transaction_id,
         metadata=intent.metadata,
     )
-    decision = evaluate(request=decision_request, policies=list_policies())
     return transaction_id, decision
 
 
@@ -100,20 +88,21 @@ def _decision_summary(decision) -> Compli402Decision:
 
 def _build_aiproof(
     *,
+    db: Session,
     transaction_id: UUID,
     intent: Compli402Intent,
     decision,
     execution: dict,
-) -> dict:
-    """Generate and assemble the AIProof bundle for an executed intent.
+):
+    """Build the canonical AIProof bundle for an executed intent.
 
     The bundle is hashed deterministically (excluding post-hash fields). The
     post-hash fields ``anchor_tx_id`` and ``verification_url`` are populated
     later, after the proof is anchored (see :func:`_finalise_aiproof`).
     """
-    actor = get_actor(intent.actor_id)
+    actor = actor_registry.get_actor(db, intent.actor_id)
     matched_policies = decision.matched_policies or []
-    bundle = build_aiproof(
+    return build_aiproof(
         actor_id=str(intent.actor_id),
         intent_id=str(transaction_id),
         decision=decision.result.value,
@@ -132,18 +121,6 @@ def _build_aiproof(
         payment_reference=execution.get("payment_reference"),
         settlement_chain=execution.get("network"),
     )
-    return bundle.model_dump(mode="json")
-
-
-def _finalise_aiproof(aiproof: dict, anchor_receipt: dict) -> dict:
-    """Populate post-hash fields on the AIProof bundle after anchoring.
-
-    ``anchor_tx_id`` and ``verification_url`` are set *after* the proof hash
-    is computed, so they are intentionally excluded from the hash itself.
-    """
-    aiproof["anchor_tx_id"] = anchor_receipt.get("txid")
-    aiproof["verification_url"] = f"/api/compli402/proofs/{aiproof.get('proof_hash')}"
-    return aiproof
 
 
 def _anchor_proof(aiproof: dict) -> dict:
@@ -156,7 +133,7 @@ def _anchor_proof(aiproof: dict) -> dict:
     try:
         return anchor_ai_proof_bundle(aiproof)
     except ImportError as exc:
-        logger.warning("Algorand adapter unavailable — skipping anchor: %s", exc)
+        logger.warning("Algorand adapter unavailable - skipping anchor: %s", exc)
         return {
             "anchored": False,
             "chain": "algorand",
@@ -179,8 +156,12 @@ def _anchor_proof(aiproof: dict) -> dict:
 
 
 @router.get("/health")
-def health() -> dict:
+def health(db: Session = Depends(get_db)) -> dict:
     """Liveness probe and a snapshot of the x402 configuration."""
+    try:
+        proofs_stored = aiproof_service.count_proofs(db)
+    except Exception:  # pragma: no cover - table may not exist yet
+        proofs_stored = 0
     return {
         "status": "healthy",
         "service": "compli402",
@@ -192,14 +173,16 @@ def health() -> dict:
             "price_usdc": settings.X402_PRICE_USDC,
             "mock_mode": settings.X402_MOCK_MODE,
         },
-        "proofs_stored": len(_PROOF_STORE),
+        "proofs_stored": proofs_stored,
     }
 
 
 @router.post("/verify/intent", response_model=Compli402VerifyResponse)
-def verify_intent(intent: Compli402Intent) -> Compli402VerifyResponse:
+def verify_intent(
+    intent: Compli402Intent, db: Session = Depends(get_db)
+) -> Compli402VerifyResponse:
     """Evaluate an intent against governance policy without executing it."""
-    transaction_id, decision = _evaluate_intent(intent)
+    transaction_id, decision = _evaluate_intent(db, intent)
 
     if decision.result == DecisionResult.DENIED:
         return Compli402VerifyResponse(
@@ -219,7 +202,7 @@ def verify_intent(intent: Compli402Intent) -> Compli402VerifyResponse:
             message="Intent requires escalation / human approval.",
         )
 
-    # APPROVED (or any non-deny/non-escalate result) → payment is required.
+    # APPROVED (or any non-deny/non-escalate result) -> payment is required.
     return Compli402VerifyResponse(
         transaction_id=transaction_id,
         decision=_decision_summary(decision),
@@ -231,13 +214,15 @@ def verify_intent(intent: Compli402Intent) -> Compli402VerifyResponse:
 
 @router.post("/execute", response_model=Compli402ExecuteResponse)
 async def execute(
-    intent: Compli402Intent, response: Response
+    intent: Compli402Intent,
+    response: Response,
+    db: Session = Depends(get_db),
 ) -> Compli402ExecuteResponse:
-    """Run the full Compli402 governance → payment → execute → anchor flow."""
-    transaction_id, decision = _evaluate_intent(intent)
+    """Run the full Compli402 governance -> payment -> execute -> anchor flow."""
+    transaction_id, decision = _evaluate_intent(db, intent)
     decision_summary = _decision_summary(decision)
 
-    # 3. DENY → stop.
+    # 3. DENY -> stop.
     if decision.result == DecisionResult.DENIED:
         return Compli402ExecuteResponse(
             transaction_id=transaction_id,
@@ -246,7 +231,7 @@ async def execute(
             message="Intent denied by governance policy.",
         )
 
-    # 4. ESCALATE → escalation required.
+    # 4. ESCALATE -> escalation required.
     if decision.result == DecisionResult.ESCALATED:
         return Compli402ExecuteResponse(
             transaction_id=transaction_id,
@@ -255,7 +240,7 @@ async def execute(
             message="Intent requires escalation / human approval.",
         )
 
-    # 5. APPROVE → require x402 payment and attempt execution.
+    # 5. APPROVE -> issue authorization and let the external x402 adapter execute.
     adapter = X402Adapter()
     execution = await adapter.execute(
         transaction_id=transaction_id,
@@ -273,7 +258,7 @@ async def execute(
         "amount": execution.get("amount"),
     }
 
-    # 6. Payment missing → 402-style payment required response.
+    # 6. Payment missing -> 402-style payment required response.
     if execution.get("status") == "PAYMENT_REQUIRED":
         response.status_code = status.HTTP_402_PAYMENT_REQUIRED
         return Compli402ExecuteResponse(
@@ -285,7 +270,7 @@ async def execute(
             message="x402 payment required to execute the approved action.",
         )
 
-    # Payment supplied but not verified → payment failed.
+    # Payment supplied but not verified -> payment failed.
     if not execution.get("payment_verified"):
         response.status_code = status.HTTP_402_PAYMENT_REQUIRED
         return Compli402ExecuteResponse(
@@ -297,19 +282,23 @@ async def execute(
             message=execution.get("error", "x402 payment verification failed."),
         )
 
-    # 7. Payment verified → action executed. 8/9. Generate + anchor AIProof.
-    aiproof = _build_aiproof(
+    # 7. Payment verified -> external action executed. 8/9. Generate + anchor proof.
+    bundle = _build_aiproof(
+        db=db,
         transaction_id=transaction_id,
         intent=intent,
         decision=decision,
         execution=execution,
     )
+    aiproof = bundle.model_dump(mode="json")
     anchor_receipt = _anchor_proof(aiproof)
     # Populate post-hash fields (anchor_tx_id, verification_url) after anchoring.
-    aiproof = _finalise_aiproof(aiproof, anchor_receipt)
-    _store_proof(aiproof["proof_hash"], aiproof)
+    bundle.anchor_tx_id = anchor_receipt.get("txid")
+    bundle.verification_url = f"/api/compli402/proofs/{bundle.proof_hash}"
+    # Persist the canonical AIProof (survives restart).
+    aiproof = aiproof_service.store_proof(db, bundle)
 
-    # 10. Return execution result, AIProof bundle, and anchor receipt.
+    # 10. Return execution result, AIProof, and anchor receipt.
     return Compli402ExecuteResponse(
         transaction_id=transaction_id,
         decision=decision_summary,
@@ -323,17 +312,18 @@ async def execute(
 
 
 @router.get("/proofs/latest")
-def latest_proof() -> dict:
-    """Return the most recently generated AIProof bundle."""
-    if not _PROOF_ORDER:
+def latest_proof(db: Session = Depends(get_db)) -> dict:
+    """Return the most recently generated AIProof."""
+    proof = aiproof_service.get_latest(db)
+    if proof is None:
         raise HTTPException(status_code=404, detail="No proofs available yet.")
-    return _PROOF_STORE[_PROOF_ORDER[-1]]
+    return proof
 
 
 @router.get("/proofs/{proof_hash}")
-def get_proof(proof_hash: str) -> dict:
-    """Return a single AIProof bundle by its proof hash."""
-    proof = _PROOF_STORE.get(proof_hash)
+def get_proof(proof_hash: str, db: Session = Depends(get_db)) -> dict:
+    """Return a single AIProof by its proof hash."""
+    proof = aiproof_service.get_by_hash(db, proof_hash)
     if proof is None:
         raise HTTPException(status_code=404, detail=f"Proof not found: {proof_hash}")
     return proof

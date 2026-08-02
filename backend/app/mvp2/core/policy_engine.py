@@ -1,8 +1,14 @@
-"""Policy engine — evaluates a transaction against a set of policies.
+"""Policy engine — deterministic rule evaluation.
 
-The policy engine is the source-of-truth for *which* policies apply to
-a given actor / action pair, and returns the list of matching policies
-together with any triggered reason codes.
+.. deprecated::
+    The in-memory ``_POLICY_STORE`` and the ``seed_demo_policies`` /
+    ``get_policy`` / ``list_policies`` helpers in this module are
+    **deprecated**. The canonical, persistent policy implementation lives in
+    :mod:`app.services.policy_repository` (backed by the ``policies`` table).
+
+    :func:`evaluate_policies` is **retained** as the shared, stateless
+    deterministic *rule core* used by the canonical
+    :mod:`app.services.decision_engine`.
 """
 
 from __future__ import annotations

@@ -1,5 +1,10 @@
 """CompliAGL rule engine — evaluates a transaction against an agent's active policy.
 
+.. deprecated::
+    This transaction-centric engine is deprecated in favour of the canonical
+    intent-based :mod:`app.services.decision_engine`. Retained for the
+    deprecated ``/transactions`` evaluation flow.
+
 The engine applies rules in a strict order (1–15) and returns a structured
 decision with reason codes, a summary, risk level, and approval flag.
 

@@ -1,26 +1,50 @@
-"""Tests for the Compli402 public API endpoints."""
+"""Tests for the Compli402 public API endpoints (persistent runtime)."""
 
 from __future__ import annotations
 
-from uuid import UUID
-
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
-from app.main import app
-from app.mvp2.core.policy_engine import seed_demo_policies
-from app.mvp2.identity.actors import seed_demo_actors
+from app.core.database import Base, get_db
+from app.db.seed import DEMO_TRAVEL_AGENT_ID, seed_demo_data
+from app.main import app  # importing app.main registers all ORM models
 
-# Demo actor seeded by seed_demo_actors (TravelAgent-01).
-DEMO_ACTOR_ID = "00000000-0000-0000-0000-000000000001"
+# Demo actor seeded into the persistent store (TravelAgent-01).
+DEMO_ACTOR_ID = str(DEMO_TRAVEL_AGENT_ID)
+
+
+engine = create_engine(
+    "sqlite://",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 @pytest.fixture(autouse=True)
-def seed():
-    """Seed the in-memory demo actors and policies for each test."""
-    seed_demo_actors()
-    seed_demo_policies()
+def setup_db():
+    """Create tables and seed persistent demo data for each test."""
+    Base.metadata.create_all(bind=engine)
+    db = TestingSessionLocal()
+    try:
+        seed_demo_data(db)
+    finally:
+        db.close()
+
+    def _override_get_db():
+        session = TestingSessionLocal()
+        try:
+            yield session
+        finally:
+            session.close()
+
+    app.dependency_overrides[get_db] = _override_get_db
     yield
+    app.dependency_overrides.pop(get_db, None)
+    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture()
@@ -66,7 +90,7 @@ def test_verify_intent_approved_requires_payment(client):
 
 
 def test_verify_intent_denied(client):
-    # Amount above max_amount (500) → DENIED.
+    # Amount above max_amount (500) -> DENIED.
     resp = client.post("/api/compli402/verify/intent", json=_intent(600.0))
     assert resp.status_code == 200
     data = resp.json()
@@ -75,7 +99,7 @@ def test_verify_intent_denied(client):
 
 
 def test_verify_intent_escalated(client):
-    # Amount above escalation_threshold (250) but below max (500) → ESCALATED.
+    # Amount above escalation_threshold (250) but below max (500) -> ESCALATED.
     resp = client.post("/api/compli402/verify/intent", json=_intent(300.0))
     assert resp.status_code == 200
     data = resp.json()

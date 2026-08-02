@@ -15,7 +15,7 @@ from app.mvp2.schemas.actor import ActorRead
 from app.mvp2.schemas.decision import DecisionRequest, DecisionResponse
 from app.mvp2.schemas.policy import PolicyRead
 
-router = APIRouter(prefix="/api/mvp2", tags=["mvp2-decision"])
+router = APIRouter(prefix="/api/mvp2", tags=["mvp2-decision"], deprecated=True)
 
 
 @router.get("/actors", response_model=list[ActorRead])

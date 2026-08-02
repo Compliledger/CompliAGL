@@ -1,7 +1,10 @@
 """Decision engine — orchestrates governance evaluation for a transaction.
 
-The decision engine ties together the *policy engine* and *reason codes*
-to produce a single ``DecisionResponse`` for every inbound transaction.
+.. deprecated::
+    This in-memory orchestrator is **deprecated**. The canonical, persistent
+    decision engine lives in :mod:`app.services.decision_engine`, which reads
+    policies from the ``policies`` table and reuses the same deterministic rule
+    core (:func:`app.mvp2.core.policy_engine.evaluate_policies`).
 """
 
 from __future__ import annotations
