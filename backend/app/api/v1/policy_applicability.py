@@ -15,6 +15,12 @@ from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_org_id
 from app.core.database import get_db
+from app.schemas.canonical.control_evidence import (
+    ApplicableControlSetResponse,
+    ControlDeterminationCreate,
+    EvidenceRequirementResolutionCreate,
+    EvidenceRequirementSetResponse,
+)
 from app.schemas.canonical.policy_applicability import (
     ApplicabilityEvaluationCreate,
     ApplicabilityEvaluationResponse,
@@ -24,6 +30,8 @@ from app.schemas.canonical.policy_applicability import (
 from app.schemas.canonical.serialization import orm_to_dict
 from app.services.canonical import (
     applicability_service,
+    control_determination_service,
+    evidence_requirement_service,
     policy_resolution_service,
 )
 from app.services.canonical.errors import NotFoundError
@@ -137,4 +145,86 @@ def get_applicability_evaluation(
         raise HTTPException(
             status_code=404, detail="ApplicabilityEvaluation not found"
         )
+    return orm_to_dict(obj)
+
+
+# --------------------------------------------------------------------------- #
+# Control Determination
+#
+# ``evaluation_id`` identifies the applicability-evaluation run — i.e. the
+# ``policy_resolution_id`` whose per-requirement ApplicabilityEvaluation records
+# these stages consume. Control Determination and Evidence Requirement
+# Resolution are computed deterministically on demand and persisted, so a GET
+# materialises the set the first time it is requested.
+# --------------------------------------------------------------------------- #
+@router.post(
+    "/control-determinations",
+    response_model=ApplicableControlSetResponse,
+    status_code=201,
+)
+def create_control_determination(
+    payload: ControlDeterminationCreate, db: Session = Depends(get_db)
+):
+    """Run Control Determination for a resolution and persist the control set."""
+    try:
+        return orm_to_dict(
+            control_determination_service.determine_for_resolution(db, payload)
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.get(
+    "/evaluations/{evaluation_id}/controls",
+    response_model=ApplicableControlSetResponse,
+)
+def get_evaluation_controls(
+    evaluation_id: str,
+    organization_id: str = Depends(get_org_id),
+    db: Session = Depends(get_db),
+):
+    """Return the applicable controls determined for an evaluation."""
+    if policy_resolution_service.get(db, organization_id, evaluation_id) is None:
+        raise HTTPException(status_code=404, detail="PolicyResolution not found")
+    obj = control_determination_service.determine_or_get_for_resolution(
+        db, organization_id, evaluation_id
+    )
+    return orm_to_dict(obj)
+
+
+# --------------------------------------------------------------------------- #
+# Evidence Requirement Resolution
+# --------------------------------------------------------------------------- #
+@router.post(
+    "/evidence-requirement-resolutions",
+    response_model=EvidenceRequirementSetResponse,
+    status_code=201,
+)
+def create_evidence_requirement_resolution(
+    payload: EvidenceRequirementResolutionCreate, db: Session = Depends(get_db)
+):
+    """Run Evidence Requirement Resolution and persist the evidence set."""
+    try:
+        return orm_to_dict(
+            evidence_requirement_service.resolve_for_resolution(db, payload)
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.get(
+    "/evaluations/{evaluation_id}/evidence-requirements",
+    response_model=EvidenceRequirementSetResponse,
+)
+def get_evaluation_evidence_requirements(
+    evaluation_id: str,
+    organization_id: str = Depends(get_org_id),
+    db: Session = Depends(get_db),
+):
+    """Return the evidence requirements resolved for an evaluation."""
+    if policy_resolution_service.get(db, organization_id, evaluation_id) is None:
+        raise HTTPException(status_code=404, detail="PolicyResolution not found")
+    obj = evidence_requirement_service.resolve_or_get_for_resolution(
+        db, organization_id, evaluation_id
+    )
     return orm_to_dict(obj)

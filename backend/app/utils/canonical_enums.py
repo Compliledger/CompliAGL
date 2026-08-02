@@ -208,6 +208,41 @@ class ApplicabilityResult(str, Enum):
     INDETERMINATE = "INDETERMINATE"
 
 
+class ControlDeterminationStatus(str, Enum):
+    """Status carried by a control selected during Control Determination.
+
+    Control Determination runs **after** Applicability Evaluation and
+    **before** the decision engine. It selects the controls mapped to
+    ``APPLICABLE`` or conditionally applicable requirements and *preserves* the
+    ``CONDITIONAL`` and ``INDETERMINATE`` states rather than collapsing them.
+
+    A control whose requirements are all ``NOT_APPLICABLE`` is excluded and so
+    never carries this status. ``INDETERMINATE`` includes the case where the
+    applicability basis for a control is missing — it is never silently treated
+    as ``NOT_APPLICABLE``.
+    """
+
+    APPLICABLE = "APPLICABLE"
+    CONDITIONAL = "CONDITIONAL"
+    INDETERMINATE = "INDETERMINATE"
+
+
+class RequiredEvidenceState(str, Enum):
+    """Deterministic state of an evidence requirement after resolution.
+
+    ``UNRESOLVED`` is a first-class state: when the applicability basis for the
+    controls that need an evidence item is missing or indeterminate, the item is
+    ``UNRESOLVED`` rather than silently ``NOT_REQUIRED`` — missing basis can
+    never silently produce success downstream.
+    """
+
+    REQUIRED = "REQUIRED"
+    OPTIONAL = "OPTIONAL"
+    CONDITIONAL = "CONDITIONAL"
+    NOT_REQUIRED = "NOT_REQUIRED"
+    UNRESOLVED = "UNRESOLVED"
+
+
 class ExpressionOperator(str, Enum):
     """The closed set of operators the deterministic expression engine allows.
 

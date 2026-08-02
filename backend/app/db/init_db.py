@@ -23,6 +23,8 @@ from app.models.external_execution_result import ExternalExecutionResult  # noqa
 from app.models.governance_package import ExecutableGovernancePackage  # noqa: F401
 from app.models.policy_resolution import PolicyResolution  # noqa: F401
 from app.models.applicability_evaluation import ApplicabilityEvaluation  # noqa: F401
+from app.models.applicable_control_set import ApplicableControlSet  # noqa: F401
+from app.models.evidence_requirement_set import EvidenceRequirementSet  # noqa: F401
 
 
 def init_db() -> None:

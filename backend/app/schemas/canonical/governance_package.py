@@ -64,6 +64,7 @@ class ControlDefinition(BaseModel):
     requirement_ids: list[str] = Field(..., min_length=1)
     control_objective: str = Field(..., min_length=1)
     evaluation_expression: str = Field(..., min_length=1)
+    expected_outcome: Optional[Any] = None
     mandatory: bool = True
     severity: GovernanceSeverity = GovernanceSeverity.MEDIUM
     failure_disposition: ControlFailureDisposition = ControlFailureDisposition.DENY
