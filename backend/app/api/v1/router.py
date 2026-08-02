@@ -10,6 +10,7 @@ from app.api.v1 import (
     governance_packages,
     intents,
     operational_contexts,
+    policy_applicability,
     targets,
 )
 
@@ -20,3 +21,4 @@ api_v1_router.include_router(targets.router)
 api_v1_router.include_router(operational_contexts.router)
 api_v1_router.include_router(governance.router)
 api_v1_router.include_router(governance_packages.router)
+api_v1_router.include_router(policy_applicability.router)

@@ -42,6 +42,18 @@ _JSON_FIELDS: dict[str, tuple[str, ...]] = {
         "conflict_resolution_rules",
         "package_metadata",
     ),
+    "PolicyResolution": (
+        "candidate_package_ids",
+        "selected_packages",
+        "conflicts",
+        "selection_facts",
+        "reason_codes",
+    ),
+    "ApplicabilityEvaluation": (
+        "evaluated_expression",
+        "observed_values",
+        "reason_codes",
+    ),
 }
 
 

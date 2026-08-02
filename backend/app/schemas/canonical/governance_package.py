@@ -43,6 +43,14 @@ class RequirementDefinition(BaseModel):
     requirement_type: str = Field(..., min_length=1)
     classification: RequirementClassification
     applicability_expression: Optional[str] = None
+    # Structured deterministic applicability criteria consumed by the
+    # Applicability Evaluation stage. ``applicability_criteria`` decides
+    # APPLICABLE vs NOT_APPLICABLE (INDETERMINATE when facts are missing);
+    # ``condition_criteria`` is evaluated only when applicable and yields
+    # CONDITIONAL when its condition is unmet.
+    applicability_criteria: Optional[dict[str, Any]] = None
+    condition_criteria: Optional[dict[str, Any]] = None
+    version: Optional[str] = None
     mapped_control_ids: list[str] = Field(default_factory=list)
     severity: GovernanceSeverity = GovernanceSeverity.MEDIUM
     effective_at: Optional[datetime] = None

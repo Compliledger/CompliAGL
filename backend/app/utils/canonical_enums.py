@@ -181,6 +181,60 @@ class PackageStatus(str, Enum):
     REJECTED = "REJECTED"
 
 
+class PolicyResolutionStatus(str, Enum):
+    """Lifecycle status of a policy-resolution record.
+
+    Policy Resolution is a deterministic runtime stage that runs *before* the
+    decision engine. It selects the governing package versions for a concrete
+    (actor, intent, target, context) tuple.
+    """
+
+    RESOLVED = "RESOLVED"
+    NO_APPLICABLE_POLICY = "NO_APPLICABLE_POLICY"
+    CONFLICT_RESOLVED = "CONFLICT_RESOLVED"
+
+
+class ApplicabilityResult(str, Enum):
+    """Deterministic outcome of evaluating a single requirement's applicability.
+
+    ``INDETERMINATE`` is a first-class result: it is never silently collapsed to
+    ``NOT_APPLICABLE``. Missing context that prevents a deterministic decision
+    surfaces as ``INDETERMINATE`` so it cannot silently produce approval.
+    """
+
+    APPLICABLE = "APPLICABLE"
+    NOT_APPLICABLE = "NOT_APPLICABLE"
+    CONDITIONAL = "CONDITIONAL"
+    INDETERMINATE = "INDETERMINATE"
+
+
+class ExpressionOperator(str, Enum):
+    """The closed set of operators the deterministic expression engine allows.
+
+    No other operator may be used. The engine never evaluates arbitrary code
+    (``eval``/``exec`` are never used); only these named, side-effect-free
+    operators are supported.
+    """
+
+    EQUALS = "equals"
+    NOT_EQUALS = "not_equals"
+    IN = "in"
+    NOT_IN = "not_in"
+    GREATER_THAN = "greater_than"
+    GREATER_THAN_OR_EQUAL = "greater_than_or_equal"
+    LESS_THAN = "less_than"
+    LESS_THAN_OR_EQUAL = "less_than_or_equal"
+    EXISTS = "exists"
+    NOT_EXISTS = "not_exists"
+    CONTAINS = "contains"
+    STARTS_WITH = "starts_with"
+    DATE_BEFORE = "date_before"
+    DATE_AFTER = "date_after"
+    ALL = "all"
+    ANY = "any"
+    NOT = "not"
+
+
 class RequirementClassification(str, Enum):
     """Deontic classification of a requirement."""
 
