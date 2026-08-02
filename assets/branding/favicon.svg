@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="CompliAGL favicon">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#0a0f24"/>
+  <path d="M20 20 h24 M20 32 h24 M20 44 h16" stroke="url(#g)" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <circle cx="46" cy="44" r="6" fill="none" stroke="#22d3ee" stroke-width="3"/>
+  <path d="M43.5 44 l2 2 l3.5 -4" stroke="#22d3ee" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
