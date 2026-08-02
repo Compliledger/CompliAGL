@@ -23,6 +23,9 @@ from app.models.raw_evidence import RawEvidence
 from app.models.evidence_validation_result import EvidenceValidationResult
 from app.models.normalized_evidence import NormalizedEvidence
 from app.models.canonical_evidence_package import CanonicalEvidencePackage
+from app.models.evidence_sufficiency import EvidenceSufficiency
+from app.models.control_evaluation import ControlEvaluation
+from app.models.assessment import Assessment
 from app.models.execution_authorization import ExecutionAuthorization
 from app.models.external_execution_result import ExternalExecutionResult
 from app.models.governance_evaluation import GovernanceEvaluation
@@ -388,4 +391,107 @@ class CanonicalEvidencePackageRepository(
             .filter(self.model.evaluation_id == evaluation_id)
             .order_by(self.model.created_at.desc())
             .first()
+        )
+
+
+# --------------------------------------------------------------------------- #
+# Evidence Sufficiency / Control Evaluation / Assessment repositories
+# --------------------------------------------------------------------------- #
+class EvidenceSufficiencyRepository(TenantRepository[EvidenceSufficiency]):
+    model = EvidenceSufficiency
+
+    def latest_for_resolution(
+        self, organization_id: str, policy_resolution_id: str
+    ) -> Optional[EvidenceSufficiency]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.policy_resolution_id == policy_resolution_id)
+            .order_by(self.model.created_at.desc())
+            .first()
+        )
+
+    def list_for_resolution(
+        self,
+        organization_id: str,
+        policy_resolution_id: str,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> Sequence[EvidenceSufficiency]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.policy_resolution_id == policy_resolution_id)
+            .order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+
+class ControlEvaluationRepository(TenantRepository[ControlEvaluation]):
+    model = ControlEvaluation
+
+    def list_for_resolution(
+        self,
+        organization_id: str,
+        policy_resolution_id: str,
+        *,
+        skip: int = 0,
+        limit: int = 500,
+    ) -> Sequence[ControlEvaluation]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.policy_resolution_id == policy_resolution_id)
+            .order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def list_for_sufficiency(
+        self,
+        organization_id: str,
+        evidence_sufficiency_id: str,
+        *,
+        skip: int = 0,
+        limit: int = 500,
+    ) -> Sequence[ControlEvaluation]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.evidence_sufficiency_id == evidence_sufficiency_id)
+            .order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+
+class AssessmentRepository(TenantRepository[Assessment]):
+    model = Assessment
+
+    def latest_for_resolution(
+        self, organization_id: str, policy_resolution_id: str
+    ) -> Optional[Assessment]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.policy_resolution_id == policy_resolution_id)
+            .order_by(self.model.created_at.desc())
+            .first()
+        )
+
+    def list_for_resolution(
+        self,
+        organization_id: str,
+        policy_resolution_id: str,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> Sequence[Assessment]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.policy_resolution_id == policy_resolution_id)
+            .order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
         )
