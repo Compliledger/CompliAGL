@@ -62,6 +62,40 @@ _JSON_FIELDS: dict[str, tuple[str, ...]] = {
         "evidence_requirements",
         "reason_codes",
     ),
+    "EvidenceSource": (
+        "supported_evidence_types",
+        "trusted_issuers",
+        "retry_policy",
+    ),
+    "EvidenceOrchestrationPlan": (
+        "tasks",
+        "unresolved",
+        "reason_codes",
+    ),
+    "EvidenceCollectionJob": (
+        "raw_evidence_ids",
+        "failures",
+        "unresolved",
+        "reason_codes",
+    ),
+    "RawEvidence": (
+        "payload",
+        "claims",
+        "provenance",
+    ),
+    "EvidenceValidationResult": (
+        "checks",
+        "reason_codes",
+    ),
+    "NormalizedEvidence": ("normalized_claims",),
+    "CanonicalEvidencePackage": (
+        "normalized_evidence_references",
+        "requirement_mappings",
+        "control_mappings",
+        "missing_evidence",
+        "invalid_evidence",
+        "reason_codes",
+    ),
 }
 
 
