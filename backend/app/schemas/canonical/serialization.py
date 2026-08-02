@@ -54,6 +54,14 @@ _JSON_FIELDS: dict[str, tuple[str, ...]] = {
         "observed_values",
         "reason_codes",
     ),
+    "ApplicableControlSet": (
+        "controls",
+        "reason_codes",
+    ),
+    "EvidenceRequirementSet": (
+        "evidence_requirements",
+        "reason_codes",
+    ),
 }
 
 

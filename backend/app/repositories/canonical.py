@@ -13,7 +13,9 @@ from sqlalchemy.orm import Session
 
 from app.models.actor_identity import ActorIdentity
 from app.models.applicability_evaluation import ApplicabilityEvaluation
+from app.models.applicable_control_set import ApplicableControlSet
 from app.models.decision import Decision
+from app.models.evidence_requirement_set import EvidenceRequirementSet
 from app.models.execution_authorization import ExecutionAuthorization
 from app.models.external_execution_result import ExternalExecutionResult
 from app.models.governance_evaluation import GovernanceEvaluation
@@ -178,6 +180,72 @@ class ApplicabilityEvaluationRepository(
         limit: int = 100,
     ) -> Sequence[ApplicabilityEvaluation]:
         """List applicability results for one policy resolution, in order."""
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.policy_resolution_id == policy_resolution_id)
+            .order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+
+class ApplicableControlSetRepository(TenantRepository[ApplicableControlSet]):
+    model = ApplicableControlSet
+
+    def latest_for_resolution(
+        self, organization_id: str, policy_resolution_id: str
+    ) -> Optional[ApplicableControlSet]:
+        """Return the most recent control set for a policy resolution, if any."""
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.policy_resolution_id == policy_resolution_id)
+            .order_by(self.model.created_at.desc())
+            .first()
+        )
+
+    def list_for_resolution(
+        self,
+        organization_id: str,
+        policy_resolution_id: str,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> Sequence[ApplicableControlSet]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.policy_resolution_id == policy_resolution_id)
+            .order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+
+class EvidenceRequirementSetRepository(
+    TenantRepository[EvidenceRequirementSet]
+):
+    model = EvidenceRequirementSet
+
+    def latest_for_resolution(
+        self, organization_id: str, policy_resolution_id: str
+    ) -> Optional[EvidenceRequirementSet]:
+        """Return the most recent evidence set for a policy resolution, if any."""
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.policy_resolution_id == policy_resolution_id)
+            .order_by(self.model.created_at.desc())
+            .first()
+        )
+
+    def list_for_resolution(
+        self,
+        organization_id: str,
+        policy_resolution_id: str,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> Sequence[EvidenceRequirementSet]:
         return (
             self._scoped(organization_id)
             .filter(self.model.policy_resolution_id == policy_resolution_id)
