@@ -846,12 +846,28 @@ class EventDeliveryRepository(TenantRepository[EventDelivery]):
         *,
         channel: Optional[str] = None,
         limit: int = 100,
-    ) -> Sequence[EventDelivery]:
-        """Return PENDING or retryable FAILED deliveries for the tenant.
+    ) -> list[EventDelivery]:
+        """Return the deliveries eligible for dispatch, for the tenant.
 
-        Dead-lettered and already-delivered rows are never returned.
+        A delivery is *deliverable* when it is:
+
+        * ``PENDING``, or
+        * ``FAILED`` and still retryable — i.e. it has not exhausted its
+          attempt budget (``attempts < max_attempts``) and its back-off gate has
+          elapsed (``next_retry_at`` is ``None`` or in the past).
+
+        The following are never returned: ``DELIVERED`` rows, ``DEAD_LETTER``
+        rows, rows at/above the maximum-attempt threshold, and retryable rows
+        whose ``next_retry_at`` is still in the future.
+
+        This is a **read-only** query: it never mutates delivery status (status
+        transitions belong to the dispatch/service layer). Results are ordered
+        deterministically by ``next_retry_at`` (nulls first), then
+        ``created_at``, then ``id``, and the method always returns a list (an
+        empty list when nothing is deliverable) — never ``None``.
         """
         from app.utils.canonical_enums import EventDeliveryStatus
+        from app.utils.timestamps import ensure_aware, utc_now
 
         query = self._scoped(organization_id).filter(
             self.model.status.in_(
@@ -859,13 +875,36 @@ class EventDeliveryRepository(TenantRepository[EventDelivery]):
                     EventDeliveryStatus.PENDING.value,
                     EventDeliveryStatus.FAILED.value,
                 ]
-            )
+            ),
+            # Exclude rows that have exhausted their attempt budget. Column vs.
+            # column comparison is timezone-agnostic and portable.
+            self.model.attempts < self.model.max_attempts,
         )
         if channel is not None:
             query = query.filter(self.model.channel == channel)
-        return (
-            query.order_by(self.model.created_at.asc()).limit(limit).all()
-        )
+
+        # Deterministic ordering: next_retry_at asc (nulls first so freshly
+        # pending rows lead), then created_at asc, then a stable id tie-break.
+        candidates = query.order_by(
+            self.model.next_retry_at.asc(),
+            self.model.created_at.asc(),
+            self.model.id.asc(),
+        ).all()
+
+        # The back-off gate is evaluated in Python with timezone-safe
+        # comparisons so naive timestamps persisted by some backends (e.g.
+        # SQLite) never compare incorrectly against an aware "now".
+        now = utc_now()
+        deliverable: list[EventDelivery] = []
+        for delivery in candidates:
+            if delivery.status == EventDeliveryStatus.FAILED.value:
+                retry_at = ensure_aware(delivery.next_retry_at)
+                if retry_at is not None and retry_at > now:
+                    continue
+            deliverable.append(delivery)
+            if len(deliverable) >= limit:
+                break
+        return deliverable
 
 
 class CanonicalAIProofRepository(TenantRepository[CanonicalAIProof]):

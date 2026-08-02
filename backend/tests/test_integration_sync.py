@@ -14,13 +14,16 @@ Covers the acceptance scenarios:
 from __future__ import annotations
 
 import json
+from datetime import timedelta
 
 import pytest
 
+from app.models.event_delivery import EventDelivery
 from app.repositories.canonical import (
     EventDeliveryRepository,
     IntegrationEventRepository,
 )
+from app.utils.timestamps import utc_now
 from app.services.canonical.integration import (
     dispatcher,
     event_publisher,
@@ -305,8 +308,145 @@ def test_delivery_is_dead_lettered_after_max_attempts(db_session):
 
 
 # --------------------------------------------------------------------------- #
-# Proof supersession propagation
+# EventDeliveryRepository.list_deliverable: eligibility, ordering, scoping
 # --------------------------------------------------------------------------- #
+def _make_delivery(
+    db,
+    *,
+    org=ORG_A,
+    channel=IntegrationChannel.PROOFSYNC,
+    status=EventDeliveryStatus.PENDING,
+    attempts=0,
+    max_attempts=5,
+    next_retry_at=None,
+    event_id="evt-x",
+    created_at=None,
+) -> EventDelivery:
+    """Persist a single EventDelivery row with explicit lifecycle state."""
+    delivery = EventDelivery(
+        organization_id=org,
+        event_id=event_id,
+        integration_event_id="ie-" + event_id,
+        event_type=IntegrationEventType.ASSESSMENT_CREATED.value,
+        channel=channel.value,
+        projection="{}",
+        status=status.value,
+        attempts=attempts,
+        max_attempts=max_attempts,
+        next_retry_at=next_retry_at,
+    )
+    if created_at is not None:
+        delivery.created_at = created_at
+    return EventDeliveryRepository(db).add(delivery)
+
+
+def test_list_deliverable_empty_returns_list(db_session):
+    result = EventDeliveryRepository(db_session).list_deliverable(ORG_A)
+    assert result == []
+
+
+def test_list_deliverable_returns_pending(db_session):
+    d = _make_delivery(db_session, status=EventDeliveryStatus.PENDING)
+    ids = {x.id for x in EventDeliveryRepository(db_session).list_deliverable(ORG_A)}
+    assert d.id in ids
+
+
+def test_list_deliverable_excludes_future_retry(db_session):
+    future = utc_now() + timedelta(minutes=30)
+    d = _make_delivery(
+        db_session,
+        status=EventDeliveryStatus.FAILED,
+        attempts=1,
+        next_retry_at=future,
+    )
+    ids = {x.id for x in EventDeliveryRepository(db_session).list_deliverable(ORG_A)}
+    assert d.id not in ids
+
+
+def test_list_deliverable_returns_due_retry(db_session):
+    past = utc_now() - timedelta(minutes=1)
+    d = _make_delivery(
+        db_session,
+        status=EventDeliveryStatus.FAILED,
+        attempts=1,
+        next_retry_at=past,
+    )
+    ids = {x.id for x in EventDeliveryRepository(db_session).list_deliverable(ORG_A)}
+    assert d.id in ids
+
+
+def test_list_deliverable_excludes_delivered(db_session):
+    d = _make_delivery(db_session, status=EventDeliveryStatus.DELIVERED)
+    ids = {x.id for x in EventDeliveryRepository(db_session).list_deliverable(ORG_A)}
+    assert d.id not in ids
+
+
+def test_list_deliverable_excludes_dead_letter(db_session):
+    d = _make_delivery(
+        db_session, status=EventDeliveryStatus.DEAD_LETTER, attempts=5
+    )
+    ids = {x.id for x in EventDeliveryRepository(db_session).list_deliverable(ORG_A)}
+    assert d.id not in ids
+
+
+def test_list_deliverable_excludes_max_attempts(db_session):
+    # A FAILED row whose attempts have reached max_attempts is not retryable.
+    d = _make_delivery(
+        db_session,
+        status=EventDeliveryStatus.FAILED,
+        attempts=5,
+        max_attempts=5,
+    )
+    ids = {x.id for x in EventDeliveryRepository(db_session).list_deliverable(ORG_A)}
+    assert d.id not in ids
+
+
+def test_list_deliverable_deterministic_ordering(db_session):
+    now = utc_now()
+    # Insert out of order; expect next_retry_at asc (nulls first), then created.
+    later = _make_delivery(
+        db_session,
+        event_id="evt-later",
+        status=EventDeliveryStatus.FAILED,
+        attempts=1,
+        next_retry_at=now - timedelta(minutes=1),
+    )
+    earlier = _make_delivery(
+        db_session,
+        event_id="evt-earlier",
+        status=EventDeliveryStatus.FAILED,
+        attempts=1,
+        next_retry_at=now - timedelta(minutes=5),
+    )
+    pending = _make_delivery(
+        db_session, event_id="evt-pending", status=EventDeliveryStatus.PENDING
+    )
+    ordered = [
+        x.id
+        for x in EventDeliveryRepository(db_session).list_deliverable(ORG_A)
+    ]
+    # Pending (null next_retry_at) leads, then earliest retry, then later retry.
+    assert ordered == [pending.id, earlier.id, later.id]
+
+
+def test_list_deliverable_respects_batch_limit(db_session):
+    for i in range(5):
+        _make_delivery(db_session, event_id=f"evt-{i}")
+    result = EventDeliveryRepository(db_session).list_deliverable(ORG_A, limit=2)
+    assert len(result) == 2
+
+
+def test_list_deliverable_is_tenant_isolated(db_session):
+    _make_delivery(db_session, org=ORG_A, event_id="evt-a")
+    _make_delivery(db_session, org=ORG_B, event_id="evt-b")
+    a_ids = {
+        x.organization_id
+        for x in EventDeliveryRepository(db_session).list_deliverable(ORG_A)
+    }
+    assert a_ids == {ORG_A}
+
+
+
 def test_proof_supersession_propagates_to_all_channels(db_session):
     superseded = EventContract(
         event_type=IntegrationEventType.PROOF_SUPERSEDED,
@@ -373,6 +513,19 @@ def test_feed_rejects_unauthorized_role(api_client):
         headers={"X-Organization-Id": ORG_A, "X-Subscriber-Role": "AUDITOR"},
     )
     assert resp.status_code == 403
+
+
+def test_feed_with_no_matching_items_returns_empty_list(api_client):
+    # An authorized read with no published events yields a valid, empty feed:
+    # `items` is always a list (never None) and `count` is 0.
+    resp = api_client.get(
+        "/api/v1/integration/AUDITSYNC/feed",
+        headers={"X-Organization-Id": ORG_A, "X-Subscriber-Role": "AUDITOR"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["items"] == []
+    assert body["count"] == 0
 
 
 def test_feed_returns_scoped_projections_via_api(api_client):
