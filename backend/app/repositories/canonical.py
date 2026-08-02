@@ -26,6 +26,11 @@ from app.models.canonical_evidence_package import CanonicalEvidencePackage
 from app.models.evidence_sufficiency import EvidenceSufficiency
 from app.models.control_evaluation import ControlEvaluation
 from app.models.assessment import Assessment
+from app.models.finding import Finding
+from app.models.remediation_plan import RemediationPlan
+from app.models.resolution_evidence import ResolutionEvidence
+from app.models.devsync_dispatch import DevSyncDispatch
+from app.models.review_record import ReviewRecord
 from app.models.execution_authorization import ExecutionAuthorization
 from app.models.external_execution_result import ExternalExecutionResult
 from app.models.governance_evaluation import GovernanceEvaluation
@@ -557,5 +562,130 @@ class AssessmentRepository(TenantRepository[Assessment]):
             .order_by(self.model.created_at.asc())
             .offset(skip)
             .limit(limit)
+            .all()
+        )
+
+
+# --------------------------------------------------------------------------- #
+# Finding / Remediation branch repositories
+# --------------------------------------------------------------------------- #
+class FindingRepository(TenantRepository[Finding]):
+    model = Finding
+
+    def list_filtered(
+        self,
+        organization_id: str,
+        *,
+        status: Optional[str] = None,
+        finding_type: Optional[str] = None,
+        decision_id: Optional[str] = None,
+        intent_id: Optional[str] = None,
+        owner: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> Sequence[Finding]:
+        query = self._scoped(organization_id)
+        if status is not None:
+            query = query.filter(self.model.status == status)
+        if finding_type is not None:
+            query = query.filter(self.model.finding_type == finding_type)
+        if decision_id is not None:
+            query = query.filter(self.model.decision_id == decision_id)
+        if intent_id is not None:
+            query = query.filter(self.model.intent_id == intent_id)
+        if owner is not None:
+            query = query.filter(self.model.owner == owner)
+        return (
+            query.order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def list_for_decision(
+        self, organization_id: str, decision_id: str
+    ) -> Sequence[Finding]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.decision_id == decision_id)
+            .order_by(self.model.created_at.asc())
+            .all()
+        )
+
+    def get_by_finding_id(
+        self, organization_id: str, finding_id: str
+    ) -> Optional[Finding]:
+        return self.find_one(organization_id, finding_id=finding_id)
+
+
+class RemediationPlanRepository(TenantRepository[RemediationPlan]):
+    model = RemediationPlan
+
+    def list_for_finding(
+        self, organization_id: str, finding_id: str
+    ) -> Sequence[RemediationPlan]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.finding_id == finding_id)
+            .order_by(self.model.created_at.asc())
+            .all()
+        )
+
+    def latest_for_finding(
+        self, organization_id: str, finding_id: str
+    ) -> Optional[RemediationPlan]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.finding_id == finding_id)
+            .order_by(self.model.created_at.desc())
+            .first()
+        )
+
+
+class ResolutionEvidenceRepository(TenantRepository[ResolutionEvidence]):
+    model = ResolutionEvidence
+
+    def list_for_finding(
+        self, organization_id: str, finding_id: str
+    ) -> Sequence[ResolutionEvidence]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.finding_id == finding_id)
+            .order_by(self.model.created_at.asc())
+            .all()
+        )
+
+
+class DevSyncDispatchRepository(TenantRepository[DevSyncDispatch]):
+    model = DevSyncDispatch
+
+    def get_by_callback_reference(
+        self, organization_id: str, callback_reference: str
+    ) -> Optional[DevSyncDispatch]:
+        return self.find_one(
+            organization_id, callback_reference=callback_reference
+        )
+
+    def list_for_finding(
+        self, organization_id: str, finding_id: str
+    ) -> Sequence[DevSyncDispatch]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.finding_id == finding_id)
+            .order_by(self.model.created_at.asc())
+            .all()
+        )
+
+
+class ReviewRecordRepository(TenantRepository[ReviewRecord]):
+    model = ReviewRecord
+
+    def list_for_finding(
+        self, organization_id: str, finding_id: str
+    ) -> Sequence[ReviewRecord]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.finding_id == finding_id)
+            .order_by(self.model.created_at.asc())
             .all()
         )

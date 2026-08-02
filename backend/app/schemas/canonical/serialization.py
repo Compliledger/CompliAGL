@@ -105,6 +105,29 @@ _JSON_FIELDS: dict[str, tuple[str, ...]] = {
         "invalid_evidence",
         "reason_codes",
     ),
+    "Finding": (
+        "requirement_ids",
+        "control_ids",
+        "evidence_gap_ids",
+        "reason_codes",
+    ),
+    "RemediationPlan": (
+        "remediation_actions",
+        "required_resolution_evidence",
+        "dependencies",
+    ),
+    "ResolutionEvidence": (
+        "payload",
+        "claims",
+        "provenance",
+        "validation_checks",
+        "normalized_claims",
+        "reason_codes",
+    ),
+    "DevSyncDispatch": (
+        "payload",
+        "callbacks",
+    ),
 }
 
 

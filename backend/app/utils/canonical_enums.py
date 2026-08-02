@@ -467,3 +467,141 @@ class AssessmentOutcome(str, Enum):
     NOT_SATISFIED = "NOT_SATISFIED"
     NOT_EVALUABLE = "NOT_EVALUABLE"
     MANUAL_REVIEW_REQUIRED = "MANUAL_REVIEW_REQUIRED"
+
+
+# --------------------------------------------------------------------------- #
+# Finding, Remediation, Resolution and DevSync vocabulary
+# --------------------------------------------------------------------------- #
+class FindingType(str, Enum):
+    """Classification of why a governance finding was raised.
+
+    A **Finding** is a first-class, persistent record created when an assessment
+    or decision is not satisfied / not evaluable / requires manual review /
+    denied / escalated (subject to governance-package configuration).
+    """
+
+    CONTROL_FAILURE = "CONTROL_FAILURE"
+    EVIDENCE_GAP = "EVIDENCE_GAP"
+    INVALID_EVIDENCE = "INVALID_EVIDENCE"
+    POLICY_PROHIBITION = "POLICY_PROHIBITION"
+    MANUAL_REVIEW = "MANUAL_REVIEW"
+    OPERATIONAL_STATE_CONFLICT = "OPERATIONAL_STATE_CONFLICT"
+    AUTHORITY_FAILURE = "AUTHORITY_FAILURE"
+    OTHER = "OTHER"
+
+
+class FindingStatus(str, Enum):
+    """Lifecycle status of a finding.
+
+    ``RESOLVED_PENDING_VALIDATION`` is deliberately distinct from ``CLOSED``:
+    marking remediation complete is *not* proof of resolution. A finding only
+    reaches ``CLOSED`` after validated resolution evidence and a new deterministic
+    decision. ``TERMINATED`` is the terminal state for a non-remediable finding.
+    """
+
+    OPEN = "OPEN"
+    ASSIGNED = "ASSIGNED"
+    IN_PROGRESS = "IN_PROGRESS"
+    BLOCKED = "BLOCKED"
+    RESOLVED_PENDING_VALIDATION = "RESOLVED_PENDING_VALIDATION"
+    VALIDATION_FAILED = "VALIDATION_FAILED"
+    CLOSED = "CLOSED"
+    ACCEPTED_RISK = "ACCEPTED_RISK"
+    TERMINATED = "TERMINATED"
+
+
+class FindingDecisionImpact(str, Enum):
+    """The effect the finding's underlying condition had on the decision."""
+
+    DENIED = "DENIED"
+    ESCALATED = "ESCALATED"
+    MANUAL_REVIEW_REQUIRED = "MANUAL_REVIEW_REQUIRED"
+    NOT_EVALUABLE = "NOT_EVALUABLE"
+    ADVISORY = "ADVISORY"
+
+
+class RemediationEligibility(str, Enum):
+    """Whether a finding may be remediated at all.
+
+    Not every denial is remediable. A terminal policy prohibition is
+    ``INELIGIBLE`` and can never be resolved into an authorization.
+    """
+
+    ELIGIBLE = "ELIGIBLE"
+    CONDITIONAL = "CONDITIONAL"
+    INELIGIBLE = "INELIGIBLE"
+
+
+class RemediationPlanStatus(str, Enum):
+    """Lifecycle status of a remediation plan."""
+
+    DRAFT = "DRAFT"
+    OPEN = "OPEN"
+    IN_PROGRESS = "IN_PROGRESS"
+    BLOCKED = "BLOCKED"
+    DISPATCHED = "DISPATCHED"
+    REMEDIATION_COMPLETE = "REMEDIATION_COMPLETE"
+    VALIDATED = "VALIDATED"
+    VALIDATION_FAILED = "VALIDATION_FAILED"
+    CANCELLED = "CANCELLED"
+
+
+class RemediationPriority(str, Enum):
+    """Priority of a remediation plan."""
+
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    URGENT = "URGENT"
+
+
+class ResolutionValidationOutcome(str, Enum):
+    """Deterministic outcome of validating a finding's resolution.
+
+    ``VALIDATED`` requires sufficient *validated* resolution evidence. It is
+    never produced from a mere "remediation complete" signal — marking
+    remediation complete is not proof of resolution.
+    """
+
+    VALIDATED = "VALIDATED"
+    REJECTED = "REJECTED"
+    INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
+    NOT_EVALUABLE = "NOT_EVALUABLE"
+
+
+class DevSyncDispatchStatus(str, Enum):
+    """Outbound dispatch status of a DevSync payload.
+
+    DevSync is an *integration surface*, never the source of truth for
+    governance. CompliAGL retains the canonical finding and remediation state.
+    """
+
+    PENDING = "PENDING"
+    DISPATCHED = "DISPATCHED"
+    ACKNOWLEDGED = "ACKNOWLEDGED"
+    FAILED = "FAILED"
+
+
+class DevSyncCallbackStatus(str, Enum):
+    """Inbound status a DevSync system reports for a dispatched finding."""
+
+    RECEIVED = "RECEIVED"
+    IN_PROGRESS = "IN_PROGRESS"
+    BLOCKED = "BLOCKED"
+    COMPLETED = "COMPLETED"
+    REJECTED = "REJECTED"
+
+
+class ReviewType(str, Enum):
+    """Kind of human review that produced a review record."""
+
+    MANUAL_REVIEW = "MANUAL_REVIEW"
+    ESCALATION_APPROVAL = "ESCALATION_APPROVAL"
+
+
+class ReviewOutcome(str, Enum):
+    """Outcome recorded by a human reviewer."""
+
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    NEEDS_MORE_INFO = "NEEDS_MORE_INFO"
