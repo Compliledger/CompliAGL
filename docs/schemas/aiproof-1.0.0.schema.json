@@ -1,0 +1,1784 @@
+{
+  "$defs": {
+    "AIProofStatus": {
+      "description": "Lifecycle status of an AIProof envelope.\n\nThe proof *content* is immutable once generated; the status tracks the\nproof's journey from generation through the CompliLedger handoff.",
+      "enum": [
+        "GENERATED",
+        "SIGNED",
+        "SUBMITTED_TO_COMPLILEDGER",
+        "ACCEPTED_BY_COMPLILEDGER",
+        "REJECTED_BY_COMPLILEDGER",
+        "SUPERSEDED",
+        "REVOKED"
+      ],
+      "title": "AIProofStatus",
+      "type": "string"
+    },
+    "ActorIdentityRef": {
+      "additionalProperties": false,
+      "description": "(2) Actor Identity \u2014 canonical projection, no secrets.",
+      "properties": {
+        "actor_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Actor Hash"
+        },
+        "actor_identity_id": {
+          "title": "Actor Identity Id",
+          "type": "string"
+        },
+        "actor_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Actor Type"
+        },
+        "credential_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Credential Type"
+        },
+        "revocation_status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revocation Status"
+        },
+        "verification_status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verification Status"
+        }
+      },
+      "required": [
+        "actor_identity_id"
+      ],
+      "title": "ActorIdentityRef",
+      "type": "object"
+    },
+    "ApplicabilityEvaluationRef": {
+      "additionalProperties": false,
+      "description": "(8) Applicability Evaluation (per requirement).",
+      "properties": {
+        "applicability_evaluation_id": {
+          "title": "Applicability Evaluation Id",
+          "type": "string"
+        },
+        "package_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Package Id"
+        },
+        "package_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Package Version"
+        },
+        "requirement_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requirement Id"
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Result"
+        },
+        "result_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Result Hash"
+        }
+      },
+      "required": [
+        "applicability_evaluation_id"
+      ],
+      "title": "ApplicabilityEvaluationRef",
+      "type": "object"
+    },
+    "ApplicableControlSetRef": {
+      "additionalProperties": false,
+      "description": "(9) Applicable Controls.",
+      "properties": {
+        "applicable_control_set_id": {
+          "title": "Applicable Control Set Id",
+          "type": "string"
+        },
+        "control_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Control Ids",
+          "type": "array"
+        },
+        "engine_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Engine Version"
+        },
+        "result_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Result Hash"
+        }
+      },
+      "required": [
+        "applicable_control_set_id"
+      ],
+      "title": "ApplicableControlSetRef",
+      "type": "object"
+    },
+    "AssessmentRef": {
+      "additionalProperties": false,
+      "description": "(16) Assessment.",
+      "properties": {
+        "assessment_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assessment Hash"
+        },
+        "assessment_id": {
+          "title": "Assessment Id",
+          "type": "string"
+        },
+        "engine_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Engine Version"
+        },
+        "overall_result": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Overall Result"
+        }
+      },
+      "required": [
+        "assessment_id"
+      ],
+      "title": "AssessmentRef",
+      "type": "object"
+    },
+    "CanonicalEvidencePackageRef": {
+      "additionalProperties": false,
+      "description": "(13) Canonical Evidence Package hash.",
+      "properties": {
+        "canonical_evidence_package_id": {
+          "title": "Canonical Evidence Package Id",
+          "type": "string"
+        },
+        "evidence_package_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Evidence Package Hash"
+        }
+      },
+      "required": [
+        "canonical_evidence_package_id"
+      ],
+      "title": "CanonicalEvidencePackageRef",
+      "type": "object"
+    },
+    "ControlEvaluationRef": {
+      "additionalProperties": false,
+      "description": "(15) Control Evaluation (per control).",
+      "properties": {
+        "control_evaluation_id": {
+          "title": "Control Evaluation Id",
+          "type": "string"
+        },
+        "control_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Control Id"
+        },
+        "control_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Control Version"
+        },
+        "mandatory": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mandatory"
+        },
+        "package_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Package Id"
+        },
+        "package_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Package Version"
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Result"
+        },
+        "result_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Result Hash"
+        }
+      },
+      "required": [
+        "control_evaluation_id"
+      ],
+      "title": "ControlEvaluationRef",
+      "type": "object"
+    },
+    "DecisionRef": {
+      "additionalProperties": false,
+      "description": "(17) Deterministic Decision.",
+      "properties": {
+        "decision_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Decision Hash"
+        },
+        "decision_id": {
+          "title": "Decision Id",
+          "type": "string"
+        },
+        "engine_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Engine Version"
+        },
+        "outcome": {
+          "title": "Outcome",
+          "type": "string"
+        },
+        "policy_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Policy Version"
+        },
+        "prior_decision_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prior Decision Id"
+        },
+        "reason_codes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "supersession_status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersession Status"
+        }
+      },
+      "required": [
+        "decision_id",
+        "outcome"
+      ],
+      "title": "DecisionRef",
+      "type": "object"
+    },
+    "EvidenceReference": {
+      "additionalProperties": false,
+      "description": "(11) Evidence reference \u2014 id, hash, classification, secure retrieval.\n\nSensitive payloads and PII are **never** placed here. Only the evidence id,\nhash, source classification, validation outcome and an access-controlled\nsecure retrieval reference are recorded.",
+      "properties": {
+        "evidence_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Evidence Hash"
+        },
+        "evidence_id": {
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "evidence_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Evidence Type"
+        },
+        "secure_retrieval_reference": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Secure Retrieval Reference"
+        },
+        "source_classification": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Classification"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Id"
+        },
+        "source_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Type"
+        },
+        "validation_outcome": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Validation Outcome"
+        }
+      },
+      "required": [
+        "evidence_id"
+      ],
+      "title": "EvidenceReference",
+      "type": "object"
+    },
+    "EvidenceRequirementSetRef": {
+      "additionalProperties": false,
+      "description": "(10) Evidence Requirements.",
+      "properties": {
+        "engine_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Engine Version"
+        },
+        "evidence_requirement_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Requirement Ids",
+          "type": "array"
+        },
+        "evidence_requirement_set_id": {
+          "title": "Evidence Requirement Set Id",
+          "type": "string"
+        },
+        "result_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Result Hash"
+        }
+      },
+      "required": [
+        "evidence_requirement_set_id"
+      ],
+      "title": "EvidenceRequirementSetRef",
+      "type": "object"
+    },
+    "EvidenceSufficiencyRef": {
+      "additionalProperties": false,
+      "description": "(14) Evidence Sufficiency.",
+      "properties": {
+        "engine_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Engine Version"
+        },
+        "evidence_sufficiency_id": {
+          "title": "Evidence Sufficiency Id",
+          "type": "string"
+        },
+        "overall_result": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Overall Result"
+        },
+        "result_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Result Hash"
+        }
+      },
+      "required": [
+        "evidence_sufficiency_id"
+      ],
+      "title": "EvidenceSufficiencyRef",
+      "type": "object"
+    },
+    "EvidenceValidationRef": {
+      "additionalProperties": false,
+      "description": "(12) Evidence validation result.",
+      "properties": {
+        "evidence_requirement_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Evidence Requirement Id"
+        },
+        "evidence_validation_result_id": {
+          "title": "Evidence Validation Result Id",
+          "type": "string"
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Outcome"
+        },
+        "raw_evidence_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Evidence Id"
+        },
+        "result_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Result Hash"
+        }
+      },
+      "required": [
+        "evidence_validation_result_id"
+      ],
+      "title": "EvidenceValidationRef",
+      "type": "object"
+    },
+    "ExecutionAuthorizationRef": {
+      "additionalProperties": false,
+      "description": "(20) Execution Authorization (where applicable).",
+      "properties": {
+        "authorization_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Authorization Hash"
+        },
+        "authorized_action": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Authorized Action"
+        },
+        "execution_authorization_id": {
+          "title": "Execution Authorization Id",
+          "type": "string"
+        },
+        "max_amount_currency": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Amount Currency"
+        },
+        "max_amount_minor": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Amount Minor"
+        },
+        "signer_key_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Signer Key Id"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status"
+        }
+      },
+      "required": [
+        "execution_authorization_id"
+      ],
+      "title": "ExecutionAuthorizationRef",
+      "type": "object"
+    },
+    "ExternalExecutionResultRef": {
+      "additionalProperties": false,
+      "description": "(21) External Execution Result (where applicable).",
+      "properties": {
+        "adapter": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Adapter"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error"
+        },
+        "external_execution_result_id": {
+          "title": "External Execution Result Id",
+          "type": "string"
+        },
+        "external_reference": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "External Reference"
+        },
+        "settlement_chain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Settlement Chain"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status"
+        }
+      },
+      "required": [
+        "external_execution_result_id"
+      ],
+      "title": "ExternalExecutionResultRef",
+      "type": "object"
+    },
+    "FindingRef": {
+      "additionalProperties": false,
+      "description": "(18) Finding (where applicable).",
+      "properties": {
+        "decision_impact": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Decision Impact"
+        },
+        "finding_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finding Hash"
+        },
+        "finding_id": {
+          "title": "Finding Id",
+          "type": "string"
+        },
+        "finding_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finding Type"
+        },
+        "severity": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Severity"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status"
+        },
+        "terminal": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Terminal"
+        }
+      },
+      "required": [
+        "finding_id"
+      ],
+      "title": "FindingRef",
+      "type": "object"
+    },
+    "GovernancePackageRef": {
+      "additionalProperties": false,
+      "description": "(6) Governance package id + version.",
+      "properties": {
+        "package_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Package Hash"
+        },
+        "package_id": {
+          "title": "Package Id",
+          "type": "string"
+        },
+        "package_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Package Name"
+        },
+        "package_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Package Version"
+        }
+      },
+      "required": [
+        "package_id"
+      ],
+      "title": "GovernancePackageRef",
+      "type": "object"
+    },
+    "GovernedOutcome": {
+      "description": "The category of governed outcome an AIProof attests to.",
+      "enum": [
+        "APPROVED_AND_EXECUTED",
+        "APPROVED_BUT_EXECUTION_FAILED",
+        "DENIED",
+        "ESCALATED",
+        "REMEDIATED_AND_REEVALUATED",
+        "TERMINATED"
+      ],
+      "title": "GovernedOutcome",
+      "type": "string"
+    },
+    "IntentRef": {
+      "additionalProperties": false,
+      "description": "(3) Intent.",
+      "properties": {
+        "action": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Action"
+        },
+        "amount_currency": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Amount Currency"
+        },
+        "amount_minor": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Amount Minor"
+        },
+        "intent_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Intent Hash"
+        },
+        "intent_id": {
+          "title": "Intent Id",
+          "type": "string"
+        },
+        "intent_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Intent Type"
+        },
+        "requested_outcome": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requested Outcome"
+        }
+      },
+      "required": [
+        "intent_id"
+      ],
+      "title": "IntentRef",
+      "type": "object"
+    },
+    "OperationalContextRef": {
+      "additionalProperties": false,
+      "description": "(5) Current Operational Context.",
+      "properties": {
+        "business_unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Business Unit"
+        },
+        "context_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Context Hash"
+        },
+        "environment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Environment"
+        },
+        "jurisdiction": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Jurisdiction"
+        },
+        "operational_context_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Operational Context Id"
+        }
+      },
+      "title": "OperationalContextRef",
+      "type": "object"
+    },
+    "PolicyResolutionRef": {
+      "additionalProperties": false,
+      "description": "(7) Policy Resolution.",
+      "properties": {
+        "engine_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Engine Version"
+        },
+        "policy_resolution_id": {
+          "title": "Policy Resolution Id",
+          "type": "string"
+        },
+        "result_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Result Hash"
+        },
+        "selected_package_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Selected Package Ids",
+          "type": "array"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status"
+        }
+      },
+      "required": [
+        "policy_resolution_id"
+      ],
+      "title": "PolicyResolutionRef",
+      "type": "object"
+    },
+    "ProofMetadata": {
+      "additionalProperties": false,
+      "description": "(1) Proof metadata.",
+      "properties": {
+        "aiproof_id": {
+          "title": "Aiproof Id",
+          "type": "string"
+        },
+        "correlation_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Correlation Id"
+        },
+        "governance_evaluation_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Governance Evaluation Id"
+        },
+        "governed_outcome": {
+          "$ref": "#/$defs/GovernedOutcome"
+        },
+        "organization_id": {
+          "title": "Organization Id",
+          "type": "string"
+        },
+        "proof_type": {
+          "default": "compliagl.aiproof",
+          "title": "Proof Type",
+          "type": "string"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "aiproof_id",
+        "organization_id",
+        "governed_outcome"
+      ],
+      "title": "ProofMetadata",
+      "type": "object"
+    },
+    "ProofTimestamps": {
+      "additionalProperties": false,
+      "description": "(23) Timestamps.",
+      "properties": {
+        "authorized_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Authorized At"
+        },
+        "context_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Context At"
+        },
+        "decided_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Decided At"
+        },
+        "executed_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Executed At"
+        },
+        "generated_at": {
+          "title": "Generated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "generated_at"
+      ],
+      "title": "ProofTimestamps",
+      "type": "object"
+    },
+    "RemediationLineage": {
+      "additionalProperties": false,
+      "description": "(19) Remediation and resolution lineage (where applicable).",
+      "properties": {
+        "prior_decision_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prior Decision Id"
+        },
+        "remediation_plan_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Remediation Plan Ids",
+          "type": "array"
+        },
+        "resolution_evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Resolution Evidence Ids",
+          "type": "array"
+        },
+        "resolved_by_decision_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resolved By Decision Id"
+        },
+        "resolved_finding_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Resolved Finding Ids",
+          "type": "array"
+        }
+      },
+      "title": "RemediationLineage",
+      "type": "object"
+    },
+    "TargetRef": {
+      "additionalProperties": false,
+      "description": "(4) Target.",
+      "properties": {
+        "classification": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Classification"
+        },
+        "target_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Hash"
+        },
+        "target_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Id"
+        },
+        "target_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Type"
+        },
+        "trust_status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trust Status"
+        }
+      },
+      "title": "TargetRef",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.compliagl.com/aiproof/1.0.0/aiproof.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The single canonical CompliAGL AIProof.",
+  "properties": {
+    "actor_identity": {
+      "$ref": "#/$defs/ActorIdentityRef"
+    },
+    "aiproof_hash": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Aiproof Hash"
+    },
+    "applicability_evaluations": {
+      "items": {
+        "$ref": "#/$defs/ApplicabilityEvaluationRef"
+      },
+      "title": "Applicability Evaluations",
+      "type": "array"
+    },
+    "applicable_controls": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ApplicableControlSetRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "assessment": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AssessmentRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "canonical_evidence_package": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CanonicalEvidencePackageRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "canonicalization_algorithm": {
+      "title": "Canonicalization Algorithm",
+      "type": "string"
+    },
+    "component_hashes": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Component Hashes",
+      "type": "object"
+    },
+    "control_evaluations": {
+      "items": {
+        "$ref": "#/$defs/ControlEvaluationRef"
+      },
+      "title": "Control Evaluations",
+      "type": "array"
+    },
+    "decision": {
+      "$ref": "#/$defs/DecisionRef"
+    },
+    "engine_versions": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Engine Versions",
+      "type": "object"
+    },
+    "evidence_references": {
+      "items": {
+        "$ref": "#/$defs/EvidenceReference"
+      },
+      "title": "Evidence References",
+      "type": "array"
+    },
+    "evidence_requirements": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EvidenceRequirementSetRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "evidence_sufficiency": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EvidenceSufficiencyRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "evidence_validation_results": {
+      "items": {
+        "$ref": "#/$defs/EvidenceValidationRef"
+      },
+      "title": "Evidence Validation Results",
+      "type": "array"
+    },
+    "execution_authorization": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ExecutionAuthorizationRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "external_execution_result": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ExternalExecutionResultRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "findings": {
+      "items": {
+        "$ref": "#/$defs/FindingRef"
+      },
+      "title": "Findings",
+      "type": "array"
+    },
+    "governance_packages": {
+      "items": {
+        "$ref": "#/$defs/GovernancePackageRef"
+      },
+      "title": "Governance Packages",
+      "type": "array"
+    },
+    "hash_algorithm": {
+      "title": "Hash Algorithm",
+      "type": "string"
+    },
+    "intent": {
+      "$ref": "#/$defs/IntentRef"
+    },
+    "issuer": {
+      "title": "Issuer",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ProofMetadata"
+    },
+    "operational_context": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/OperationalContextRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "policy_resolution": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PolicyResolutionRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "prior_aiproof_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Prior Aiproof Id"
+    },
+    "remediation_lineage": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RemediationLineage"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "signature": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Signature"
+    },
+    "signer_key_id": {
+      "title": "Signer Key Id",
+      "type": "string"
+    },
+    "status": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/AIProofStatus"
+        }
+      ],
+      "default": "GENERATED"
+    },
+    "superseded_aiproof_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Superseded Aiproof Ids",
+      "type": "array"
+    },
+    "target": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TargetRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "timestamps": {
+      "$ref": "#/$defs/ProofTimestamps"
+    }
+  },
+  "required": [
+    "canonicalization_algorithm",
+    "hash_algorithm",
+    "metadata",
+    "actor_identity",
+    "intent",
+    "decision",
+    "timestamps",
+    "issuer",
+    "signer_key_id"
+  ],
+  "title": "CompliAGL AIProof",
+  "type": "object",
+  "x-aiproof-schema-version": "1.0.0"
+}

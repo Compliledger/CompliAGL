@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.models.actor_identity import ActorIdentity
 from app.models.applicability_evaluation import ApplicabilityEvaluation
 from app.models.applicable_control_set import ApplicableControlSet
+from app.models.canonical_aiproof import CanonicalAIProof
 from app.models.decision import Decision
 from app.models.evidence_requirement_set import EvidenceRequirementSet
 from app.models.evidence_source import EvidenceSource
@@ -687,5 +688,44 @@ class ReviewRecordRepository(TenantRepository[ReviewRecord]):
             self._scoped(organization_id)
             .filter(self.model.finding_id == finding_id)
             .order_by(self.model.created_at.asc())
+            .all()
+        )
+
+
+class CanonicalAIProofRepository(TenantRepository[CanonicalAIProof]):
+    model = CanonicalAIProof
+
+    def get_by_hash(
+        self, organization_id: str, aiproof_hash: str
+    ) -> Optional[CanonicalAIProof]:
+        return self.find_one(organization_id, aiproof_hash=aiproof_hash)
+
+    def list_by(
+        self,
+        organization_id: str,
+        *,
+        intent_id: Optional[str] = None,
+        actor_identity_id: Optional[str] = None,
+        governance_evaluation_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> Sequence[CanonicalAIProof]:
+        """List proofs in the tenant filtered by optional lifecycle references."""
+        query = self._scoped(organization_id)
+        if intent_id is not None:
+            query = query.filter(self.model.intent_id == intent_id)
+        if actor_identity_id is not None:
+            query = query.filter(self.model.actor_identity_id == actor_identity_id)
+        if governance_evaluation_id is not None:
+            query = query.filter(
+                self.model.governance_evaluation_id == governance_evaluation_id
+            )
+        if correlation_id is not None:
+            query = query.filter(self.model.correlation_id == correlation_id)
+        return (
+            query.order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
             .all()
         )

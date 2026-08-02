@@ -58,6 +58,22 @@ class Settings(BaseSettings):
     # authorizations should be short-lived.
     AUTHORIZATION_DEFAULT_TTL_SECONDS: int = 900
 
+    # ── AIProof signing ──────────────────────────────────────────────
+    # Registry of signing keys used to sign and independently verify canonical
+    # AIProofs, as a mapping of ``signer_key_id`` to a private signing secret.
+    # These are **private signing keys** and MUST be supplied through
+    # environment-backed secret management — never committed to source. When
+    # empty, the service derives a single deterministic development key from
+    # ``SECRET_KEY`` so AIProofs are always signable. See
+    # ``app/services/canonical/aiproof/signing.py`` for the documented interface.
+    AIPROOF_SIGNING_KEYS: dict[str, str] = {}
+    # The ``signer_key_id`` used to sign newly generated AIProofs. When empty the
+    # first configured key (or the SECRET_KEY-derived development key) is used.
+    AIPROOF_ACTIVE_SIGNER_KEY_ID: str = ""
+    # Logical issuer identity stamped into every AIProof (the CompliAGL instance
+    # that generated and signed it).
+    AIPROOF_ISSUER: str = "CompliAGL"
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 
