@@ -18,7 +18,11 @@ from app.api.routes.approvals import router as approvals_router
 from app.api.routes.audit import router as audit_router
 from app.api.routes.proofs import router as proofs_router
 from app.api.routes.dashboard import router as dashboard_router
+# --- Compli402 public API (prefix already set in the router) ---
 from app.api.routes.compli402 import router as compli402_router
+
+# --- Canonical v1 API (first-class runtime domain objects) ---
+from app.api.v1.router import api_v1_router
 
 # --- MVP 2 route imports (DEPRECATED — in-memory demo surface) ---
 from app.mvp2.api.routes.decision import router as mvp2_decision_router
@@ -90,6 +94,9 @@ app.include_router(mvp2_proof_router)
 
 # --- Compli402 public API (prefix already set in the router) ---
 app.include_router(compli402_router)
+
+# --- Canonical v1 API (prefix /api/v1 set on the aggregate router) ---
+app.include_router(api_v1_router)
 
 
 @app.get("/", tags=["root"])
