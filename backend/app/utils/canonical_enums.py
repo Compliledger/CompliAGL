@@ -160,3 +160,48 @@ class ExecutionResultStatus(str, Enum):
     SUBMITTED = "SUBMITTED"
     CONFIRMED = "CONFIRMED"
     FAILED = "FAILED"
+
+
+# --------------------------------------------------------------------------- #
+# Executable governance package vocabulary
+# --------------------------------------------------------------------------- #
+class PackageStatus(str, Enum):
+    """Lifecycle status of an executable governance package.
+
+    Packages are authored by CompliLedger, validated and approved, then
+    published to CompliAGL as immutable, versioned, executable governance.
+    """
+
+    DRAFT = "DRAFT"
+    VALIDATED = "VALIDATED"
+    APPROVED = "APPROVED"
+    PUBLISHED = "PUBLISHED"
+    SUPERSEDED = "SUPERSEDED"
+    RETIRED = "RETIRED"
+    REJECTED = "REJECTED"
+
+
+class RequirementClassification(str, Enum):
+    """Deontic classification of a requirement."""
+
+    OBLIGATION = "OBLIGATION"
+    PROHIBITION = "PROHIBITION"
+    PERMISSION = "PERMISSION"
+
+
+class ControlFailureDisposition(str, Enum):
+    """What a failed control does to a runtime decision."""
+
+    DENY = "DENY"
+    ESCALATE = "ESCALATE"
+    FLAG = "FLAG"
+    ALLOW_WITH_REMEDIATION = "ALLOW_WITH_REMEDIATION"
+
+
+class GovernanceSeverity(str, Enum):
+    """Severity classification shared by requirements and controls."""
+
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"

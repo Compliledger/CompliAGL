@@ -16,6 +16,7 @@ from app.models.decision import Decision
 from app.models.execution_authorization import ExecutionAuthorization
 from app.models.external_execution_result import ExternalExecutionResult
 from app.models.governance_evaluation import GovernanceEvaluation
+from app.models.governance_package import ExecutableGovernancePackage
 from app.models.intent import Intent
 from app.models.operational_context import OperationalContext
 from app.models.target import Target
@@ -113,3 +114,45 @@ class ExecutionAuthorizationRepository(TenantRepository[ExecutionAuthorization])
 
 class ExternalExecutionResultRepository(TenantRepository[ExternalExecutionResult]):
     model = ExternalExecutionResult
+
+
+class ExecutableGovernancePackageRepository(
+    TenantRepository[ExecutableGovernancePackage]
+):
+    model = ExecutableGovernancePackage
+
+    def list_filtered(
+        self,
+        organization_id: str,
+        *,
+        package_name: Optional[str] = None,
+        status: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> Sequence[ExecutableGovernancePackage]:
+        """List packages in the tenant, optionally filtered by name/status."""
+        query = self._scoped(organization_id)
+        if package_name is not None:
+            query = query.filter(self.model.package_name == package_name)
+        if status is not None:
+            query = query.filter(self.model.status == status)
+        return (
+            query.order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def get_published(
+        self, organization_id: str, package_name: str, package_version: str
+    ) -> Optional[ExecutableGovernancePackage]:
+        """Return the PUBLISHED package for a given name + version, if any."""
+        from app.utils.canonical_enums import PackageStatus
+
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.package_name == package_name)
+            .filter(self.model.package_version == package_version)
+            .filter(self.model.status == PackageStatus.PUBLISHED.value)
+            .first()
+        )

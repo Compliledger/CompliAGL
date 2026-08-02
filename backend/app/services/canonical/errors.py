@@ -25,3 +25,19 @@ class InvalidTransitionError(CanonicalError):
         super().__init__(
             f"Invalid {entity} transition: {current} -> {requested}"
         )
+
+
+class PackageValidationError(CanonicalError):
+    """A governance package failed contract validation."""
+
+    def __init__(self, errors: list[str]) -> None:
+        self.errors = errors
+        super().__init__("; ".join(errors) if errors else "package validation failed")
+
+
+class PackageImmutableError(CanonicalError):
+    """An attempt was made to mutate immutable/published package content."""
+
+
+class PackageSignatureError(CanonicalError):
+    """A governance package presented an invalid or missing signature."""
