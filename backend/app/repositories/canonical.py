@@ -12,6 +12,7 @@ from typing import Generic, Optional, Sequence, Type, TypeVar
 from sqlalchemy.orm import Session
 
 from app.models.actor_identity import ActorIdentity
+from app.models.applicability_evaluation import ApplicabilityEvaluation
 from app.models.decision import Decision
 from app.models.execution_authorization import ExecutionAuthorization
 from app.models.external_execution_result import ExternalExecutionResult
@@ -19,6 +20,7 @@ from app.models.governance_evaluation import GovernanceEvaluation
 from app.models.governance_package import ExecutableGovernancePackage
 from app.models.intent import Intent
 from app.models.operational_context import OperationalContext
+from app.models.policy_resolution import PolicyResolution
 from app.models.target import Target
 
 ModelT = TypeVar("ModelT")
@@ -155,4 +157,32 @@ class ExecutableGovernancePackageRepository(
             .filter(self.model.package_version == package_version)
             .filter(self.model.status == PackageStatus.PUBLISHED.value)
             .first()
+        )
+
+
+class PolicyResolutionRepository(TenantRepository[PolicyResolution]):
+    model = PolicyResolution
+
+
+class ApplicabilityEvaluationRepository(
+    TenantRepository[ApplicabilityEvaluation]
+):
+    model = ApplicabilityEvaluation
+
+    def list_for_resolution(
+        self,
+        organization_id: str,
+        policy_resolution_id: str,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> Sequence[ApplicabilityEvaluation]:
+        """List applicability results for one policy resolution, in order."""
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.policy_resolution_id == policy_resolution_id)
+            .order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
         )
