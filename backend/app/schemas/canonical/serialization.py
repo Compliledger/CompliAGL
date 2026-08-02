@@ -28,8 +28,17 @@ _JSON_FIELDS: dict[str, tuple[str, ...]] = {
         "source_references",
     ),
     "GovernanceEvaluation": ("reason_codes",),
-    "Decision": ("reason_codes",),
-    "ExecutionAuthorization": ("constraints",),
+    "Decision": (
+        "reason_codes",
+        "decision_conditions_triggered",
+        "applicable_package_ids",
+        "applicable_requirement_ids",
+        "control_evaluation_ids",
+    ),
+    "ExecutionAuthorization": (
+        "constraints",
+        "authorized_parameter_constraints",
+    ),
     "ExternalExecutionResult": ("result_payload",),
     "ExecutableGovernancePackage": (
         "source_document_references",

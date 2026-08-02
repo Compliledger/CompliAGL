@@ -144,13 +144,36 @@ class DecisionOutcome(str, Enum):
 
 
 class AuthorizationStatus(str, Enum):
-    """Lifecycle status of an execution authorization."""
+    """Lifecycle status of an execution authorization.
 
+    The canonical signed-authorization lifecycle is
+    ``ISSUED -> ACTIVE -> CONSUMED`` with ``REVOKED`` / ``EXPIRED`` as terminal
+    exits. ``PENDING`` / ``AUTHORIZED`` are retained for backward compatibility
+    with the earlier lightweight authorization flow.
+    """
+
+    # Canonical signed-authorization states.
+    ISSUED = "ISSUED"
+    ACTIVE = "ACTIVE"
+    CONSUMED = "CONSUMED"
+    EXPIRED = "EXPIRED"
+    REVOKED = "REVOKED"
+
+    # Legacy states (retained for backward compatibility).
     PENDING = "PENDING"
     AUTHORIZED = "AUTHORIZED"
-    CONSUMED = "CONSUMED"
-    REVOKED = "REVOKED"
-    EXPIRED = "EXPIRED"
+
+
+class DecisionSupersessionStatus(str, Enum):
+    """Whether a decision is the current verdict or has been superseded.
+
+    Decisions are immutable. A re-evaluation never mutates an existing decision;
+    it creates a **new** :class:`Decision` object and marks the prior decision as
+    ``SUPERSEDED``.
+    """
+
+    CURRENT = "CURRENT"
+    SUPERSEDED = "SUPERSEDED"
 
 
 class ExecutionResultStatus(str, Enum):

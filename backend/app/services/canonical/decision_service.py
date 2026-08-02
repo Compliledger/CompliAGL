@@ -1,0 +1,477 @@
+"""Deterministic Decision service — the canonical Decision stage.
+
+The Decision stage runs **after** Assessment and maps the *factual* assessment
+(together with all upstream canonical inputs and the **explicit** decision
+conditions from the governing governance package) into exactly one business
+outcome: ``APPROVED``, ``DENIED`` or ``ESCALATED``.
+
+Design guarantees
+-----------------
+
+* **Deterministic — never probabilistic.** Decision conditions are evaluated by
+  the restricted, side-effect-free expression interpreter (no ``eval``/``exec``,
+  no model calls). Identical inputs and package versions always produce the same
+  decision hash.
+* **Separate from Assessment.** Assessment stays factual (SATISFIED /
+  NOT_SATISFIED / NOT_EVALUABLE / MANUAL_REVIEW_REQUIRED); this stage owns the
+  business outcome.
+* **Fail-closed.** ``APPROVED`` is only ever produced when an explicit decision
+  condition allows it *and* the assessment is ``SATISFIED``. A
+  ``NOT_EVALUABLE`` assessment can never silently become ``APPROVED``.
+* **Immutable.** A decision is never mutated. Re-evaluation creates a **new**
+  :class:`Decision` and supersedes the prior current decision.
+"""
+
+from __future__ import annotations
+
+import json
+from typing import Any, Optional, Sequence
+
+from sqlalchemy.orm import Session
+
+from app.models.decision import Decision
+from app.models.policy_resolution import PolicyResolution
+from app.repositories.canonical import (
+    ActorIdentityRepository,
+    AssessmentRepository,
+    CanonicalEvidencePackageRepository,
+    ControlEvaluationRepository,
+    DecisionRepository,
+    ExecutableGovernancePackageRepository,
+    IntentRepository,
+    OperationalContextRepository,
+    PolicyResolutionRepository,
+    TargetRepository,
+)
+from app.services.canonical import assessment_service, runtime_facts
+from app.services.canonical.deterministic_expression import (
+    DETERMINISTIC_ENGINE_VERSION,
+)
+from app.services.canonical.errors import NotFoundError
+from app.services.canonical.package_interpreter import (
+    ExpressionError,
+    evaluate_expression,
+)
+from app.utils.canonical_enums import (
+    AssessmentOutcome,
+    DecisionOutcome,
+    DecisionSupersessionStatus,
+    PolicyResolutionStatus,
+)
+from app.utils.hashing import hash_dict
+from app.utils.timestamps import utc_now
+
+
+def _load(raw: Optional[str]) -> Any:
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except (ValueError, TypeError):
+        return None
+
+
+# --------------------------------------------------------------------------- #
+# Deterministic decision-condition evaluation
+# --------------------------------------------------------------------------- #
+def _evaluate_conditions(
+    conditions: list[dict[str, Any]], context: dict[str, Any]
+) -> tuple[Optional[str], list[dict[str, Any]]]:
+    """Evaluate explicit decision conditions in deterministic order.
+
+    Returns ``(condition_outcome, triggered)`` where ``condition_outcome`` is the
+    business outcome selected by the matched conditions (or ``None`` when no
+    condition matched), and ``triggered`` is the ordered list of conditions whose
+    expression evaluated to true.
+    """
+    ordered = sorted(
+        (c for c in conditions if isinstance(c, dict)),
+        key=lambda c: (
+            c.get("priority", 100),
+            str(c.get("package_id", "")),
+            str(c.get("condition_id", "")),
+        ),
+    )
+
+    outcome: Optional[str] = None
+    triggered: list[dict[str, Any]] = []
+    for condition in ordered:
+        expression = condition.get("expression", "")
+        try:
+            matched = bool(evaluate_expression(expression, context))
+        except ExpressionError:
+            # A malformed condition is fail-closed: treated as non-matching but
+            # never raised at runtime.
+            matched = False
+        if not matched:
+            continue
+        triggered.append(
+            {
+                "condition_id": condition.get("condition_id"),
+                "package_id": condition.get("package_id"),
+                "resulting_decision": condition.get("resulting_decision"),
+                "reason_code": condition.get("reason_code"),
+                "priority": condition.get("priority"),
+                "terminal": bool(condition.get("terminal", True)),
+            }
+        )
+        outcome = condition.get("resulting_decision") or outcome
+        if condition.get("terminal", True):
+            break
+    return outcome, triggered
+
+
+def _resolve_outcome(
+    *,
+    no_policy: bool,
+    condition_outcome: Optional[str],
+    assessment_outcome: str,
+) -> tuple[str, list[str]]:
+    """Map assessment + explicit decision conditions to a business outcome.
+
+    The mapping is fail-closed:
+
+    * a terminal ``DENIED`` condition (policy prohibition) always denies;
+    * a ``MANUAL_REVIEW_REQUIRED`` / ``NOT_EVALUABLE`` assessment escalates and
+      can never be approved;
+    * a ``NOT_SATISFIED`` assessment (failed mandatory control) denies unless the
+      policy explicitly escalates for remediation;
+    * ``APPROVED`` requires both an explicit approving condition and a
+      ``SATISFIED`` assessment.
+    """
+    D = DecisionOutcome
+    A = AssessmentOutcome
+
+    if no_policy:
+        return D.DENIED.value, ["NO_APPLICABLE_POLICY"]
+
+    # A terminal policy prohibition denies regardless of the assessment.
+    if condition_outcome == D.DENIED.value:
+        return D.DENIED.value, ["POLICY_PROHIBITION"]
+
+    if assessment_outcome == A.MANUAL_REVIEW_REQUIRED.value:
+        return D.ESCALATED.value, ["ASSESSMENT_MANUAL_REVIEW_REQUIRED"]
+
+    if assessment_outcome == A.NOT_EVALUABLE.value:
+        # NOT_EVALUABLE can never silently become APPROVED.
+        return D.ESCALATED.value, ["ASSESSMENT_NOT_EVALUABLE"]
+
+    if assessment_outcome == A.NOT_SATISFIED.value:
+        if condition_outcome == D.ESCALATED.value:
+            return D.ESCALATED.value, ["CONTROL_REMEDIATION_REQUIRED"]
+        return D.DENIED.value, ["MANDATORY_CONTROL_FAILED"]
+
+    # assessment SATISFIED
+    if condition_outcome == D.APPROVED.value:
+        return D.APPROVED.value, ["APPROVED_BY_POLICY"]
+    if condition_outcome == D.ESCALATED.value:
+        return D.ESCALATED.value, ["ESCALATED_BY_POLICY"]
+    # No explicit approving condition matched -> fail closed.
+    return D.DENIED.value, ["NO_DECISION_CONDITION_MATCHED"]
+
+
+# --------------------------------------------------------------------------- #
+# Input gathering
+# --------------------------------------------------------------------------- #
+def _gather_inputs(db: Session, org: str, resolution: PolicyResolution):
+    actor = ActorIdentityRepository(db).get(org, resolution.actor_identity_id)
+    if actor is None:
+        raise NotFoundError(
+            f"ActorIdentity not found: {resolution.actor_identity_id}"
+        )
+    intent = IntentRepository(db).get(org, resolution.intent_id)
+    if intent is None:
+        raise NotFoundError(f"Intent not found: {resolution.intent_id}")
+    target = (
+        TargetRepository(db).get(org, resolution.target_id)
+        if resolution.target_id
+        else None
+    )
+    context = (
+        OperationalContextRepository(db).get(org, resolution.operational_context_id)
+        if resolution.operational_context_id
+        else None
+    )
+    return actor, intent, target, context
+
+
+def _package_conditions(
+    db: Session, org: str, selected_packages: list[dict[str, Any]]
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str], Optional[str]]:
+    """Return (decision_conditions, package_refs, requirement_ids, package_hash)."""
+    conditions: list[dict[str, Any]] = []
+    package_refs: list[dict[str, Any]] = []
+    requirement_ids: set[str] = set()
+
+    repo = ExecutableGovernancePackageRepository(db)
+    for entry in selected_packages:
+        if not isinstance(entry, dict):
+            continue
+        package_id = entry.get("package_id")
+        for req in entry.get("requirements") or []:
+            if isinstance(req, dict) and req.get("requirement_id"):
+                requirement_ids.add(str(req["requirement_id"]))
+        pkg = repo.get(org, package_id) if package_id else None
+        package_refs.append(
+            {
+                "package_id": package_id,
+                "package_name": entry.get("package_name"),
+                "package_version": entry.get("package_version"),
+                "package_hash": (
+                    pkg.package_hash if pkg is not None else entry.get("package_hash")
+                ),
+            }
+        )
+        if pkg is None:
+            continue
+        for cond in _load(pkg.decision_conditions) or []:
+            if isinstance(cond, dict):
+                conditions.append({**cond, "package_id": package_id})
+
+    package_refs.sort(key=lambda p: str(p.get("package_id") or ""))
+    aggregate_hash = hash_dict({"packages": package_refs}) if package_refs else None
+    return conditions, package_refs, sorted(requirement_ids), aggregate_hash
+
+
+def _build_context(actor, intent, target, context, assessment, evidence_pkg):
+    facts = runtime_facts.build_facts(
+        actor=actor, intent=intent, target=target, context=context
+    )
+    intent_params = facts.get("intent", {}).get("parameters", {}) or {}
+    decision_context: dict[str, Any] = dict(facts)
+    # Expose intent parameters as bare names for convenience in expressions.
+    for key, value in intent_params.items():
+        decision_context.setdefault(key, value)
+    decision_context["assessment"] = {
+        "overall_result": assessment.overall_result,
+        "evidence_sufficiency_result": assessment.evidence_sufficiency_result,
+        "mandatory_control_summary": _load(assessment.mandatory_control_summary)
+        or {},
+    }
+    decision_context["evidence"] = {
+        "package_id": evidence_pkg.id if evidence_pkg is not None else None,
+        "package_hash": evidence_pkg.package_hash
+        if evidence_pkg is not None
+        else None,
+    }
+    return facts, decision_context
+
+
+# --------------------------------------------------------------------------- #
+# Public API
+# --------------------------------------------------------------------------- #
+def decide_for_resolution(
+    db: Session,
+    organization_id: str,
+    policy_resolution_id: str,
+    *,
+    prior_decision_id: Optional[str] = None,
+) -> Decision:
+    """Produce a deterministic :class:`Decision` for a resolved evaluation.
+
+    A previously-current decision for the same evaluation is automatically
+    superseded (re-evaluation creates a new immutable decision).
+    """
+    org = organization_id
+
+    resolution = PolicyResolutionRepository(db).get(org, policy_resolution_id)
+    if resolution is None:
+        raise NotFoundError(
+            f"PolicyResolution not found: {policy_resolution_id}"
+        )
+
+    actor, intent, target, context = _gather_inputs(db, org, resolution)
+
+    # Assessment (factual). Reuse the latest, or aggregate one if absent.
+    assessment = assessment_service.latest_for_resolution(
+        db, org, policy_resolution_id
+    )
+    if assessment is None:
+        assessment = assessment_service.assess_for_resolution(
+            db, org, policy_resolution_id
+        )
+
+    evidence_pkg = CanonicalEvidencePackageRepository(db).latest_for_evaluation(
+        org, policy_resolution_id
+    )
+
+    control_evaluations = ControlEvaluationRepository(db).list_for_resolution(
+        org, policy_resolution_id
+    )
+    control_evaluation_ids = sorted(
+        ce.control_evaluation_id for ce in control_evaluations
+    )
+
+    selected_packages = _load(resolution.selected_packages) or []
+    conditions, package_refs, requirement_ids, policy_package_hash = (
+        _package_conditions(db, org, selected_packages)
+    )
+
+    facts, decision_context = _build_context(
+        actor, intent, target, context, assessment, evidence_pkg
+    )
+
+    no_policy = (
+        not selected_packages
+        or resolution.status == PolicyResolutionStatus.NO_APPLICABLE_POLICY.value
+    )
+    condition_outcome, triggered = (
+        (None, []) if no_policy else _evaluate_conditions(conditions, decision_context)
+    )
+
+    outcome, mapping_reasons = _resolve_outcome(
+        no_policy=no_policy,
+        condition_outcome=condition_outcome,
+        assessment_outcome=assessment.overall_result,
+    )
+
+    reason_codes = [f"DECISION_{outcome}"] + mapping_reasons
+    for cond in triggered:
+        code = cond.get("reason_code")
+        if code and code not in reason_codes:
+            reason_codes.append(code)
+
+    # --- Deterministic hashes over the bound inputs ---
+    actor_hash = hash_dict(facts.get("actor") or {})
+    intent_hash = hash_dict(facts.get("intent") or {})
+    target_hash = hash_dict(facts["target"]) if "target" in facts else None
+    context_hash = hash_dict(facts["context"]) if "context" in facts else None
+    evidence_package_hash = (
+        evidence_pkg.package_hash if evidence_pkg is not None else None
+    )
+
+    input_hash = hash_dict(
+        {
+            "engine_version": DETERMINISTIC_ENGINE_VERSION,
+            "organization_id": org,
+            "policy_resolution_id": policy_resolution_id,
+            "assessment_id": assessment.id,
+            "assessment_hash": assessment.assessment_hash,
+            "assessment_result": assessment.overall_result,
+            "applicable_package_ids": package_refs,
+            "applicable_requirement_ids": requirement_ids,
+            "control_evaluation_ids": control_evaluation_ids,
+            "evidence_package_id": evidence_pkg.id if evidence_pkg else None,
+            "evidence_package_hash": evidence_package_hash,
+            "actor_hash": actor_hash,
+            "intent_hash": intent_hash,
+            "target_hash": target_hash,
+            "context_hash": context_hash,
+        }
+    )
+    decided_at = utc_now()
+    decision_hash = hash_dict(
+        {
+            "input_hash": input_hash,
+            "outcome": outcome,
+            "reason_codes": reason_codes,
+            "decision_conditions_triggered": triggered,
+            "prior_decision_id": prior_decision_id,
+        }
+    )
+
+    obj = Decision(
+        organization_id=org,
+        governance_evaluation_id=policy_resolution_id,
+        intent_id=intent.id,
+        evaluation_id=policy_resolution_id,
+        policy_resolution_id=policy_resolution_id,
+        assessment_id=assessment.id,
+        outcome=outcome,
+        reason_codes=json.dumps(reason_codes),
+        policy_version=(
+            package_refs[0].get("package_version") if package_refs else None
+        ),
+        decision_conditions_triggered=json.dumps(triggered),
+        applicable_package_ids=json.dumps(package_refs),
+        applicable_requirement_ids=json.dumps(requirement_ids),
+        control_evaluation_ids=json.dumps(control_evaluation_ids),
+        evidence_package_id=evidence_pkg.id if evidence_pkg is not None else None,
+        evidence_package_hash=evidence_package_hash,
+        assessment_hash=assessment.assessment_hash,
+        policy_package_hash=policy_package_hash,
+        actor_hash=actor_hash,
+        intent_hash=intent_hash,
+        target_hash=target_hash,
+        context_hash=context_hash,
+        engine_version=DETERMINISTIC_ENGINE_VERSION,
+        input_hash=input_hash,
+        decision_hash=decision_hash,
+        decided_at=decided_at,
+        expires_at=intent.expires_at,
+        prior_decision_id=prior_decision_id,
+        supersession_status=DecisionSupersessionStatus.CURRENT.value,
+    )
+
+    repo = DecisionRepository(db)
+
+    # Supersede any current prior decision for this evaluation (immutability:
+    # the prior decision is never mutated except to record it was superseded).
+    prior = None
+    if prior_decision_id is not None:
+        prior = repo.get(org, prior_decision_id)
+    if prior is None:
+        prior = repo.current_for_evaluation(org, policy_resolution_id)
+    obj = repo.add(obj)
+    if prior is not None and prior.id != obj.id:
+        prior.supersession_status = DecisionSupersessionStatus.SUPERSEDED.value
+        prior.superseded_by_decision_id = obj.id
+        if obj.prior_decision_id is None:
+            obj.prior_decision_id = prior.id
+        repo.save(prior)
+        repo.save(obj)
+    return obj
+
+
+def get(
+    db: Session, organization_id: str, resource_id: str
+) -> Optional[Decision]:
+    return DecisionRepository(db).get(organization_id, resource_id)
+
+
+def list_(
+    db: Session, organization_id: str, *, skip: int = 0, limit: int = 100
+) -> Sequence[Decision]:
+    return DecisionRepository(db).list(organization_id, skip=skip, limit=limit)
+
+
+def explain(
+    db: Session, organization_id: str, resource_id: str
+) -> Optional[dict[str, Any]]:
+    """Return a structured, human-auditable explanation of a decision."""
+    decision = DecisionRepository(db).get(organization_id, resource_id)
+    if decision is None:
+        return None
+    return {
+        "decision_id": decision.id,
+        "result": decision.outcome,
+        "reason_codes": _load(decision.reason_codes) or [],
+        "decision_conditions_triggered": _load(
+            decision.decision_conditions_triggered
+        )
+        or [],
+        "evaluation_id": decision.evaluation_id,
+        "policy_resolution_id": decision.policy_resolution_id,
+        "assessment_id": decision.assessment_id,
+        "assessment_hash": decision.assessment_hash,
+        "applicable_package_ids": _load(decision.applicable_package_ids) or [],
+        "applicable_requirement_ids": _load(decision.applicable_requirement_ids)
+        or [],
+        "control_evaluation_ids": _load(decision.control_evaluation_ids) or [],
+        "evidence_package_id": decision.evidence_package_id,
+        "evidence_package_hash": decision.evidence_package_hash,
+        "policy_package_hash": decision.policy_package_hash,
+        "input_hashes": {
+            "actor_hash": decision.actor_hash,
+            "intent_hash": decision.intent_hash,
+            "target_hash": decision.target_hash,
+            "context_hash": decision.context_hash,
+        },
+        "engine_version": decision.engine_version,
+        "decision_hash": decision.decision_hash,
+        "decided_at": decision.decided_at,
+        "expires_at": decision.expires_at,
+        "prior_decision_id": decision.prior_decision_id,
+        "superseded_by_decision_id": decision.superseded_by_decision_id,
+        "supersession_status": decision.supersession_status,
+    }

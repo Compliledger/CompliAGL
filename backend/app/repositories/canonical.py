@@ -121,9 +121,73 @@ class GovernanceEvaluationRepository(TenantRepository[GovernanceEvaluation]):
 class DecisionRepository(TenantRepository[Decision]):
     model = Decision
 
+    def current_for_evaluation(
+        self, organization_id: str, evaluation_id: str
+    ) -> Optional[Decision]:
+        """Return the current (non-superseded) decision for an evaluation."""
+        from app.utils.canonical_enums import DecisionSupersessionStatus
+
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.evaluation_id == evaluation_id)
+            .filter(
+                self.model.supersession_status
+                == DecisionSupersessionStatus.CURRENT.value
+            )
+            .order_by(self.model.created_at.desc())
+            .first()
+        )
+
+    def list_for_evaluation(
+        self,
+        organization_id: str,
+        evaluation_id: str,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> Sequence[Decision]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.evaluation_id == evaluation_id)
+            .order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
 
 class ExecutionAuthorizationRepository(TenantRepository[ExecutionAuthorization]):
     model = ExecutionAuthorization
+
+    def get_by_idempotency_key(
+        self, organization_id: str, idempotency_key: str
+    ) -> Optional[ExecutionAuthorization]:
+        """Return an existing authorization for an idempotency key, if any."""
+        if not idempotency_key:
+            return None
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.idempotency_key == idempotency_key)
+            .order_by(self.model.created_at.asc())
+            .first()
+        )
+
+    def list_for_decision(
+        self,
+        organization_id: str,
+        decision_id: str,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> Sequence[ExecutionAuthorization]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.decision_id == decision_id)
+            .order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
 
 
 class ExternalExecutionResultRepository(TenantRepository[ExternalExecutionResult]):
