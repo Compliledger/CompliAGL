@@ -56,3 +56,28 @@ def require_package_author(
             ),
         )
     return role
+
+
+def get_subscriber_role(
+    x_subscriber_role: Optional[str] = Header(
+        default=None, alias="X-Subscriber-Role"
+    ),
+    subscriber_role: Optional[str] = Query(default=None),
+) -> str:
+    """Resolve the caller's sync-portal subscriber role.
+
+    Role scoping for the ProofSync / AuditSync / RegSync feeds is enforced from
+    this value (see ``app.services.canonical.integration.scoping``). The role is
+    supplied via the ``X-Subscriber-Role`` header or a ``subscriber_role`` query
+    parameter.
+    """
+    role = x_subscriber_role or subscriber_role
+    if not role:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "subscriber role is required "
+                "(X-Subscriber-Role header or subscriber_role query param)."
+            ),
+        )
+    return role
