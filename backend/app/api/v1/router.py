@@ -13,6 +13,7 @@ from app.api.v1 import (
     intents,
     operational_contexts,
     policy_applicability,
+    remediation,
     targets,
 )
 
@@ -26,3 +27,4 @@ api_v1_router.include_router(authorization.router)
 api_v1_router.include_router(governance_packages.router)
 api_v1_router.include_router(policy_applicability.router)
 api_v1_router.include_router(evidence.router)
+api_v1_router.include_router(remediation.router)

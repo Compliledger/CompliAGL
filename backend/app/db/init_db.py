@@ -46,6 +46,13 @@ from app.models.evidence_sufficiency import EvidenceSufficiency  # noqa: F401
 from app.models.control_evaluation import ControlEvaluation  # noqa: F401
 from app.models.assessment import Assessment  # noqa: F401
 
+# Finding and remediation branch.
+from app.models.finding import Finding  # noqa: F401
+from app.models.remediation_plan import RemediationPlan  # noqa: F401
+from app.models.resolution_evidence import ResolutionEvidence  # noqa: F401
+from app.models.devsync_dispatch import DevSyncDispatch  # noqa: F401
+from app.models.review_record import ReviewRecord  # noqa: F401
+
 
 def init_db() -> None:
     """Create database tables if they do not already exist."""

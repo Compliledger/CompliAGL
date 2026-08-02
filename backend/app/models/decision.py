@@ -66,6 +66,9 @@ class Decision(CanonicalMixin, Base):
     # --- Immutability / supersession ---
     prior_decision_id = Column(String, nullable=True, index=True)
     superseded_by_decision_id = Column(String, nullable=True, index=True)
+    # The finding whose validated resolution produced this re-assessment
+    # decision (set only on decisions created by the remediation branch).
+    originating_finding_id = Column(String, nullable=True, index=True)
     supersession_status = Column(
         String, nullable=False, default=DecisionSupersessionStatus.CURRENT.value
     )
