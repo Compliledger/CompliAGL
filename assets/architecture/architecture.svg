@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="540" viewBox="0 0 1000 540" role="img" aria-label="CompliAGL system architecture zones">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0a0f24"/><stop offset="1" stop-color="#111a3a"/></linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+    <marker id="a" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#22d3ee"/></marker>
+  </defs>
+  <rect width="1000" height="540" fill="url(#bg)"/>
+  <text x="500" y="38" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="#f8fafc">System Architecture</text>
+
+  <g font-family="Segoe UI, Arial, sans-serif">
+    <!-- External systems -->
+    <rect x="40" y="70" width="260" height="180" rx="12" fill="#0e1733" stroke="#334155"/>
+    <text x="170" y="98" text-anchor="middle" font-size="14" font-weight="600" fill="#e2e8f0">External Systems</text>
+    <text x="170" y="126" text-anchor="middle" font-size="12" fill="#94a3b8">Enterprise app · AI agent</text>
+    <text x="170" y="150" text-anchor="middle" font-size="12" fill="#94a3b8">Merchant / payment APIs</text>
+    <text x="170" y="174" text-anchor="middle" font-size="12" fill="#94a3b8">Wallet · workflow engine</text>
+    <text x="170" y="198" text-anchor="middle" font-size="12" fill="#94a3b8">Smart contract · MCP tool</text>
+
+    <!-- CompliLedger governance prep -->
+    <rect x="40" y="290" width="260" height="200" rx="12" fill="#141033" stroke="#6366f1"/>
+    <text x="170" y="318" text-anchor="middle" font-size="14" font-weight="600" fill="#c7d2fe">CompliLedger</text>
+    <text x="170" y="338" text-anchor="middle" font-size="11.5" fill="#a5b4fc">Governance preparation</text>
+    <text x="170" y="366" text-anchor="middle" font-size="12" fill="#94a3b8">Human-readable policy</text>
+    <text x="170" y="390" text-anchor="middle" font-size="12" fill="#94a3b8">Requirement ingestion</text>
+    <text x="170" y="414" text-anchor="middle" font-size="12" fill="#94a3b8">Controls · evidence reqs</text>
+    <text x="170" y="438" text-anchor="middle" font-size="12" fill="#94a3b8">Decision conditions</text>
+    <text x="170" y="466" text-anchor="middle" font-size="12" fill="#c7d2fe">→ Executable package</text>
+
+    <!-- CompliAGL runtime -->
+    <rect x="370" y="70" width="270" height="420" rx="14" fill="#12203f" stroke="url(#accent)" stroke-width="2"/>
+    <text x="505" y="100" text-anchor="middle" font-size="16" font-weight="700" fill="#f8fafc">CompliAGL Runtime</text>
+    <text x="505" y="120" text-anchor="middle" font-size="12" fill="#22d3ee">Execution Governance</text>
+    <g text-anchor="middle" font-size="12.5" fill="#cbd5e1">
+      <text x="505" y="152">Actor · Intent · Target · Context</text>
+      <text x="505" y="182">Policy resolution · applicability</text>
+      <text x="505" y="212">Control determination</text>
+      <text x="505" y="242">Evidence lifecycle</text>
+      <text x="505" y="272">Control evaluation</text>
+      <text x="505" y="302">Assessment</text>
+      <text x="505" y="332" fill="#f8fafc" font-weight="600">Deterministic decision</text>
+      <text x="505" y="362">Execution authorization</text>
+      <text x="505" y="392" fill="#e2e8f0" font-weight="600">AIProof</text>
+    </g>
+    <rect x="395" y="410" width="220" height="60" rx="9" fill="#0e1733" stroke="#334155"/>
+    <text x="505" y="435" text-anchor="middle" font-size="12" fill="#94a3b8">External execution boundary</text>
+    <text x="505" y="455" text-anchor="middle" font-size="11" fill="#64748b">verify auth · perform · return result</text>
+
+    <!-- Proof + verification -->
+    <rect x="710" y="70" width="250" height="420" rx="12" fill="#141033" stroke="#6366f1"/>
+    <text x="835" y="100" text-anchor="middle" font-size="14" font-weight="600" fill="#c7d2fe">CompliLedger Proof</text>
+    <text x="835" y="120" text-anchor="middle" font-size="11.5" fill="#a5b4fc">&amp; Verification</text>
+    <g text-anchor="middle" font-size="12" fill="#94a3b8">
+      <text x="835" y="154">Canonical proof package</text>
+      <text x="835" y="182">Canonical proof hash</text>
+      <text x="835" y="210">Anchor payload</text>
+      <text x="835" y="238">Immutable proof layer</text>
+      <text x="835" y="262" font-size="10.5" fill="#64748b">(Hedera · Canton · XDC · other)</text>
+      <text x="835" y="292">Independent verification</text>
+      <text x="835" y="322" fill="#c7d2fe">ProofSync</text>
+      <text x="835" y="350">AuditSync — auditor review</text>
+      <text x="835" y="378">RegSync — regulator review</text>
+    </g>
+
+    <g stroke="url(#accent)" stroke-width="2" fill="none">
+      <line x1="300" y1="160" x2="368" y2="160" marker-end="url(#a)"/>
+      <line x1="300" y1="380" x2="368" y2="300" marker-end="url(#a)"/>
+      <line x1="640" y1="290" x2="708" y2="290" marker-end="url(#a)"/>
+    </g>
+  </g>
+</svg>

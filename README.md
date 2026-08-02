@@ -1,324 +1,620 @@
-# CompliAGL
+<!-- ─────────────────────────────  HERO  ───────────────────────────── -->
+<div align="center">
 
-> **The Control Plane for Governed Autonomous Execution**
+<img src="./assets/hero/hero-banner.svg" alt="CompliAGL — AI Execution Governance Infrastructure" width="100%" />
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+<h1>CompliAGL</h1>
 
-**Authorize first. Execute second. Prove permanently.**
+<h3>AI Execution Governance Infrastructure</h3>
 
-**CompliAGL is the control plane for governed autonomous execution.** It decides
-what an autonomous actor is allowed to do *before* it acts, executes approved
-actions through pluggable adapters, and produces a verifiable **AIProof** for
-every outcome. **Compli402** is the x402-powered governed payment layer built on
-top of that control plane: it gates approved actions behind an x402 "HTTP 402
-Payment Required" flow and anchors each AIProof on **Algorand** through the
-existing `compliledger-algorand-adapter`.
+<p><strong>Govern before execution.</strong> CompliAGL sits between autonomous systems and the external systems that actually execute — and deterministically decides whether a proposed action may proceed, <em>before</em> it happens.</p>
 
----
+<p>
+<a href="#-local-development">Quickstart</a> ·
+<a href="#-execution-governance-workflow">How it works</a> ·
+<a href="#-capabilities-and-implementation-status">What's built</a> ·
+<a href="./ROADMAP.md">Roadmap</a> ·
+<a href="./docs/architecture.md">Architecture docs</a>
+</p>
 
-## Why CompliAGL
+<p>
+<img alt="Status: Active Development" src="https://img.shields.io/badge/status-active%20development%20%2F%20proof%20of%20concept-6366f1" />
+<a href="./LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-22d3ee" /></a>
+<img alt="Backend: FastAPI" src="https://img.shields.io/badge/backend-FastAPI%20%C2%B7%20Python-1f2937" />
+<img alt="Frontend: Next.js" src="https://img.shields.io/badge/frontend-Next.js%20%C2%B7%20TypeScript-1f2937" />
+<img alt="Persistence: SQLite" src="https://img.shields.io/badge/persistence-SQLite%20%C2%B7%20SQLAlchemy-1f2937" />
+</p>
 
-AI agents and autonomous systems can now initiate financial transactions, call
-APIs, and trigger operational actions on their own. That capability is powerful —
-and unsupervised, it is a liability.
+<sub>Static, descriptive badges only. There is no CI workflow, published release, or published SDK in this repository, so no build/release/package badges are shown.</sub>
 
-- **Execution without governance creates risk.** An actor that can move funds or
-  invoke production APIs needs explicit, enforceable boundaries before it acts.
-- **Logs are not enough.** A log tells you what happened *after* the fact. It
-  cannot stop a disallowed action, and it cannot be independently verified.
-- **CompliAGL closes the gap.** It enforces policy *before* execution and
-  produces cryptographic proof *after* execution — turning autonomous activity
-  into something authorized, traceable, and verifiable.
-
----
-
-## Two layers
-
-| Layer | What it is | Status |
-|-------|------------|--------|
-| **CompliAGL** | The control plane for governed autonomous execution: identity, policy/decision engine, execution adapters, and AIProof generation. | **Live now** |
-| **Compli402** | The x402-powered governed payment layer. Gates approved actions behind an x402 payment, then executes, generates an AIProof, and anchors it on Algorand. | **Live now** |
-
-Compli402 is exposed as a small, demo-ready public API under
-`/api/compli402` and is the surface used for the Global x402 Challenge.
+</div>
 
 ---
 
-## Competition Demo Flow
+## Overview
 
-The Compli402 flow runs end-to-end, locally, with no external services or
-secrets (a mock x402 facilitator is used by default). Actors, policies, and
-AIProofs are persisted in the SQLAlchemy database, so runtime state survives
-application restarts:
+CompliAGL answers a single question:
 
+> **How should an autonomous system determine whether a proposed action may execute under the current policies, evidence, controls, and operational conditions?**
+
+Identity and permissions tell you *who* is acting and *what* they are broadly allowed to do. They do **not** tell you whether a *specific* action should occur *right now*, given current policy, validated evidence, and operational context. CompliAGL is the reusable governance boundary that makes that determination deterministically, and produces an **AIProof** of the outcome.
+
+Responsibilities are cleanly separated:
+
+- **CompliLedger** converts human-readable governance into **executable governance packages**.
+- **CompliAGL** applies those packages at runtime to an actor, intent, target, and context.
+- **External systems** perform the underlying action.
+- **CompliAGL** receives the execution result and generates **AIProof**.
+- **CompliLedger Proof Infrastructure** converts AIProof into machine-verifiable proof.
+
+<table>
+<tr>
+<td width="33%" valign="top">
+
+### ❌ The Problem
+
+Autonomous systems can call APIs, spend funds, invoke tools, interact with merchants, and execute transactions — but identity and permissions alone do not determine whether a *specific* action should occur under *current* conditions.
+
+</td>
+<td width="33%" valign="top">
+
+### ✅ The Solution
+
+CompliAGL evaluates actor identity, intent, target, current operational context, applicable governance, controls, and validated evidence before producing an explicit **deterministic decision**.
+
+</td>
+<td width="33%" valign="top">
+
+### ⭐ Why CompliAGL
+
+It provides a reusable governance boundary between autonomous intent and external execution — **without** replacing identity systems, wallets, merchants, payment rails, enterprise applications, or blockchains.
+
+</td>
+</tr>
+</table>
+
+> [!IMPORTANT]
+> **CompliAGL governs execution; it does not perform the underlying commercial or operational function.**
+> External systems perform bookings, payments, API calls, workflows, smart-contract actions, settlement, and fulfillment. CompliAGL determines whether execution may proceed, issues authorization, receives the result, and generates AIProof.
+
+### What CompliAGL is **not**
+
+CompliAGL is **not** a booking or airline platform, a merchant platform, a wallet, a payment processor, a settlement network, a blockchain, a product catalog, an inventory system, or a fulfillment platform. Those functions belong to the **external execution systems** it governs.
+
+---
+
+## 🧭 Architectural boundary
+
+<div align="center">
+<img src="./assets/architecture/governance-boundary.svg" alt="CompliAGL governance boundary" width="90%" />
+</div>
+
+| Layer | Owns | Does **not** own |
+|-------|------|------------------|
+| **CompliLedger** | Human-governance → executable packages; proof canonicalization, anchoring, verification | Runtime execution decisions |
+| **CompliAGL** | Runtime evaluation, deterministic decision, execution authorization, AIProof generation | Funds, accounts, merchant transactions, settlement |
+| **External systems** | Identity/wallets, merchant/airline APIs, payment rails, workflow engines, smart contracts, fulfillment | The governance decision |
+
+---
+
+## 🔀 Execution governance workflow
+
+<div align="center">
+<img src="./assets/architecture/workflow.svg" alt="Execution governance workflow" width="90%" />
+</div>
+
+A request enters from an external system and flows through the runtime. **Only an APPROVED decision may issue execution authorization.**
+
+```mermaid
+flowchart TD
+    ES[External System] --> AI[Actor Identity]
+    AI --> IN[Intent]
+    IN --> TG[Target]
+    TG --> OC[Operational Context]
+    OC --> GR[Governance Resolution]
+    GR --> EV[Evidence Lifecycle]
+    EV --> CE[Control Evaluation]
+    CE --> AS[Assessment]
+    AS --> DEC{Deterministic Decision}
+
+    DEC -->|APPROVED| AUTH[Execution Authorization]
+    DEC -->|DENIED| FND[Finding Generation]
+    DEC -->|ESCALATED| FND
+    DEC -->|MANUAL REVIEW REQUIRED| FND
+    DEC -->|NOT EVALUABLE| FND
+
+    FND --> REM[Remediation Planning]
+    REM --> DS[DevSync]
+    DS --> RES[Resolution Evidence]
+    RES --> RA[Re-Assessment]
+    RA --> RDEC{Deterministic Re-Decision}
+    RDEC -->|APPROVED| AUTH
+    RDEC -->|Continue / Manual / Terminate| FND
+
+    AUTH --> XE[External Execution]
+    XE --> XR[Execution Result]
+    XR --> AP[AIProof]
+    AP --> CL[CompliLedger Proof Infrastructure]
 ```
-Actor → Intent → Policy Decision → x402 Payment → Execution → AIProof → Algorand Anchor
+
+<details>
+<summary><strong>Full canonical architecture (target model)</strong></summary>
+
+This is the canonical, end-to-end model. Not every stage below is fully implemented today — see [Capabilities and implementation status](#-capabilities-and-implementation-status).
+
+```mermaid
+flowchart TD
+    id[Actor Identity] --> intent[Intent] --> target[Target] --> ctx[Current Operational Context]
+    ctx --> reason[Deterministic Reasoning] --> pres[Policy Resolution] --> appl[Applicability Evaluation]
+    appl --> ctrld[Control Determination] --> evreq[Evidence Requirements] --> evorc[Evidence Orchestration]
+    evorc --> evval[Evidence Validation] --> evnorm[Evidence Normalization] --> evsuf[Evidence Sufficiency]
+    evsuf --> ceval[Control Evaluation] --> assess[Assessment] --> decision{Deterministic Decision}
+
+    decision -->|APPROVED / Assessment Satisfied| auth[Execution Authorization]
+    decision -->|DENIED / ESCALATED / Manual / Not Evaluable| finding[Finding Generation]
+
+    finding --> remplan[Remediation Planning] --> devsync[DevSync] --> remtrack[Remediation Tracking]
+    remtrack --> rescollect[Resolution Evidence Collection] --> resval[Resolution Validation]
+    resval --> reassess[Re-Assessment] --> redecision{Deterministic Re-Decision}
+    redecision -->|APPROVED| auth
+    redecision -->|Continue / Manual / Terminate| finding
+
+    auth --> extsys[External Execution System] --> exec[Execution] --> result[Execution Result]
+    result --> aiproof[AIProof] --> proofinfra[CompliLedger Proof Infrastructure]
+    proofinfra --> canpkg[Canonical Proof Package] --> canhash[Canonical Proof Hash]
+    canhash --> anchor[Anchor Payload] --> immut[Immutable Proof Layer<br/>Hedera · Canton · XDC · other DLTs]
+    immut --> indep[Independent Verification] --> proofsync[ProofSync]
+    proofsync --> auditsync[AuditSync]
+    proofsync --> regsync[RegSync]
+    proofsync --> assurance[Reusable Operational Assurance] --> monitor[Continuous Monitoring]
+    monitor --> reeval{Change detected?} -->|yes| reason
 ```
 
-1. **Actor** — a verifiable actor (e.g. the seeded `TravelAgent-01`) submits an intent.
-2. **Intent** — an action, amount, and currency the actor wants to perform.
-3. **Policy Decision** — CompliAGL evaluates governance policy and returns
-   `APPROVE`, `DENY`, or `ESCALATE`.
-4. **x402 Payment** — an approved action requires an x402 payment; without one,
-   a `402 Payment Required` response is returned describing how to pay.
-5. **Execution** — once the payment is verified, the approved action is executed.
-6. **AIProof** — an AIProof bundle is generated and deterministically hashed.
-7. **Algorand Anchor** — the AIProof is anchored on Algorand through the shared
-   `compliledger-algorand-adapter`, and the anchor receipt is returned.
+</details>
 
-### Try it
+---
+
+## 🛫 Example governed action
+
+> This is an **illustrative** example of an *external* action. CompliAGL does **not** search flights, store travel inventory, hold funds, process payments, or complete bookings.
+
+**Actors and systems (all external to CompliAGL):**
+
+- **External Travel Application** — identifies a flight offer and drives UX.
+- **External Merchant or Airline API** — sells and issues the ticket.
+- **External Wallet or Payment Rail** — holds funds and settles the payment.
+
+**Example human-readable policy** (owned and published by CompliLedger, not authored in CompliAGL):
+
+- Employees may book domestic economy travel on approved airlines.
+- The total fare may not exceed **$750** without manager approval.
+- International travel requires prior authorization.
+- Airlines not on the approved vendor list are prohibited.
+- Travel must originate from and arrive at approved locations.
+
+CompliLedger ingests this policy and publishes an **executable governance package** to CompliAGL.
+
+**Sequence:**
+
+1. An external travel application identifies a flight offer.
+2. An agent proposes purchasing it.
+3. The Integration SDK submits **actor, intent, target, and context** to CompliAGL.
+4. CompliAGL resolves the applicable executable governance package.
+5. Evidence is orchestrated, validated, normalized, and evaluated for sufficiency.
+6. Controls are evaluated.
+7. CompliAGL returns **APPROVED**, **DENIED**, or **ESCALATED**.
+8. If approved, CompliAGL issues **signed execution authorization**.
+9. External travel, wallet, payment, and merchant systems execute.
+10. The execution result returns to CompliAGL.
+11. CompliAGL generates **AIProof**.
+12. CompliLedger produces machine-verifiable proof.
+
+<details>
+<summary><strong>Illustrative intent payload</strong> (shape only — not a verified schema)</summary>
+
+```jsonc
+// Illustrative only. The authoritative request/response shapes are defined by
+// the FastAPI schemas under backend/app/schemas/ and served at /docs.
+{
+  "actor_identity_id": "…",
+  "intent": { "action": "purchase_flight", "vendor": "AA", "amount_minor": 74900, "currency": "USD" },
+  "target": { "type": "airline_api", "reference": "offer-123" },
+  "operational_context": { "trip_type": "domestic", "origin": "SFO", "destination": "JFK" }
+}
+```
+
+</details>
+
+---
+
+## 🏛 System architecture
+
+<div align="center">
+<img src="./assets/architecture/architecture.svg" alt="CompliAGL system architecture" width="95%" />
+</div>
+
+```mermaid
+flowchart LR
+    subgraph EXT[External Systems]
+        A1[Enterprise App]
+        A2[AI Agent]
+        A3[Merchant API]
+        A4[Payment / Wallet]
+        A5[Workflow Engine]
+        A6[Smart Contract]
+        A7[MCP Tool]
+    end
+
+    subgraph CL[CompliLedger — Governance Preparation]
+        P1[Human-readable policies] --> P2[Requirement ingestion]
+        P2 --> P3[Machine-readable requirements]
+        P3 --> P4[Applicability logic + controls]
+        P4 --> P5[Evidence requirements + decision conditions]
+        P5 --> P6[Executable governance package]
+    end
+
+    subgraph AGL[CompliAGL — Runtime Execution Governance]
+        R1[Actor · Intent · Target · Context]
+        R1 --> R2[Policy resolution + applicability]
+        R2 --> R3[Control determination]
+        R3 --> R4[Evidence lifecycle]
+        R4 --> R5[Control evaluation + assessment]
+        R5 --> R6{Decision}
+        R6 --> R7[Execution authorization]
+        R7 --> R8[AIProof]
+    end
+
+    subgraph XE[External Execution]
+        E1[Verify authorization] --> E2[Perform action] --> E3[Return result]
+    end
+
+    subgraph PROOF[CompliLedger — Proof & Verification]
+        F1[Canonical proof package] --> F2[Canonical proof hash]
+        F2 --> F3[Anchor payload] --> F4[Immutable proof layer]
+        F4 --> F5[Independent verification] --> F6[ProofSync]
+        F6 --> F7[AuditSync]
+        F6 --> F8[RegSync]
+    end
+
+    EXT --> R1
+    P6 --> R2
+    R7 --> E1
+    E3 --> R8
+    R8 --> F1
+```
+
+---
+
+## 🧱 Core architectural layers
+
+### Executable Governance Packages
+CompliLedger transforms human-language governance into approved, versioned, machine-readable packages containing applicability logic, controls, evidence requirements, and explicit decision conditions. CompliAGL exposes intake, validate, approve, publish, supersede, and retire operations for these packages. **Status: ✅ implemented (intake side).**
+
+### Deterministic Runtime Governance
+CompliAGL applies the published package to the actor, intent, target, and current context using explicit decision conditions — **no probabilistic approval logic**. **Status: ✅ implemented.**
+
+### Evidence-Backed Evaluation
+Evidence requirements drive orchestration → validation → normalization → sufficiency, which feeds control evaluation. Evidence collection today runs through **simulator connectors**; the pipeline and models are persistent and real. **Status: ✅ pipeline implemented; 🧪 connectors are simulated.**
+
+### Execution Authorization
+An approved decision produces a **bounded, time-limited, narrowly scoped** authorization for an external system, signed and independently verifiable, with consume/revoke semantics. **Status: ✅ implemented.**
+
+### External Execution Boundary
+CompliAGL does **not** perform the booking, payment, sale, settlement, fulfillment, tool invocation, or business operation. It verifies and issues authorization; external systems execute and return a result. **Status: ✅ boundary enforced by design; ⚠️ execution adapters are mock/partial.**
+
+### AIProof
+AIProof records the governance lifecycle, authorization, and execution result, then becomes input to CompliLedger Proof Infrastructure. Generation uses **RFC 8785 (JCS)** canonicalization, **SHA-256** hashing, and a default **HMAC-SHA256** signer, with local independent verification. **Status: ✅ implemented (local); ⚠️ on-chain anchoring adapter-ready.**
+
+### Findings, Remediation, and DevSync
+Unresolved or remediable conditions create findings and remediation workflows before reassessment. DevSync dispatch uses an **in-memory adapter by default**, with a pluggable registry for a real integration. **Status: ✅ findings/remediation implemented; ⚠️ DevSync adapter is in-memory.**
+
+### Continuous Monitoring
+Changes to policy, context, evidence, finding, remediation, authorization, or execution result may trigger re-evaluation via change detection and re-evaluation jobs. **Status: ✅ implemented in-process; 🚧 reusable operational assurance in development.**
+
+---
+
+## ✅ Capabilities and implementation status
+
+Statuses are derived from source, migrations, routes, and tests — **not** from documentation.
+
+**Legend:** ✅ Implemented · 🧪 Prototype · ⚠️ Partial / adapter-ready · 🚧 In development · 🧭 Planned
+
+| Capability | Status | Notes |
+|------------|:------:|-------|
+| Actor & agent identity | ✅ | Persistent `ActorIdentity`; credential types incl. DID/VC/Hedera account enums |
+| Intent | ✅ | `/api/v1/intents` |
+| Target | ✅ | `/api/v1/targets` |
+| Operational context | ✅ | `/api/v1/operational-contexts` |
+| Executable governance package intake | ✅ | validate / approve / publish / supersede / retire |
+| Policy resolution | ✅ | `policy_resolution_service` |
+| Applicability evaluation | ✅ | `applicability_service` |
+| Control determination | ✅ | `control_determination_service` |
+| Evidence orchestration | ✅ | Plans/jobs persisted |
+| Evidence validation | ✅ | `evidence_validation_service` |
+| Evidence normalization | ✅ | `evidence_normalization_service` |
+| Evidence sufficiency | ✅ | `evidence_sufficiency_service` |
+| Evidence collection connectors | 🧪 | Simulator connectors (`services/evidence/connectors/simulators.py`) |
+| Control evaluation | ✅ | `control_evaluation_service` |
+| Assessment | ✅ | `assessment_service` |
+| Deterministic decision | ✅ | `decision_service` + deterministic expression engine |
+| APPROVED / DENIED / ESCALATED outcomes | ✅ | Plus manual-review / not-evaluable paths |
+| Execution authorization | ✅ | Signed, TTL-bounded, issue/verify/consume/revoke |
+| Integration SDK (TypeScript / Python) | 🧪 | Source + tests, v0.1.0, **unpublished** |
+| External execution-result ingestion | ✅ | `ExternalExecutionResult` model + routes |
+| AIProof (canonicalize / hash / sign / verify) | ✅ | RFC 8785, SHA-256, HMAC-SHA256 default, local verify |
+| CompliLedger proof handoff | ✅ | Local handoff contract for dev; no external endpoint |
+| Findings | ✅ | `finding_service` |
+| Remediation | ✅ | `remediation_service` + resolution evidence |
+| DevSync | ⚠️ | In-memory adapter by default; pluggable |
+| Execution adapters (x402 / mock) | ⚠️ | x402 with **mock facilitator** default; mock adapter |
+| Execution adapter (Solana) | 🧭 | Placeholder — not implemented |
+| Hedera HCS anchoring | 🧭 | Absent (Hedera only as identity credential type) |
+| Algorand anchoring | ⚠️ | Optional external adapter; skipped (`anchored: false`) when absent |
+| Mirror Node verification | 🧭 | Absent |
+| ProofSync / AuditSync / RegSync | ✅ | Scoped, signed integration-event outbox (in-process) |
+| Continuous monitoring | ✅ | Change detection + re-evaluation jobs |
+| Production authentication | 🧭 | Current auth is a placeholder API-key + header org id |
+
+---
+
+## 🔌 Integration model
+
+```mermaid
+flowchart LR
+    APP[External Application] --> SDK[CompliAGL Integration SDK]
+    SDK --> API[CompliAGL API]
+    API --> DEC[Decision / Authorization]
+    DEC --> XE[External Execution]
+    XE --> RES[Execution Result]
+    RES --> AP[AIProof]
+```
+
+The SDK contains **no governance logic**. It transports typed data and may handle authentication (bearer token + `X-Organization-Id`), retries with backoff, idempotency keys, authorization verification, result submission, and proof retrieval. Two SDKs exist in source — TypeScript (`@compliagl/sdk`) and Python (`compliagl-sdk`) — both at **v0.1.0 and not yet published** to npm/PyPI. See [`sdk/`](./sdk).
+
+| Component | Responsibility |
+|---|---|
+| External application | User experience and business workflow |
+| CompliLedger | Converts human governance into executable packages |
+| CompliAGL | Runtime evaluation and execution authorization |
+| Wallet, payment platform, or Hedera Agent Accounts | Identity, accounts, funds, allowances, and payment execution |
+| Merchant or external system | Performs the transaction or operation |
+| CompliLedger Proof Infrastructure | Proof canonicalization, anchoring, and verification |
+
+---
+
+## ⭐ Strategic differentiators
+
+<table>
+<tr>
+<td width="25%" valign="top">
+
+### 1. Deterministic Execution Governance
+Explicit decision conditions, not probabilistic approval. The same inputs yield the same decision.
+
+</td>
+<td width="25%" valign="top">
+
+### 2. Evidence-Backed Authorization
+Consequential decisions require orchestrated, validated, normalized, and **sufficient** evidence.
+
+</td>
+<td width="25%" valign="top">
+
+### 3. Separation of Governance and Execution
+CompliAGL decides; external systems execute. The boundary is enforced by design.
+
+</td>
+<td width="25%" valign="top">
+
+### 4. AIProof & Machine-Verifiable Proof
+Every governed outcome yields a canonical, signed, locally verifiable AIProof for CompliLedger.
+
+</td>
+</tr>
+</table>
+
+CompliAGL is designed to be **framework-, chain-, and execution-system agnostic**. Today that agnosticism is expressed through interfaces and adapter seams — support is limited to the implemented adapters (x402 + mock) and the optional external Algorand adapter. It is not a claim of broad live integration.
+
+---
+
+## 🗂 Category position
+
+| Capability | Identity / IAM | Wallet / Agent Account | Merchant / Payment | AI Governance Docs Platform | **CompliAGL** |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Establishes who is acting | ✅ | ⚠️ | — | — | consumes it |
+| Holds or transfers funds | — | ✅ | ✅ | — | ❌ |
+| Performs the underlying transaction | — | ⚠️ | ✅ | — | ❌ |
+| Documents governance | — | — | — | ✅ | consumes it |
+| Evaluates whether a *specific* action may execute | — | — | — | — | ✅ |
+| Requires validated evidence | — | — | — | ⚠️ | ✅ |
+| Produces deterministic runtime authorization | — | — | — | — | ✅ |
+| Generates AIProof | — | — | — | — | ✅ |
+
+> [!NOTE]
+> CompliAGL complements identity systems, Hedera Agent Accounts, payment rails, merchants, AI frameworks, and enterprise applications. It does not replace them.
+
+---
+
+## 📜 Product philosophy
+
+> **No autonomous execution without governance.**
+
+> **No consequential decision without validated and sufficient evidence.**
+
+> **No approval without explicit deterministic decision conditions.**
+
+> **No external execution without valid execution authorization.**
+
+> **No governed outcome without AIProof.**
+
+> **Governance should remain aligned with current reality.**
+
+---
+
+## 🔎 Current implementation and known limitations
+
+<div align="center">
+<img src="./assets/architecture/proof-lifecycle.svg" alt="AIProof lifecycle" width="90%" />
+</div>
+
+**Implemented today (verified in source):**
+
+- Canonical runtime domain (actor, intent, target, context, decision, authorization, AIProof) persisted via SQLAlchemy with Alembic migrations under `backend/migrations/`.
+- Deterministic decision engine and deterministic expression evaluation.
+- Governance-package intake, policy resolution, applicability, control determination and evaluation, assessment.
+- Evidence lifecycle (orchestration → validation → normalization → sufficiency).
+- Signed, TTL-bounded execution authorization (issue / verify / consume / revoke).
+- AIProof canonicalization (RFC 8785), SHA-256 hashing, HMAC-SHA256 signing, and **local** independent verification.
+- Findings, remediation, resolution-evidence validation, re-assessment, and re-decision.
+- ProofSync / AuditSync / RegSync scoped, signed integration-event outbox.
+- Continuous monitoring, change detection, and automated re-evaluation.
+- **291 backend tests pass** (see [Testing](#-testing)).
+
+**Prototype / simulated / partial:**
+
+- **Evidence connectors are simulated** (`services/evidence/connectors/simulators.py`).
+- **Execution adapters:** x402 uses a **mock facilitator by default** (`X402_MOCK_MODE=true`); the mock adapter returns synthetic confirmations; the Solana adapter is a placeholder.
+- **DevSync** uses an in-memory adapter by default.
+- **SDKs** (TypeScript & Python) exist in source with tests but are **unpublished** (v0.1.0).
+- **`Compli402`** demo surface is built on the **deprecated in-memory MVP2 path** and a mock x402 facilitator.
+
+**Runtime / deployment caveats:**
+
+- Default persistence is **SQLite**; `app.main` creates tables via `create_all` on boot (migrations not required locally, and multiple `0010_*` revisions exist in `backend/migrations/`).
+- Demo actors and a demo travel policy are **seeded on every boot** (`app/db/seed.py`).
+- **Authentication is a placeholder** (`SECRET_KEY` API-key check); tenant isolation is a required `X-Organization-Id` header; CORS is fully permissive. See [SECURITY.md](./SECURITY.md).
+- **On-chain anchoring is adapter-ready but optional.** The `compliledger-algorand-adapter` is **not** in this repository; when absent, proofs are returned with `anchored: false`. There is **no live Hedera Mainnet/HCS, Mirror Node, Canton, or XDC integration**.
+- **AIProof verification is local** (re-derives hashes and checks the signature). This is *not* independent on-chain verification and is *not* equivalent to retrieving stored proof from a DLT.
+
+**Known production blockers:** placeholder authentication, permissive CORS, simulated evidence connectors, mock execution/payment, optional (frequently absent) anchoring, unpublished SDKs, and the still-mounted deprecated MVP2 surface.
+
+---
+
+## 🛣 Roadmap
+
+A phased roadmap with per-item status is maintained in **[ROADMAP.md](./ROADMAP.md)** — Phase 1 (Canonical Runtime Foundation) through Phase 6 (Continuous Assurance).
+
+---
+
+## 🧰 Technology stack
+
+Only technologies present in the repository are listed.
+
+| Layer | Technology | Notes |
+|-------|------------|-------|
+| Backend language | Python 3.10+ | `backend/` |
+| API framework | FastAPI + Uvicorn | `app.main` |
+| Data validation | Pydantic v2 / pydantic-settings | schemas + settings |
+| ORM | SQLAlchemy 2.0 | `app/models` |
+| Database | SQLite (default) | `sqlite:///./compliagl.db` |
+| Migrations | Alembic | `backend/migrations/` |
+| Testing (backend) | pytest + FastAPI `TestClient` (httpx) | not pinned in `requirements.txt` |
+| Proof canonicalization & hashing | RFC 8785 (JCS) + SHA-256 | `services/canonical/aiproof/` |
+| Proof / authorization / event signing | HMAC-SHA256 (default; swappable) | env-backed keys |
+| Execution adapters | x402 (mock default), mock, Solana (placeholder) | `app/mvp2/execution/adapters/` |
+| DLT adapter | Algorand via optional external `compliledger-algorand-adapter` | not bundled |
+| Frontend | Next.js + React + TypeScript + Tailwind | `CompliAgl-Frontend/` |
+| SDKs | TypeScript (`@compliagl/sdk`), Python (`compliagl-sdk`) | v0.1.0, unpublished |
+| Deployment config | Procfile + `backend/railway.json` (Railway/NIXPACKS) | present, not verified live |
+| CI | *none* | no `.github/workflows` in repo |
+
+---
+
+## 💻 Local development
+
+Full, verified steps are in **[QUICKSTART.md](./QUICKSTART.md)**. Summary:
 
 ```bash
-# 1. Approved + paid → executes, generates AIProof, anchors on Algorand
-curl -X POST http://localhost:8000/api/compli402/execute \
-  -H "Content-Type: application/json" \
-  -d '{"actor_id":"00000000-0000-0000-0000-000000000001",
-       "action":"book_flight","amount":100,"currency":"USDC",
-       "payment":{"reference":"pay-demo-001"}}'
-
-# 2. Approved but unpaid → HTTP 402 Payment Required
-curl -i -X POST http://localhost:8000/api/compli402/execute \
-  -H "Content-Type: application/json" \
-  -d '{"actor_id":"00000000-0000-0000-0000-000000000001",
-       "action":"book_flight","amount":100,"currency":"USDC"}'
-```
-
----
-
-## AIProof Bundle
-
-Every executed action produces an AIProof bundle with a deterministic
-`proof_hash`. Post-hash fields (`anchor_tx_id`, `verification_url`) are
-populated *after* hashing and are therefore excluded from the hash itself, so
-the same logical execution always yields the same `proof_hash`.
-
-| Field | Description |
-|-------|-------------|
-| `proof_id` | Unique identifier for the proof. |
-| `proof_type` | Kind of proof (e.g. `compli402.execution`). |
-| `actor_id` / `actor_identity` | The acting entity and its resolved identity. |
-| `intent_id` / `intent` | The governed intent. |
-| `policy_id` / `policy_version` | The governing policy and its version. |
-| `decision` / `decision_reason` | The governance decision and reason codes. |
-| `execution_adapter` / `execution_status` | How the action was executed and its outcome. |
-| `payment_protocol` / `payment_reference` | The payment protocol (`x402`) and settlement reference. |
-| `settlement_chain` | Network the payment settled on. |
-| `anchor_chain` / `anchor_tx_id` | Anchoring chain (`algorand`) and on-chain tx id (post-hash). |
-| `proof_hash` | Deterministic SHA-256 hash binding the bundle. |
-| `created_at` | ISO 8601 UTC creation timestamp. |
-| `verification_url` | URL to verify the proof (post-hash). |
-
----
-
-## Algorand Anchoring
-
-Algorand anchoring is **not reimplemented** here. CompliAGL is a thin
-integration layer: it maps an AIProof bundle onto the canonical proof schema of
-the existing **`compliledger-algorand-adapter`** and delegates anchoring and
-verification to that adapter (see
-`backend/app/mvp2/anchor/algorand_adapter_service.py`).
-
-The shared adapter is an **optional dependency**, imported lazily. When it is
-not installed, the Compli402 flow still completes and returns a structured,
-non-fatal anchor receipt — so the demo always runs. See
-`backend/app/mvp2/anchor/README.md` for installation instructions.
-
----
-
-## Capability Status
-
-We are deliberately precise about what is real today versus what is planned. The
-following items are **placeholders / aspirational** and are **not** claimed as
-working integrations: Solana settlement, XRPL, Base, Hedera, and Canton.
-
-### Live now
-
-- **CompliAGL control plane** — actor identity, policy/decision engine
-  (`APPROVE` / `DENY` / `ESCALATE`), reason codes.
-- **Compli402** — x402 governed payment layer (`/api/compli402`) with a mock
-  facilitator for local development.
-- **x402 execution adapter** — payment-gated execution (`402 Payment Required`
-  until payment is verified).
-- **Persistent runtime** — actors, policies, and AIProofs are persisted via
-  SQLAlchemy and survive restarts (managed by Alembic migrations).
-- **AIProof generation** — deterministic, post-hash-excluding proof bundles,
-  persisted in the canonical `ai_proofs` table.
-- **Algorand anchoring** — via the existing `compliledger-algorand-adapter`
-  (degrades gracefully when the adapter is absent).
-- **Demo dashboard** — minimal React + Vite frontend visualising the full flow.
-
-### In progress
-
-- **HTTP x402 facilitator** — verification against a live facilitator endpoint
-  (the abstraction exists; the mock is the default).
-- **MVP 2 actor / policy management APIs** — dedicated CRUD surfaces.
-
-### Planned
-
-- **Additional settlement layers** — Solana, XRPL, Base (adapter stubs / future work).
-- **Additional anchoring / verification networks** — Hedera, Canton.
-- **CompliAGL Identity** — full DID / VC actor identity.
-- **CompliAGL Graph & Network** — cross-actor traceability and an external
-  verification layer for auditors and counterparties.
-
----
-
-## Architecture
-
-```
-AI Agent / Autonomous Actor
-        ↓
-Actor Identity
-        ↓
-Intent
-        ↓
-CompliAGL Core (policy + decision)
-        ↓
-Decision:
-  APPROVE  → continue
-  DENY     → stop
-  ESCALATE → human approval
-        ↓ (if APPROVED)
-Compli402 — x402 Payment (HTTP 402 until verified)
-        ↓
-Execution Adapter
-        ↓
-AIProof (deterministic hash, persisted in `ai_proofs`)
-        ↓
-Algorand Anchor (via compliledger-algorand-adapter)
-```
-
-### Canonical persistent runtime (Phase 1 consolidation)
-
-CompliAGL is AI-native **execution governance** infrastructure. It does not own
-merchant, booking, payment, wallet, settlement, inventory, or fulfillment
-systems — external systems perform the underlying action. CompliAGL receives an
-actor's identity, intent, target and context; evaluates governance; produces a
-deterministic decision; issues an execution authorization; receives the external
-execution result; and generates an AIProof.
-
-The runtime has been consolidated onto a single, persistent SQLAlchemy
-foundation:
-
-| Concern | Canonical implementation | Table |
-|---------|--------------------------|-------|
-| Actor / agent | `app/services/actor_registry.py` | `agents` |
-| Policy | `app/services/policy_repository.py` | `policies` |
-| Deterministic decision engine | `app/services/decision_engine.py` (one engine; outcomes `APPROVED` / `DENIED` / `ESCALATED`) | — |
-| AIProof | `app/services/aiproof_service.py` (unifies `ProofBundle` + `AIProofBundle`) | `ai_proofs` |
-| Execution | execution adapters; CompliAGL authorizes, external systems execute and return a result that is validated + recorded | — |
-| x402 | one **optional** execution adapter (`X402Adapter`) | — |
-
-Deprecated (retained for backward compatibility): the in-memory MVP2 registries,
-the transaction-centric `/transactions` evaluation flow, the legacy
-`proof_bundles` model, and the `/api/mvp2/*` routes. See
-[`docs/architecture/`](docs/architecture/) for the full inventory
-(`CONSOLIDATION_INVENTORY.md`), migration plan (`MIGRATION_PLAN.md`), and
-deprecated-route list (`DEPRECATED_ROUTES.md`).
-
-Database schema is managed by Alembic:
-
-```bash
-cd backend
-alembic upgrade head   # create / update the schema
-```
-
----
-
-## Quick Start
-
-**Backend**
-
-```bash
+# Clone
 git clone https://github.com/Compliledger/CompliAGL.git
-cd CompliAGL/backend
+cd CompliAGL
+
+# Backend
+cd backend
+python -m venv venv && source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-```
+cp .env.example .env                               # optional; SQLite defaults work
+uvicorn app.main:app --reload --port 8000          # API + OpenAPI docs at /docs
 
-The API will be available at **http://localhost:8000** and interactive docs at
-**http://localhost:8000/docs**.
-
-**Frontend**
-
-```bash
-cd frontend
-cp .env.example .env          # set VITE_API_BASE_URL (defaults to localhost:8000)
+# Frontend (separate terminal)
+cd ../CompliAgl-Frontend
 npm install
-npm run dev
+npm run dev                                        # Next.js on http://localhost:3000
 ```
 
-The demo dashboard will be available at **http://localhost:5173**.
+- **API docs:** <http://localhost:8000/docs> (OpenAPI / Swagger UI)
+- **Health:** <http://localhost:8000/health>
+- **Canonical API:** served under `/api/v1`
+- **Demo flow:** `/api/compli402` (mock x402 facilitator by default) — see [`docs/demo-flow.md`](./docs/demo-flow.md)
 
-**Tests**
+> The root `Makefile` targets `frontend/` and port `5173`, which do **not** match this repository (the frontend is `CompliAgl-Frontend/` on port `3000`). Use the commands above or in QUICKSTART.
+
+---
+
+## 🧪 Testing
+
+Backend tests use pytest and FastAPI's `TestClient`. **`pytest` and `httpx` are not pinned in `backend/requirements.txt`**, so install them first:
 
 ```bash
 cd backend
-pip install -r requirements.txt
-pytest
+pip install pytest httpx
+python -m pytest -q
+```
+
+**Last verified run in this environment:**
+
+- Command: `python -m pytest -q` (from `backend/`)
+- Result: **291 passed**, 0 failed, **1 warning** (`PendingDeprecationWarning` from Starlette's multipart import), in ~26s.
+
+The frontend has **no automated test suite**. It provides quality scripts instead:
+
+```bash
+cd CompliAgl-Frontend
+npm run lint
+npm run typecheck
+npm run format:check
 ```
 
 ---
 
-## API Overview
+## 📚 Documentation
 
-The backend is a FastAPI service. Interactive Swagger docs are always available
-at **`/docs`**.
-
-**Compli402 (x402 challenge surface)**
-
-- `GET /api/compli402/health` — service health and x402 configuration.
-- `POST /api/compli402/verify/intent` — evaluate an intent against policy (no execution).
-- `POST /api/compli402/execute` — full governance → payment → execute → AIProof → anchor flow.
-- `GET /api/compli402/proofs/latest` — most recent AIProof bundle.
-- `GET /api/compli402/proofs/{proof_hash}` — a single AIProof bundle by hash.
-
-**Governance & proof (MVP 1)**
-
-- `GET /health` — service health check.
-- `POST /api/agents` · `GET /api/agents` — register and list actors/agents.
-- `POST /api/policies` · `GET /api/policies` — manage governance policies.
-- `POST /api/transactions` · `POST /api/transactions/{id}/evaluate` — submit and evaluate intents.
-- `GET /api/audit` — browse the audit trail.
-- `GET /api/proofs` — retrieve generated proof bundles.
-- `GET /api/dashboard/summary` — control-plane summary metrics.
-
-See `/docs` for full request/response schemas.
+| Document | Description |
+|----------|-------------|
+| [QUICKSTART.md](./QUICKSTART.md) | Verified setup, run, and test commands |
+| [ROADMAP.md](./ROADMAP.md) | Phased roadmap with per-item status |
+| [SECURITY.md](./SECURITY.md) | Security posture and current limitations |
+| [CONTRIBUTING.md](./CONTRIBUTING.md) | Contribution guidelines |
+| [docs/architecture.md](./docs/architecture.md) | System architecture overview |
+| [docs/architecture/AIPROOF.md](./docs/architecture/AIPROOF.md) | AIProof structure and generation |
+| [docs/INTEGRATION_CONTRACTS.md](./docs/INTEGRATION_CONTRACTS.md) | ProofSync / AuditSync / RegSync contracts |
+| [docs/demo-flow.md](./docs/demo-flow.md) | Approved / denied / escalated demo flows |
+| [docs/schemas/aiproof-1.0.0.schema.json](./docs/schemas/aiproof-1.0.0.schema.json) | AIProof JSON Schema (v1.0.0) |
+| [backend/README.md](./backend/README.md) | Backend service reference |
+| [sdk/README.md](./sdk/README.md) | Integration SDK overview |
 
 ---
 
-## Repository Structure
+## 🤝 Contributing & security
 
-```
-CompliAGL/
-├── backend/            # FastAPI control-plane service
-│   ├── app/
-│   │   ├── api/routes/compli402.py     # Compli402 x402 public API
-│   │   └── mvp2/
-│   │       ├── core/                   # policy + decision engine
-│   │       ├── execution/adapters/     # x402 (+ mock, solana stub) adapters
-│   │       ├── proof/                  # AIProof generation + hashing
-│   │       └── anchor/                 # compliledger-algorand-adapter wrapper
-│   ├── tests/
-│   ├── requirements.txt
-│   ├── Procfile
-│   └── railway.json
-├── frontend/           # React + Vite Compli402 demo dashboard
-├── docs/               # Architecture and demo-flow documentation
-├── README.md
-└── LICENSE
-```
+- Contribution guidelines: **[CONTRIBUTING.md](./CONTRIBUTING.md)**
+- Security posture and reporting: **[SECURITY.md](./SECURITY.md)**
+
+Please keep documentation and status labels honest — mocks, stubs, and in-memory defaults must be labeled as such.
 
 ---
 
-## Deployment
+<!-- ─────────────────────────────  FOOTER  ───────────────────────────── -->
+<div align="center">
 
-CompliAGL deploys to **Railway**. The backend ships with a `Procfile` and
-`railway.json` (NIXPACKS builder) that start the FastAPI service via uvicorn,
-binding to the platform-provided `$PORT`.
+<sub><strong>CompliAGL</strong> — AI Execution Governance Infrastructure · Govern before execution.</sub>
 
----
+<br/>
 
-## License
+<sub>Licensed under the <a href="./LICENSE">MIT License</a>. Status: active development / proof of concept.</sub>
 
-Released under the [MIT License](./LICENSE).
+<br/>
+
+<sub>CompliAGL governs execution. External systems perform the underlying action. CompliLedger converts AIProof into machine-verifiable proof.</sub>
+
+</div>
