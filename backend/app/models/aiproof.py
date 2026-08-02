@@ -1,9 +1,17 @@
-"""Canonical AIProof ORM model.
+"""Legacy x402 AIProof ORM model (demo surface).
 
-This is the single, persistent proof record for CompliAGL. It consolidates the
-legacy transaction-scoped :class:`app.models.proof_bundle.ProofBundle` and the
-in-memory :class:`app.mvp2.schemas.aiproof.AIProofBundle` into one canonical,
-persistent domain model.
+.. deprecated::
+    Superseded by the single canonical persistent AIProof —
+    :class:`app.models.canonical_aiproof.CanonicalAIProof` (schema:
+    :class:`app.schemas.canonical.aiproof.AIProof`). The canonical AIProof covers
+    the complete governance lifecycle, is RFC 8785 canonicalized, SHA-256 hashed
+    and digitally signed, references sensitive evidence instead of embedding it,
+    and is formally handed off to CompliLedger.
+
+This ``AIProof`` table backs only the compli402 x402 hackathon-demo flow. It
+consolidated the earlier transaction-scoped :class:`ProofBundle` and the
+in-memory ``AIProofBundle`` demo store; the governance-lifecycle proof is now the
+canonical AIProof above.
 
 An **AIProof** captures *who* acted (actor), *what* they intended (intent),
 *how* it was governed (policy + decision), *how* it was executed (execution

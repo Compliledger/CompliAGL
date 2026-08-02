@@ -1,6 +1,18 @@
-"""AIProof bundle schema — the canonical, competition-ready proof record.
+"""Legacy x402 AIProof *bundle* schema (demo surface).
 
-An **AIProof** bundle is the verifiable record CompliAGL produces for every
+.. deprecated::
+    Superseded by the single canonical CompliAGL AIProof —
+    :class:`app.schemas.canonical.aiproof.AIProof` (persisted via
+    :class:`app.models.canonical_aiproof.CanonicalAIProof`). That canonical
+    AIProof covers the complete governance lifecycle, is canonicalized with RFC
+    8785 (JCS), SHA-256 hashed, digitally signed, references sensitive evidence
+    rather than embedding it, and is handed off to CompliLedger via
+    :class:`app.schemas.canonical.aiproof.CompliLedgerProofHandoff`.
+
+    This ``AIProofBundle`` is retained **only** for the compli402 x402
+    hackathon-demo flow (``/api/compli402``) and is not the canonical proof.
+
+An **AIProof** bundle is the verifiable record the demo x402 flow produces for a
 governed autonomous execution. It captures *who* acted (actor), *what* they
 intended (intent), *how* it was governed (policy + decision), *how* it was
 executed (execution adapter + x402 payment), and *how* it is anchored

@@ -6,6 +6,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     actor_identities,
+    aiproofs,
     authorization,
     evidence,
     governance,
@@ -28,3 +29,4 @@ api_v1_router.include_router(governance_packages.router)
 api_v1_router.include_router(policy_applicability.router)
 api_v1_router.include_router(evidence.router)
 api_v1_router.include_router(remediation.router)
+api_v1_router.include_router(aiproofs.router)
