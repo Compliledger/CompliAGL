@@ -26,6 +26,14 @@ class Settings(BaseSettings):
     # Keeps the Compli402 demo self-contained (no external services/secrets).
     X402_MOCK_MODE: bool = True
 
+    # ── Executable governance package signing ────────────────────────
+    # Optional registry of signing keys used to verify the signatures on
+    # published governance packages, as a mapping of ``signer_key_id`` to a
+    # shared secret. When empty, signing is "not configured" and packages are
+    # accepted without a signature. When populated, any package that supplies a
+    # signer_key_id/signature must present a valid signature or be rejected.
+    GOVERNANCE_SIGNING_KEYS: dict[str, str] = {}
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 

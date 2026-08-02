@@ -8,7 +8,7 @@ transitions raise :class:`InvalidTransitionError`.
 from __future__ import annotations
 
 from app.services.canonical.errors import InvalidTransitionError
-from app.utils.canonical_enums import AuthorizationStatus, IntentStatus
+from app.utils.canonical_enums import AuthorizationStatus, IntentStatus, PackageStatus
 
 # Intent lifecycle.
 INTENT_TRANSITIONS: dict[str, set[str]] = {
@@ -51,6 +51,33 @@ AUTHORIZATION_TRANSITIONS: dict[str, set[str]] = {
     AuthorizationStatus.CONSUMED.value: set(),
     AuthorizationStatus.REVOKED.value: set(),
     AuthorizationStatus.EXPIRED.value: set(),
+}
+
+# Executable governance package lifecycle.
+PACKAGE_TRANSITIONS: dict[str, set[str]] = {
+    PackageStatus.DRAFT.value: {
+        PackageStatus.VALIDATED.value,
+        PackageStatus.REJECTED.value,
+    },
+    PackageStatus.VALIDATED.value: {
+        PackageStatus.APPROVED.value,
+        PackageStatus.REJECTED.value,
+        # Re-validation is allowed before approval (contents are still mutable).
+        PackageStatus.DRAFT.value,
+    },
+    PackageStatus.APPROVED.value: {
+        PackageStatus.PUBLISHED.value,
+        PackageStatus.REJECTED.value,
+    },
+    PackageStatus.PUBLISHED.value: {
+        PackageStatus.SUPERSEDED.value,
+        PackageStatus.RETIRED.value,
+    },
+    PackageStatus.SUPERSEDED.value: {
+        PackageStatus.RETIRED.value,
+    },
+    PackageStatus.RETIRED.value: set(),
+    PackageStatus.REJECTED.value: set(),
 }
 
 

@@ -6,6 +6,7 @@ pydantic-settings==2.2.1
 python-dotenv==1.0.1
 aiosqlite==0.20.0
 alembic==1.13.2
+jsonschema==4.10.3
 
 # Optional: shared Algorand anchoring adapter. Installed separately (see
 # requirements-adapter.txt and app/mvp2/anchor/README.md) so the backend can

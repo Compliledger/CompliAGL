@@ -20,6 +20,7 @@ from app.models.governance_evaluation import GovernanceEvaluation  # noqa: F401
 from app.models.decision import Decision  # noqa: F401
 from app.models.execution_authorization import ExecutionAuthorization  # noqa: F401
 from app.models.external_execution_result import ExternalExecutionResult  # noqa: F401
+from app.models.governance_package import ExecutableGovernancePackage  # noqa: F401
 
 
 def init_db() -> None:

@@ -1,0 +1,257 @@
+{
+  "organization_id": "org-travel",
+  "package_name": "corporate-travel-policy",
+  "package_version": "1.0.0",
+  "content_schema_version": "1.0.0",
+  "effective_at": "2026-01-01T00:00:00Z",
+  "signer_key_id": null,
+  "signature": null,
+  "source_document_references": [
+    {
+      "document_id": "TRAVEL-POLICY-2024",
+      "title": "Corporate Travel Policy",
+      "version": "2024",
+      "uri": "urn:compliledger:doc:TRAVEL-POLICY-2024"
+    }
+  ],
+  "source_requirement_references": [
+    "TRAVEL-POLICY-2024 §1",
+    "TRAVEL-POLICY-2024 §2",
+    "TRAVEL-POLICY-2024 §3",
+    "TRAVEL-POLICY-2024 §4",
+    "TRAVEL-POLICY-2024 §5"
+  ],
+  "requirements": [
+    {
+      "requirement_id": "REQ-1",
+      "source_reference": "TRAVEL-POLICY-2024 §1",
+      "normalized_text": "Employees may book domestic economy travel on approved airlines.",
+      "requirement_type": "travel_booking",
+      "classification": "PERMISSION",
+      "applicability_expression": "is_international == False and cabin_class == 'ECONOMY'",
+      "mapped_control_ids": ["CTL-1"],
+      "severity": "MEDIUM"
+    },
+    {
+      "requirement_id": "REQ-2",
+      "source_reference": "TRAVEL-POLICY-2024 §2",
+      "normalized_text": "The total fare may not exceed $750 without manager approval.",
+      "requirement_type": "spend_limit",
+      "classification": "OBLIGATION",
+      "applicability_expression": "fare_minor > 75000",
+      "mapped_control_ids": ["CTL-2"],
+      "severity": "HIGH"
+    },
+    {
+      "requirement_id": "REQ-3",
+      "source_reference": "TRAVEL-POLICY-2024 §3",
+      "normalized_text": "International travel requires prior authorization.",
+      "requirement_type": "authorization",
+      "classification": "OBLIGATION",
+      "applicability_expression": "is_international == True",
+      "mapped_control_ids": ["CTL-3"],
+      "severity": "HIGH"
+    },
+    {
+      "requirement_id": "REQ-4",
+      "source_reference": "TRAVEL-POLICY-2024 §4",
+      "normalized_text": "Airlines not included in the approved vendor list are prohibited.",
+      "requirement_type": "vendor_restriction",
+      "classification": "PROHIBITION",
+      "applicability_expression": "airline not in approved_airlines",
+      "mapped_control_ids": ["CTL-4"],
+      "severity": "CRITICAL"
+    },
+    {
+      "requirement_id": "REQ-5",
+      "source_reference": "TRAVEL-POLICY-2024 §5",
+      "normalized_text": "Travel must originate from and arrive at approved locations.",
+      "requirement_type": "location_restriction",
+      "classification": "OBLIGATION",
+      "applicability_expression": "origin in approved_locations and destination in approved_locations",
+      "mapped_control_ids": ["CTL-5"],
+      "severity": "HIGH"
+    }
+  ],
+  "applicability_rules": [
+    {
+      "rule_id": "APP-1",
+      "description": "Applies to employee-initiated travel booking intents.",
+      "expression": "intent_type == 'WORKFLOW_ACTION' and action == 'book_travel'"
+    }
+  ],
+  "control_definitions": [
+    {
+      "control_id": "CTL-1",
+      "requirement_ids": ["REQ-1"],
+      "control_objective": "Permit domestic economy travel on approved airlines.",
+      "evaluation_expression": "is_international == False and cabin_class == 'ECONOMY' and airline in approved_airlines",
+      "mandatory": true,
+      "severity": "MEDIUM",
+      "failure_disposition": "DENY",
+      "remediation_eligible": false,
+      "evidence_requirement_ids": ["EV-1"],
+      "decision_impact": {"on_fail": "DENIED", "reason_code": "TRAVEL_NOT_PERMITTED"}
+    },
+    {
+      "control_id": "CTL-2",
+      "requirement_ids": ["REQ-2"],
+      "control_objective": "Enforce the $750 fare cap unless a manager approves.",
+      "evaluation_expression": "fare_minor <= 75000 or manager_approval == True",
+      "mandatory": true,
+      "severity": "HIGH",
+      "failure_disposition": "ESCALATE",
+      "remediation_eligible": true,
+      "evidence_requirement_ids": ["EV-2"],
+      "decision_impact": {"on_fail": "ESCALATED", "reason_code": "FARE_EXCEEDS_LIMIT_REQUIRES_APPROVAL"}
+    },
+    {
+      "control_id": "CTL-3",
+      "requirement_ids": ["REQ-3"],
+      "control_objective": "Require prior authorization for international travel.",
+      "evaluation_expression": "is_international == False or prior_authorization == True",
+      "mandatory": true,
+      "severity": "HIGH",
+      "failure_disposition": "ESCALATE",
+      "remediation_eligible": true,
+      "evidence_requirement_ids": ["EV-3"],
+      "decision_impact": {"on_fail": "ESCALATED", "reason_code": "INTERNATIONAL_REQUIRES_AUTHORIZATION"}
+    },
+    {
+      "control_id": "CTL-4",
+      "requirement_ids": ["REQ-4"],
+      "control_objective": "Prohibit airlines outside the approved vendor list.",
+      "evaluation_expression": "airline in approved_airlines",
+      "mandatory": true,
+      "severity": "CRITICAL",
+      "failure_disposition": "DENY",
+      "remediation_eligible": false,
+      "evidence_requirement_ids": ["EV-1"],
+      "decision_impact": {"on_fail": "DENIED", "reason_code": "AIRLINE_NOT_APPROVED"}
+    },
+    {
+      "control_id": "CTL-5",
+      "requirement_ids": ["REQ-5"],
+      "control_objective": "Restrict travel to approved origin and destination locations.",
+      "evaluation_expression": "origin in approved_locations and destination in approved_locations",
+      "mandatory": true,
+      "severity": "HIGH",
+      "failure_disposition": "DENY",
+      "remediation_eligible": false,
+      "evidence_requirement_ids": ["EV-4"],
+      "decision_impact": {"on_fail": "DENIED", "reason_code": "LOCATION_NOT_APPROVED"}
+    }
+  ],
+  "evidence_requirements": [
+    {
+      "evidence_requirement_id": "EV-1",
+      "control_ids": ["CTL-1", "CTL-4"],
+      "evidence_type": "APPROVED_VENDOR_LIST",
+      "authoritative_source_type": "PROCUREMENT_SYSTEM",
+      "subject_binding": "airline",
+      "freshness_requirement": "P30D",
+      "validation_method": "MEMBERSHIP_CHECK",
+      "minimum_cardinality": 1,
+      "mandatory": true,
+      "allowed_issuers": ["procurement.example.com"],
+      "metadata": {"list_name": "approved_airlines"}
+    },
+    {
+      "evidence_requirement_id": "EV-2",
+      "control_ids": ["CTL-2"],
+      "evidence_type": "MANAGER_APPROVAL",
+      "authoritative_source_type": "HR_WORKFLOW",
+      "subject_binding": "employee_id",
+      "freshness_requirement": "P7D",
+      "validation_method": "SIGNED_ATTESTATION",
+      "minimum_cardinality": 1,
+      "mandatory": false,
+      "allowed_issuers": ["hr.example.com"],
+      "metadata": {"threshold_minor": 75000, "currency": "USD"}
+    },
+    {
+      "evidence_requirement_id": "EV-3",
+      "control_ids": ["CTL-3"],
+      "evidence_type": "PRIOR_AUTHORIZATION",
+      "authoritative_source_type": "TRAVEL_MANAGEMENT_SYSTEM",
+      "subject_binding": "employee_id",
+      "target_binding": "destination",
+      "freshness_requirement": "P14D",
+      "validation_method": "SIGNED_ATTESTATION",
+      "minimum_cardinality": 1,
+      "mandatory": true,
+      "allowed_issuers": ["travel.example.com"],
+      "metadata": {}
+    },
+    {
+      "evidence_requirement_id": "EV-4",
+      "control_ids": ["CTL-5"],
+      "evidence_type": "APPROVED_LOCATION_LIST",
+      "authoritative_source_type": "TRAVEL_MANAGEMENT_SYSTEM",
+      "subject_binding": "origin",
+      "target_binding": "destination",
+      "freshness_requirement": "P30D",
+      "validation_method": "MEMBERSHIP_CHECK",
+      "minimum_cardinality": 2,
+      "mandatory": true,
+      "allowed_issuers": ["travel.example.com"],
+      "metadata": {"list_name": "approved_locations"}
+    }
+  ],
+  "decision_conditions": [
+    {
+      "condition_id": "DC-1",
+      "expression": "airline not in approved_airlines",
+      "resulting_decision": "DENIED",
+      "priority": 10,
+      "reason_code": "AIRLINE_NOT_APPROVED",
+      "terminal": true
+    },
+    {
+      "condition_id": "DC-2",
+      "expression": "origin not in approved_locations or destination not in approved_locations",
+      "resulting_decision": "DENIED",
+      "priority": 20,
+      "reason_code": "LOCATION_NOT_APPROVED",
+      "terminal": true
+    },
+    {
+      "condition_id": "DC-3",
+      "expression": "is_international == True and prior_authorization == False",
+      "resulting_decision": "ESCALATED",
+      "priority": 30,
+      "reason_code": "INTERNATIONAL_REQUIRES_AUTHORIZATION",
+      "terminal": true
+    },
+    {
+      "condition_id": "DC-4",
+      "expression": "fare_minor > 75000 and manager_approval == False",
+      "resulting_decision": "ESCALATED",
+      "priority": 40,
+      "reason_code": "FARE_EXCEEDS_LIMIT_REQUIRES_APPROVAL",
+      "terminal": true
+    },
+    {
+      "condition_id": "DC-5",
+      "expression": "True",
+      "resulting_decision": "APPROVED",
+      "priority": 100,
+      "reason_code": "WITHIN_TRAVEL_POLICY",
+      "terminal": true
+    }
+  ],
+  "conflict_resolution_rules": [
+    {
+      "rule_id": "CR-1",
+      "strategy": "PRIORITY_ORDER",
+      "description": "Lower-priority-number decision conditions win; the first terminal match decides.",
+      "precedence": ["DENIED", "ESCALATED", "APPROVED"]
+    }
+  ],
+  "metadata": {
+    "author": "CompliLedger",
+    "note": "Fixture for testing the executable governance package contract only; CompliAGL is not a booking platform.",
+    "currency": "USD",
+    "fare_cap_minor": 75000
+  }
+}
