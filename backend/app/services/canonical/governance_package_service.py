@@ -33,7 +33,6 @@ from app.services.canonical.errors import (
     NotFoundError,
     PackageImmutableError,
     PackageSignatureError,
-    PackageValidationError,
 )
 from app.services.canonical.package_signing import (
     signing_configured,

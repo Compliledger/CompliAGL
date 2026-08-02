@@ -22,7 +22,6 @@ from app.utils.canonical_enums import (
     ControlFailureDisposition,
     DecisionOutcome,
     GovernanceSeverity,
-    PackageStatus,
     RequirementClassification,
 )
 
