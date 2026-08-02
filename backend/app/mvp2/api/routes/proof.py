@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException
 from app.mvp2.proof.generator import generate_proof
 from app.mvp2.schemas.proof import ProofRequest, ProofResponse
 
-router = APIRouter(prefix="/api/mvp2", tags=["mvp2-proof"])
+router = APIRouter(prefix="/api/mvp2", tags=["mvp2-proof"], deprecated=True)
 
 # ---------------------------------------------------------------------------
 # In-memory proof store (MVP 2)

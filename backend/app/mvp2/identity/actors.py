@@ -1,8 +1,10 @@
 """Actor helpers for MVP 2 identity sub-module.
 
-Provides lightweight factory and look-up utilities for actor
-representations.  In a production deployment these would talk to a
-persistent store; here they demonstrate the interface contract.
+.. deprecated::
+    This in-memory actor registry is **deprecated**. The canonical, persistent
+    actor implementation lives in :mod:`app.services.actor_registry` (backed by
+    the ``agents`` table). This module is retained only for backward
+    compatibility and is no longer used by the production startup path.
 """
 
 from __future__ import annotations

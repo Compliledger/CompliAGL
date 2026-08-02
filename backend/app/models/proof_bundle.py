@@ -1,4 +1,10 @@
-"""ProofBundle ORM model."""
+"""ProofBundle ORM model.
+
+.. deprecated::
+    Superseded by the canonical persistent :class:`app.models.aiproof.AIProof`
+    (unifies ``ProofBundle`` and ``AIProofBundle``). Retained for backward
+    compatibility with the deprecated transaction-centric evaluation flow.
+"""
 
 import uuid
 

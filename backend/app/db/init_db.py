@@ -8,7 +8,8 @@ from app.models.policy import Policy  # noqa: F401
 from app.models.transaction import Transaction  # noqa: F401
 from app.models.approval import Approval  # noqa: F401
 from app.models.audit_log import AuditLog  # noqa: F401
-from app.models.proof_bundle import ProofBundle  # noqa: F401
+from app.models.proof_bundle import ProofBundle  # noqa: F401  (deprecated)
+from app.models.aiproof import AIProof  # noqa: F401  (canonical proof)
 
 
 def init_db() -> None:

@@ -12,7 +12,7 @@ from fastapi import APIRouter
 from app.mvp2.execution.service import execute_transaction
 from app.mvp2.schemas.execution import ExecutionRequest, ExecutionResponse
 
-router = APIRouter(prefix="/api/mvp2", tags=["mvp2-execution"])
+router = APIRouter(prefix="/api/mvp2", tags=["mvp2-execution"], deprecated=True)
 
 
 @router.post("/execute", response_model=ExecutionResponse)

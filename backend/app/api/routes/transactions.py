@@ -64,9 +64,19 @@ def create(payload: TransactionCreate, db: Session = Depends(get_db)):
     return _tx_to_response(tx)
 
 
-@router.post("/{transaction_id}/evaluate", response_model=EvaluationResponse)
+@router.post(
+    "/{transaction_id}/evaluate",
+    response_model=EvaluationResponse,
+    deprecated=True,
+)
 def evaluate_existing_transaction(transaction_id: str, db: Session = Depends(get_db)):
-    """Evaluate a submitted transaction against the agent's active policy."""
+    """Evaluate a submitted transaction against the agent's active policy.
+
+    .. deprecated::
+        The transaction-centric evaluation path is deprecated. The canonical
+        intent-based decision engine is :mod:`app.services.decision_engine`
+        (exposed publicly via ``POST /api/compli402/verify/intent``).
+    """
     tx = db.query(Transaction).filter(Transaction.id == transaction_id).first()
     if not tx:
         raise HTTPException(status_code=404, detail="Transaction not found")
