@@ -58,6 +58,10 @@ from app.models.review_record import ReviewRecord  # noqa: F401
 from app.models.integration_event import IntegrationEvent  # noqa: F401
 from app.models.event_delivery import EventDelivery  # noqa: F401
 
+# Continuous monitoring & automated re-evaluation.
+from app.models.monitoring_event import MonitoringEvent  # noqa: F401
+from app.models.reevaluation_run import ReevaluationRun  # noqa: F401
+
 
 def init_db() -> None:
     """Create database tables if they do not already exist."""
