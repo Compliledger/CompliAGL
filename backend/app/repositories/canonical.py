@@ -753,6 +753,41 @@ class EventDeliveryRepository(TenantRepository[EventDelivery]):
         )
         if status is not None:
             query = query.filter(self.model.status == status)
+        return (
+            query.order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def list_deliverable(
+        self,
+        organization_id: str,
+        *,
+        channel: Optional[str] = None,
+        limit: int = 100,
+    ) -> Sequence[EventDelivery]:
+        """Return PENDING or retryable FAILED deliveries for the tenant.
+
+        Dead-lettered and already-delivered rows are never returned.
+        """
+        from app.utils.canonical_enums import EventDeliveryStatus
+
+        query = self._scoped(organization_id).filter(
+            self.model.status.in_(
+                [
+                    EventDeliveryStatus.PENDING.value,
+                    EventDeliveryStatus.FAILED.value,
+                ]
+            )
+        )
+        if channel is not None:
+            query = query.filter(self.model.channel == channel)
+        return (
+            query.order_by(self.model.created_at.asc()).limit(limit).all()
+        )
+
+
 class CanonicalAIProofRepository(TenantRepository[CanonicalAIProof]):
     model = CanonicalAIProof
 
@@ -789,31 +824,4 @@ class CanonicalAIProofRepository(TenantRepository[CanonicalAIProof]):
             .offset(skip)
             .limit(limit)
             .all()
-        )
-
-    def list_deliverable(
-        self,
-        organization_id: str,
-        *,
-        channel: Optional[str] = None,
-        limit: int = 100,
-    ) -> Sequence[EventDelivery]:
-        """Return PENDING or retryable FAILED deliveries for the tenant.
-
-        Dead-lettered and already-delivered rows are never returned.
-        """
-        from app.utils.canonical_enums import EventDeliveryStatus
-
-        query = self._scoped(organization_id).filter(
-            self.model.status.in_(
-                [
-                    EventDeliveryStatus.PENDING.value,
-                    EventDeliveryStatus.FAILED.value,
-                ]
-            )
-        )
-        if channel is not None:
-            query = query.filter(self.model.channel == channel)
-        return (
-            query.order_by(self.model.created_at.asc()).limit(limit).all()
         )
