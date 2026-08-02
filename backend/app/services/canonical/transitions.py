@@ -39,6 +39,19 @@ INTENT_TRANSITIONS: dict[str, set[str]] = {
 
 # Execution authorization lifecycle.
 AUTHORIZATION_TRANSITIONS: dict[str, set[str]] = {
+    # Canonical signed-authorization lifecycle.
+    AuthorizationStatus.ISSUED.value: {
+        AuthorizationStatus.ACTIVE.value,
+        AuthorizationStatus.CONSUMED.value,
+        AuthorizationStatus.REVOKED.value,
+        AuthorizationStatus.EXPIRED.value,
+    },
+    AuthorizationStatus.ACTIVE.value: {
+        AuthorizationStatus.CONSUMED.value,
+        AuthorizationStatus.REVOKED.value,
+        AuthorizationStatus.EXPIRED.value,
+    },
+    # Legacy lifecycle (retained for backward compatibility).
     AuthorizationStatus.PENDING.value: {
         AuthorizationStatus.AUTHORIZED.value,
         AuthorizationStatus.REVOKED.value,

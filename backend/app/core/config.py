@@ -34,6 +34,30 @@ class Settings(BaseSettings):
     # signer_key_id/signature must present a valid signature or be rejected.
     GOVERNANCE_SIGNING_KEYS: dict[str, str] = {}
 
+    # ── Execution authorization signing ──────────────────────────────
+    # Registry of signing keys used to sign and independently verify issued
+    # ExecutionAuthorizations, as a mapping of ``signer_key_id`` to a private
+    # signing secret. These are **private signing keys** and MUST be supplied
+    # through environment-backed secret management (environment variables / a
+    # secrets manager) — never committed to source. See
+    # ``app/services/canonical/authorization_signing.py`` for the documented
+    # signing interface.
+    #
+    # Set via the ``AUTHORIZATION_SIGNING_KEYS`` environment variable, e.g.
+    # ``AUTHORIZATION_SIGNING_KEYS={"auth-key-1": "..."}``. When empty, the
+    # service derives a single deterministic development key from ``SECRET_KEY``
+    # (also environment-backed) so authorizations are always signed and never
+    # emitted unsigned.
+    AUTHORIZATION_SIGNING_KEYS: dict[str, str] = {}
+    # The ``signer_key_id`` used to sign newly issued authorizations. When empty
+    # the first configured key (or the SECRET_KEY-derived development key) is
+    # used.
+    AUTHORIZATION_ACTIVE_SIGNER_KEY_ID: str = ""
+    # Default authorization time-to-live (seconds) applied when an issue request
+    # does not specify an explicit ``expires_at``. Narrow, replay-resistant
+    # authorizations should be short-lived.
+    AUTHORIZATION_DEFAULT_TTL_SECONDS: int = 900
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 

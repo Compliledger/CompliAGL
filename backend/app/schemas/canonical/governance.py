@@ -76,6 +76,37 @@ class DecisionResponse(CanonicalResponseBase):
     decision_hash: Optional[str] = None
     decided_at: Optional[datetime] = None
 
+    # Canonical deterministic-decision fields (optional for backward compat).
+    evaluation_id: Optional[str] = None
+    policy_resolution_id: Optional[str] = None
+    assessment_id: Optional[str] = None
+    decision_conditions_triggered: list[Any] = Field(default_factory=list)
+    applicable_package_ids: list[Any] = Field(default_factory=list)
+    applicable_requirement_ids: list[Any] = Field(default_factory=list)
+    control_evaluation_ids: list[Any] = Field(default_factory=list)
+    evidence_package_id: Optional[str] = None
+    evidence_package_hash: Optional[str] = None
+    assessment_hash: Optional[str] = None
+    policy_package_hash: Optional[str] = None
+    actor_hash: Optional[str] = None
+    intent_hash: Optional[str] = None
+    target_hash: Optional[str] = None
+    context_hash: Optional[str] = None
+    engine_version: Optional[str] = None
+    input_hash: Optional[str] = None
+    expires_at: Optional[datetime] = None
+    prior_decision_id: Optional[str] = None
+    superseded_by_decision_id: Optional[str] = None
+    supersession_status: Optional[str] = None
+
+
+class DecideFromResolutionRequest(BaseModel):
+    """Run the deterministic decision engine for a resolved evaluation."""
+
+    organization_id: str = Field(..., min_length=1)
+    policy_resolution_id: str = Field(..., min_length=1)
+    prior_decision_id: Optional[str] = None
+
 
 # --------------------------------------------------------------------------- #
 # ExecutionAuthorization
@@ -100,6 +131,69 @@ class ExecutionAuthorizationResponse(CanonicalResponseBase):
     constraints: Optional[dict[str, Any]] = None
     authorized_at: Optional[datetime] = None
     expires_at: Optional[datetime] = None
+
+    # Signed first-class authorization fields (optional for backward compat).
+    actor_id: Optional[str] = None
+    target_id: Optional[str] = None
+    authorized_action: Optional[str] = None
+    authorized_parameter_constraints: Optional[dict[str, Any]] = None
+    max_amount_minor: Optional[int] = None
+    max_amount_currency: Optional[str] = None
+    permitted_execution_system: Optional[str] = None
+    issued_at: Optional[datetime] = None
+    nonce: Optional[str] = None
+    idempotency_key: Optional[str] = None
+    one_time_use: Optional[bool] = None
+    consumed_at: Optional[datetime] = None
+    revoked_at: Optional[datetime] = None
+    revocation_reason: Optional[str] = None
+    policy_package_hash: Optional[str] = None
+    assessment_hash: Optional[str] = None
+    evidence_package_hash: Optional[str] = None
+    decision_hash: Optional[str] = None
+    signer_key_id: Optional[str] = None
+    signature: Optional[str] = None
+    authorization_hash: Optional[str] = None
+
+
+class ExecutionAuthorizationIssueRequest(BaseModel):
+    """Issue a signed execution authorization for an APPROVED decision."""
+
+    organization_id: str = Field(..., min_length=1)
+    decision_id: str = Field(..., min_length=1)
+    permitted_execution_system: Optional[str] = None
+    authorized_parameter_constraints: Optional[dict[str, Any]] = None
+    max_amount_minor: Optional[int] = None
+    max_amount_currency: Optional[str] = None
+    expires_at: Optional[datetime] = None
+    idempotency_key: Optional[str] = None
+    one_time_use: bool = True
+
+
+class ExecutionAuthorizationVerifyRequest(BaseModel):
+    """Independently verify an authorization before accepting execution."""
+
+    expected_fields: Optional[dict[str, Any]] = None
+    activate: bool = True
+
+
+class ExecutionAuthorizationVerifyResponse(BaseModel):
+    """Result of verifying an authorization."""
+
+    authorization_id: str
+    valid: bool
+    status: str
+    reasons: list[str] = Field(default_factory=list)
+    hash_valid: bool
+    signature_valid: bool
+    expired: bool
+    mismatched_fields: list[str] = Field(default_factory=list)
+
+
+class ExecutionAuthorizationRevokeRequest(BaseModel):
+    """Revoke a live authorization."""
+
+    reason: Optional[str] = None
 
 
 class ExecutionAuthorizationStatusUpdate(BaseModel):
