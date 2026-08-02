@@ -58,6 +58,24 @@ class Settings(BaseSettings):
     # authorizations should be short-lived.
     AUTHORIZATION_DEFAULT_TTL_SECONDS: int = 900
 
+    # ── Integration event signing (ProofSync / AuditSync / RegSync) ──────
+    # Registry of signing keys used to sign and independently verify outbound
+    # integration events, as a mapping of ``signer_key_id`` to a private signing
+    # secret. These are **private signing keys** and MUST be supplied through
+    # environment-backed secret management — never committed to source. When
+    # empty, a single deterministic development key is derived from ``SECRET_KEY``
+    # so every outbound event is always signed and never emitted unsigned.
+    #
+    # Set via the ``EVENT_SIGNING_KEYS`` environment variable, e.g.
+    # ``EVENT_SIGNING_KEYS={"event-key-1": "..."}``.
+    EVENT_SIGNING_KEYS: dict[str, str] = {}
+    # The ``signer_key_id`` used to sign newly published events. When empty the
+    # first configured key (or the SECRET_KEY-derived development key) is used.
+    EVENT_ACTIVE_SIGNER_KEY_ID: str = ""
+    # Maximum number of delivery attempts before a delivery is dead-lettered.
+    EVENT_MAX_DELIVERY_ATTEMPTS: int = 5
+    # Base back-off (seconds) applied between delivery retries.
+    EVENT_RETRY_BACKOFF_SECONDS: int = 30
     # ── AIProof signing ──────────────────────────────────────────────
     # Registry of signing keys used to sign and independently verify canonical
     # AIProofs, as a mapping of ``signer_key_id`` to a private signing secret.

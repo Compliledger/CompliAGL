@@ -54,6 +54,10 @@ from app.models.resolution_evidence import ResolutionEvidence  # noqa: F401
 from app.models.devsync_dispatch import DevSyncDispatch  # noqa: F401
 from app.models.review_record import ReviewRecord  # noqa: F401
 
+# Integration / event-feed outbox (ProofSync / AuditSync / RegSync).
+from app.models.integration_event import IntegrationEvent  # noqa: F401
+from app.models.event_delivery import EventDelivery  # noqa: F401
+
 
 def init_db() -> None:
     """Create database tables if they do not already exist."""

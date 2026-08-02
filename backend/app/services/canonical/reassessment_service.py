@@ -230,6 +230,11 @@ def trigger(
     finding.resolved_by_decision_id = new_decision.id
     FindingRepository(db).save(finding)
 
+    # --- Integration events (best-effort; never breaks governance) --------- #
+    _emit_reevaluation_events(
+        db, org, finding, prior_decision, new_decision, new_assessment
+    )
+
     return {
         "finding_id": finding.finding_id,
         "reassessed": True,
@@ -240,6 +245,74 @@ def trigger(
         "decision_outcome": new_decision.outcome,
         "finding_status": finding.status,
     }
+
+
+def _emit_reevaluation_events(
+    db: Session,
+    org: str,
+    finding,
+    prior_decision,
+    new_decision,
+    new_assessment,
+) -> None:
+    """Publish reevaluation.completed + proof.superseded events (best-effort).
+
+    A validated resolution produces a new decision and supersedes the prior one.
+    That supersession is propagated to the sync portals so a stale proof view is
+    never treated as current: ``proof.superseded`` marks the prior decision/proof
+    and ``reevaluation.completed`` announces the new current decision.
+    """
+    from app.services.canonical.integration import event_publisher
+    from app.services.canonical.integration.contracts import EventContract
+    from app.utils.canonical_enums import IntegrationEventType
+
+    if prior_decision is not None and prior_decision.id != new_decision.id:
+        event_publisher.emit_safe(
+            db,
+            EventContract(
+                event_type=IntegrationEventType.PROOF_SUPERSEDED,
+                organization_id=org,
+                aggregate_type="Decision",
+                aggregate_id=prior_decision.id,
+                references={
+                    "decision_id": prior_decision.id,
+                    "decision_hash": prior_decision.decision_hash,
+                    "superseded_by_decision_id": new_decision.id,
+                    "intent_id": finding.intent_id,
+                    "finding_id": finding.finding_id,
+                },
+                attributes={
+                    "status": DecisionSupersessionStatus.SUPERSEDED.value,
+                    "outcome": prior_decision.outcome,
+                },
+                dedup_key=f"superseded_by:{new_decision.id}",
+            ),
+        )
+
+    event_publisher.emit_safe(
+        db,
+        EventContract(
+            event_type=IntegrationEventType.REEVALUATION_COMPLETED,
+            organization_id=org,
+            aggregate_type="Decision",
+            aggregate_id=new_decision.id,
+            references={
+                "decision_id": new_decision.id,
+                "decision_hash": new_decision.decision_hash,
+                "prior_decision_id": (
+                    prior_decision.id if prior_decision is not None else None
+                ),
+                "assessment_id": new_assessment.id,
+                "intent_id": finding.intent_id,
+                "finding_id": finding.finding_id,
+            },
+            attributes={
+                "status": new_decision.supersession_status,
+                "outcome": new_decision.outcome,
+                "finding_status": finding.status,
+            },
+        ),
+    )
 
 
 def decision_history(

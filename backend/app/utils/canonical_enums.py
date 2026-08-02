@@ -605,3 +605,71 @@ class ReviewOutcome(str, Enum):
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
     NEEDS_MORE_INFO = "NEEDS_MORE_INFO"
+
+
+# --------------------------------------------------------------------------- #
+# Integration / event-feed vocabulary (ProofSync / AuditSync / RegSync)
+# --------------------------------------------------------------------------- #
+class IntegrationEventType(str, Enum):
+    """Canonical governance/assurance events published to the sync portals.
+
+    CompliAGL / CompliLedger remains the canonical proof source. These events are
+    the *only* contract the ProofSync, AuditSync and RegSync portals consume —
+    they carry references and authorized projections, never a portal-owned copy
+    of the canonical proof store.
+    """
+
+    ASSESSMENT_CREATED = "assessment.created"
+    DECISION_CREATED = "decision.created"
+    FINDING_CREATED = "finding.created"
+    REMEDIATION_UPDATED = "remediation.updated"
+    RESOLUTION_VALIDATED = "resolution.validated"
+    PROOF_GENERATED = "proof.generated"
+    PROOF_ANCHORED = "proof.anchored"
+    PROOF_VERIFIED = "proof.verified"
+    PROOF_SUPERSEDED = "proof.superseded"
+    MONITORING_CHANGE_DETECTED = "monitoring.change_detected"
+    REEVALUATION_COMPLETED = "reevaluation.completed"
+
+
+class IntegrationChannel(str, Enum):
+    """The authorized outbound integration surfaces (sync portals).
+
+    * ``PROOFSYNC`` — client-facing real-time governance and assurance feed.
+    * ``AUDITSYNC`` — auditor-authorized evidence-reference and history feed.
+    * ``REGSYNC`` — regulator-authorized regulation-scoped supervision feed.
+    """
+
+    PROOFSYNC = "PROOFSYNC"
+    AUDITSYNC = "AUDITSYNC"
+    REGSYNC = "REGSYNC"
+
+
+class EventDeliveryStatus(str, Enum):
+    """Persistent delivery state of a single outbound event delivery.
+
+    Deliveries follow the transactional-outbox lifecycle
+    ``PENDING -> DELIVERED`` on success, ``PENDING/FAILED -> FAILED`` (retryable)
+    on a transient failure, and ``FAILED -> DEAD_LETTER`` once the maximum number
+    of attempts is exhausted.
+    """
+
+    PENDING = "PENDING"
+    DELIVERED = "DELIVERED"
+    FAILED = "FAILED"
+    DEAD_LETTER = "DEAD_LETTER"
+
+
+class SubscriberRole(str, Enum):
+    """Authorized subscriber roles for the sync portals.
+
+    Role scoping is enforced at the feed boundary: a caller may only read a
+    channel their role is authorized for (see
+    :mod:`app.services.canonical.integration.scoping`).
+    """
+
+    CLIENT = "CLIENT"
+    GOVERNANCE_ADMIN = "GOVERNANCE_ADMIN"
+    AUDITOR = "AUDITOR"
+    REGULATOR = "REGULATOR"
+    COMPLILEDGER_SERVICE = "COMPLILEDGER_SERVICE"

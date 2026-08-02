@@ -128,6 +128,12 @@ _JSON_FIELDS: dict[str, tuple[str, ...]] = {
         "payload",
         "callbacks",
     ),
+    "IntegrationEvent": (
+        "references",
+        "attributes",
+        "sensitive_digest",
+    ),
+    "EventDelivery": ("projection",),
 }
 
 

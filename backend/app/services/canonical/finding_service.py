@@ -420,7 +420,45 @@ def generate_for_decision(
             )
         )
 
-    return [repo.add(f) for f in findings]
+    saved_findings = [repo.add(f) for f in findings]
+    for finding in saved_findings:
+        _emit_finding_created(db, org, finding)
+    return saved_findings
+
+
+def _emit_finding_created(db: Session, org: str, finding: Finding) -> None:
+    """Publish a ``finding.created`` integration event (best-effort)."""
+    from app.services.canonical.integration import event_publisher
+    from app.services.canonical.integration.contracts import EventContract
+    from app.utils.canonical_enums import IntegrationEventType
+
+    event_publisher.emit_safe(
+        db,
+        EventContract(
+            event_type=IntegrationEventType.FINDING_CREATED,
+            organization_id=org,
+            aggregate_type="Finding",
+            aggregate_id=finding.id,
+            references={
+                "finding_id": finding.finding_id,
+                "decision_id": finding.decision_id,
+                "assessment_id": finding.assessment_id,
+                "intent_id": finding.intent_id,
+                "requirement_ids": _load(finding.requirement_ids, []) or [],
+                "control_ids": _load(finding.control_ids, []) or [],
+                "evidence_gap_ids": _load(finding.evidence_gap_ids, []) or [],
+                "finding_hash": finding.finding_hash,
+            },
+            attributes={
+                "status": finding.status,
+                "severity": finding.severity,
+                "finding_type": finding.finding_type,
+                "decision_impact": finding.decision_impact,
+                "remediation_eligibility": finding.remediation_eligibility,
+                "terminal": finding.terminal,
+            },
+        ),
+    )
 
 
 # --------------------------------------------------------------------------- #

@@ -31,6 +31,8 @@ from app.models.finding import Finding
 from app.models.remediation_plan import RemediationPlan
 from app.models.resolution_evidence import ResolutionEvidence
 from app.models.devsync_dispatch import DevSyncDispatch
+from app.models.event_delivery import EventDelivery
+from app.models.integration_event import IntegrationEvent
 from app.models.review_record import ReviewRecord
 from app.models.execution_authorization import ExecutionAuthorization
 from app.models.external_execution_result import ExternalExecutionResult
@@ -692,6 +694,65 @@ class ReviewRecordRepository(TenantRepository[ReviewRecord]):
         )
 
 
+# --------------------------------------------------------------------------- #
+# Integration / event-feed repositories (ProofSync / AuditSync / RegSync)
+# --------------------------------------------------------------------------- #
+class IntegrationEventRepository(TenantRepository[IntegrationEvent]):
+    model = IntegrationEvent
+
+    def get_by_event_id(
+        self, organization_id: str, event_id: str
+    ) -> Optional[IntegrationEvent]:
+        """Return the outbox event for a deterministic ``event_id``, if any."""
+        return self.find_one(organization_id, event_id=event_id)
+
+    def list_for_aggregate(
+        self,
+        organization_id: str,
+        aggregate_type: str,
+        aggregate_id: str,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> Sequence[IntegrationEvent]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.aggregate_type == aggregate_type)
+            .filter(self.model.aggregate_id == aggregate_id)
+            .order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+
+class EventDeliveryRepository(TenantRepository[EventDelivery]):
+    model = EventDelivery
+
+    def list_for_event(
+        self, organization_id: str, event_id: str
+    ) -> Sequence[EventDelivery]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.event_id == event_id)
+            .order_by(self.model.created_at.asc())
+            .all()
+        )
+
+    def list_for_channel(
+        self,
+        organization_id: str,
+        channel: str,
+        *,
+        status: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> Sequence[EventDelivery]:
+        query = self._scoped(organization_id).filter(
+            self.model.channel == channel
+        )
+        if status is not None:
+            query = query.filter(self.model.status == status)
 class CanonicalAIProofRepository(TenantRepository[CanonicalAIProof]):
     model = CanonicalAIProof
 
@@ -728,4 +789,31 @@ class CanonicalAIProofRepository(TenantRepository[CanonicalAIProof]):
             .offset(skip)
             .limit(limit)
             .all()
+        )
+
+    def list_deliverable(
+        self,
+        organization_id: str,
+        *,
+        channel: Optional[str] = None,
+        limit: int = 100,
+    ) -> Sequence[EventDelivery]:
+        """Return PENDING or retryable FAILED deliveries for the tenant.
+
+        Dead-lettered and already-delivered rows are never returned.
+        """
+        from app.utils.canonical_enums import EventDeliveryStatus
+
+        query = self._scoped(organization_id).filter(
+            self.model.status.in_(
+                [
+                    EventDeliveryStatus.PENDING.value,
+                    EventDeliveryStatus.FAILED.value,
+                ]
+            )
+        )
+        if channel is not None:
+            query = query.filter(self.model.channel == channel)
+        return (
+            query.order_by(self.model.created_at.asc()).limit(limit).all()
         )
