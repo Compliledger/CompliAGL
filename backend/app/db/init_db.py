@@ -9,7 +9,8 @@ from app.models.transaction import Transaction  # noqa: F401
 from app.models.approval import Approval  # noqa: F401
 from app.models.audit_log import AuditLog  # noqa: F401
 from app.models.proof_bundle import ProofBundle  # noqa: F401  (deprecated)
-from app.models.aiproof import AIProof  # noqa: F401  (canonical proof)
+from app.models.aiproof import AIProof  # noqa: F401  (legacy x402 proof bundle)
+from app.models.canonical_aiproof import CanonicalAIProof  # noqa: F401  (canonical proof)
 
 # Canonical first-class runtime domain objects.
 from app.models.actor_identity import ActorIdentity  # noqa: F401
