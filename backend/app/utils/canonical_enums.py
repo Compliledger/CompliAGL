@@ -379,3 +379,68 @@ class GovernanceSeverity(str, Enum):
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
     CRITICAL = "CRITICAL"
+
+
+# --------------------------------------------------------------------------- #
+# Evidence Sufficiency, Control Evaluation and Assessment vocabulary
+# --------------------------------------------------------------------------- #
+class EvidenceRequirementSufficiency(str, Enum):
+    """Deterministic sufficiency verdict for a single evidence requirement.
+
+    Produced by the Evidence Sufficiency stage when the Canonical Evidence
+    Package is evaluated against the EvidenceRequirementSet. ``SATISFIED``
+    requires enough valid normalized evidence to meet the requirement's
+    cardinality; the remaining states are all first-class and are never
+    silently collapsed into ``SATISFIED``.
+    """
+
+    SATISFIED = "SATISFIED"
+    PARTIAL = "PARTIAL"
+    MISSING = "MISSING"
+    INVALID = "INVALID"
+    STALE = "STALE"
+    NOT_EVALUABLE = "NOT_EVALUABLE"
+    MANUAL_REVIEW_REQUIRED = "MANUAL_REVIEW_REQUIRED"
+
+
+class EvidenceSufficiencyOutcome(str, Enum):
+    """Overall deterministic outcome of the Evidence Sufficiency stage.
+
+    ``SUFFICIENT`` is *never* produced when any mandatory evidence requirement
+    is missing, invalid, stale, expired, revoked or not evaluable.
+    """
+
+    SUFFICIENT = "SUFFICIENT"
+    PARTIAL = "PARTIAL"
+    INSUFFICIENT = "INSUFFICIENT"
+    NOT_EVALUABLE = "NOT_EVALUABLE"
+    MANUAL_REVIEW_REQUIRED = "MANUAL_REVIEW_REQUIRED"
+
+
+class ControlEvaluationOutcome(str, Enum):
+    """Deterministic outcome of formally evaluating a single control.
+
+    A control is evaluated against **normalized evidence only**, using the
+    approved deterministic expression engine and the exact control + governance
+    package versions. Raw intent assertions can never satisfy a control without
+    normalized validated evidence.
+    """
+
+    SATISFIED = "SATISFIED"
+    NOT_SATISFIED = "NOT_SATISFIED"
+    NOT_EVALUABLE = "NOT_EVALUABLE"
+    MANUAL_REVIEW_REQUIRED = "MANUAL_REVIEW_REQUIRED"
+
+
+class AssessmentOutcome(str, Enum):
+    """Deterministic outcome of aggregating control evaluations.
+
+    Assessment is **factual**: it aggregates the control evaluations without
+    producing the final business decision. Mapping an assessment into
+    ``APPROVED`` / ``DENIED`` / ``ESCALATED`` is the separate Decision stage.
+    """
+
+    SATISFIED = "SATISFIED"
+    NOT_SATISFIED = "NOT_SATISFIED"
+    NOT_EVALUABLE = "NOT_EVALUABLE"
+    MANUAL_REVIEW_REQUIRED = "MANUAL_REVIEW_REQUIRED"

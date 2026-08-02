@@ -41,6 +41,11 @@ from app.models.canonical_evidence_package import (  # noqa: F401
     CanonicalEvidencePackage,
 )
 
+# Evidence Sufficiency, Control Evaluation and Assessment stages.
+from app.models.evidence_sufficiency import EvidenceSufficiency  # noqa: F401
+from app.models.control_evaluation import ControlEvaluation  # noqa: F401
+from app.models.assessment import Assessment  # noqa: F401
+
 
 def init_db() -> None:
     """Create database tables if they do not already exist."""
