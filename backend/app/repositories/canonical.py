@@ -16,6 +16,13 @@ from app.models.applicability_evaluation import ApplicabilityEvaluation
 from app.models.applicable_control_set import ApplicableControlSet
 from app.models.decision import Decision
 from app.models.evidence_requirement_set import EvidenceRequirementSet
+from app.models.evidence_source import EvidenceSource
+from app.models.evidence_orchestration_plan import EvidenceOrchestrationPlan
+from app.models.evidence_collection_job import EvidenceCollectionJob
+from app.models.raw_evidence import RawEvidence
+from app.models.evidence_validation_result import EvidenceValidationResult
+from app.models.normalized_evidence import NormalizedEvidence
+from app.models.canonical_evidence_package import CanonicalEvidencePackage
 from app.models.execution_authorization import ExecutionAuthorization
 from app.models.external_execution_result import ExternalExecutionResult
 from app.models.governance_evaluation import GovernanceEvaluation
@@ -253,4 +260,132 @@ class EvidenceRequirementSetRepository(
             .offset(skip)
             .limit(limit)
             .all()
+        )
+
+
+# --------------------------------------------------------------------------- #
+# Evidence layer repositories
+# --------------------------------------------------------------------------- #
+class EvidenceSourceRepository(TenantRepository[EvidenceSource]):
+    model = EvidenceSource
+
+    def get_by_connector_id(
+        self, organization_id: str, connector_id: str
+    ) -> Optional[EvidenceSource]:
+        return self.find_one(organization_id, connector_id=connector_id)
+
+
+class EvidenceOrchestrationPlanRepository(
+    TenantRepository[EvidenceOrchestrationPlan]
+):
+    model = EvidenceOrchestrationPlan
+
+    def latest_for_resolution(
+        self, organization_id: str, policy_resolution_id: str
+    ) -> Optional[EvidenceOrchestrationPlan]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.policy_resolution_id == policy_resolution_id)
+            .order_by(self.model.created_at.desc())
+            .first()
+        )
+
+
+class EvidenceCollectionJobRepository(TenantRepository[EvidenceCollectionJob]):
+    model = EvidenceCollectionJob
+
+    def latest_for_resolution(
+        self, organization_id: str, policy_resolution_id: str
+    ) -> Optional[EvidenceCollectionJob]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.policy_resolution_id == policy_resolution_id)
+            .order_by(self.model.created_at.desc())
+            .first()
+        )
+
+
+class RawEvidenceRepository(TenantRepository[RawEvidence]):
+    model = RawEvidence
+
+    def list_for_job(
+        self,
+        organization_id: str,
+        collection_job_id: str,
+        *,
+        skip: int = 0,
+        limit: int = 500,
+    ) -> Sequence[RawEvidence]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.collection_job_id == collection_job_id)
+            .order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+
+class EvidenceValidationResultRepository(
+    TenantRepository[EvidenceValidationResult]
+):
+    model = EvidenceValidationResult
+
+    def list_for_job(
+        self,
+        organization_id: str,
+        collection_job_id: str,
+        *,
+        skip: int = 0,
+        limit: int = 500,
+    ) -> Sequence[EvidenceValidationResult]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.collection_job_id == collection_job_id)
+            .order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def get_for_raw_evidence(
+        self, organization_id: str, raw_evidence_id: str
+    ) -> Optional[EvidenceValidationResult]:
+        return self.find_one(organization_id, raw_evidence_id=raw_evidence_id)
+
+
+class NormalizedEvidenceRepository(TenantRepository[NormalizedEvidence]):
+    model = NormalizedEvidence
+
+    def list_for_job(
+        self,
+        organization_id: str,
+        collection_job_id: str,
+        *,
+        skip: int = 0,
+        limit: int = 500,
+    ) -> Sequence[NormalizedEvidence]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.collection_job_id == collection_job_id)
+            .order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+
+class CanonicalEvidencePackageRepository(
+    TenantRepository[CanonicalEvidencePackage]
+):
+    model = CanonicalEvidencePackage
+
+    def latest_for_evaluation(
+        self, organization_id: str, evaluation_id: str
+    ) -> Optional[CanonicalEvidencePackage]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.evaluation_id == evaluation_id)
+            .order_by(self.model.created_at.desc())
+            .first()
         )

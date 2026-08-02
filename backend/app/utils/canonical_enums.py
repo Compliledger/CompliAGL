@@ -243,6 +243,91 @@ class RequiredEvidenceState(str, Enum):
     UNRESOLVED = "UNRESOLVED"
 
 
+class EvidenceSourceType(str, Enum):
+    """Generic classification of an authoritative evidence source.
+
+    These are deliberately platform-neutral. CompliAGL never hardcodes a domain
+    (airline, payment app, ...). A concrete deployment maps its real systems onto
+    these generic source types via connectors.
+
+    * ``GOVERNANCE_REGISTRY`` — the CompliLedger governance-package registry.
+    * ``IDENTITY_PROVIDER`` — an internal identity / delegation authority.
+    * ``EXTERNAL_APPLICATION`` — an external merchant or application API.
+    * ``ACCOUNT_STATE`` — a wallet / account / allowance source.
+    * ``APPROVAL_WORKFLOW`` — an approval source.
+    * ``EXECUTION_RESULT`` — an external execution-result source.
+    """
+
+    GOVERNANCE_REGISTRY = "GOVERNANCE_REGISTRY"
+    IDENTITY_PROVIDER = "IDENTITY_PROVIDER"
+    EXTERNAL_APPLICATION = "EXTERNAL_APPLICATION"
+    ACCOUNT_STATE = "ACCOUNT_STATE"
+    APPROVAL_WORKFLOW = "APPROVAL_WORKFLOW"
+    EXECUTION_RESULT = "EXECUTION_RESULT"
+
+
+class EvidenceCollectionStatus(str, Enum):
+    """Status of a single evidence collection attempt or an aggregate job.
+
+    ``UNRESOLVED`` is first-class: when no authoritative connector can serve a
+    requirement it is marked ``UNRESOLVED`` rather than silently succeeding.
+    Evidence is never fabricated, so an absent item is always explicit.
+    """
+
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    COLLECTED = "COLLECTED"
+    FAILED = "FAILED"
+    TIMEOUT = "TIMEOUT"
+    UNRESOLVED = "UNRESOLVED"
+    NOT_FOUND = "NOT_FOUND"
+    REJECTED_MOCK = "REJECTED_MOCK"
+    # Aggregate job states.
+    PARTIAL = "PARTIAL"
+    COMPLETED = "COMPLETED"
+
+
+class EvidenceValidationOutcome(str, Enum):
+    """Deterministic outcome of validating a raw evidence item.
+
+    ``INDETERMINATE`` is first-class: a check that cannot be evaluated never
+    silently becomes ``VALID``.
+    """
+
+    VALID = "VALID"
+    INVALID = "INVALID"
+    EXPIRED = "EXPIRED"
+    REVOKED = "REVOKED"
+    STALE = "STALE"
+    UNTRUSTED_SOURCE = "UNTRUSTED_SOURCE"
+    SUBJECT_MISMATCH = "SUBJECT_MISMATCH"
+    TARGET_MISMATCH = "TARGET_MISMATCH"
+    INDETERMINATE = "INDETERMINATE"
+
+
+class SensitivityClassification(str, Enum):
+    """Sensitivity classification of an evidence payload.
+
+    Payloads classified ``PII``, ``SENSITIVE`` or ``SECRET`` must never be copied
+    into public proof or blockchain projections — only their hashes are.
+    """
+
+    PUBLIC = "PUBLIC"
+    INTERNAL = "INTERNAL"
+    CONFIDENTIAL = "CONFIDENTIAL"
+    PII = "PII"
+    SENSITIVE = "SENSITIVE"
+    SECRET = "SECRET"
+
+
+class ConnectorHealthStatus(str, Enum):
+    """Health posture reported by an evidence connector."""
+
+    HEALTHY = "HEALTHY"
+    DEGRADED = "DEGRADED"
+    UNAVAILABLE = "UNAVAILABLE"
+
+
 class ExpressionOperator(str, Enum):
     """The closed set of operators the deterministic expression engine allows.
 

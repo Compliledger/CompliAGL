@@ -26,6 +26,21 @@ from app.models.applicability_evaluation import ApplicabilityEvaluation  # noqa:
 from app.models.applicable_control_set import ApplicableControlSet  # noqa: F401
 from app.models.evidence_requirement_set import EvidenceRequirementSet  # noqa: F401
 
+# Evidence layer (collection, validation, normalization, packaging).
+from app.models.evidence_source import EvidenceSource  # noqa: F401
+from app.models.evidence_orchestration_plan import (  # noqa: F401
+    EvidenceOrchestrationPlan,
+)
+from app.models.evidence_collection_job import EvidenceCollectionJob  # noqa: F401
+from app.models.raw_evidence import RawEvidence  # noqa: F401
+from app.models.evidence_validation_result import (  # noqa: F401
+    EvidenceValidationResult,
+)
+from app.models.normalized_evidence import NormalizedEvidence  # noqa: F401
+from app.models.canonical_evidence_package import (  # noqa: F401
+    CanonicalEvidencePackage,
+)
+
 
 def init_db() -> None:
     """Create database tables if they do not already exist."""
