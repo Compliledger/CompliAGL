@@ -47,8 +47,9 @@ Compli402 is exposed as a small, demo-ready public API under
 ## Competition Demo Flow
 
 The Compli402 flow runs end-to-end, locally, with no external services or
-secrets (a mock x402 facilitator and an in-memory proof store are used by
-default):
+secrets (a mock x402 facilitator is used by default). Actors, policies, and
+AIProofs are persisted in the SQLAlchemy database, so runtime state survives
+application restarts:
 
 ```
 Actor → Intent → Policy Decision → x402 Payment → Execution → AIProof → Algorand Anchor
@@ -138,7 +139,10 @@ working integrations: Solana settlement, XRPL, Base, Hedera, and Canton.
   facilitator for local development.
 - **x402 execution adapter** — payment-gated execution (`402 Payment Required`
   until payment is verified).
-- **AIProof generation** — deterministic, post-hash-excluding proof bundles.
+- **Persistent runtime** — actors, policies, and AIProofs are persisted via
+  SQLAlchemy and survive restarts (managed by Alembic migrations).
+- **AIProof generation** — deterministic, post-hash-excluding proof bundles,
+  persisted in the canonical `ai_proofs` table.
 - **Algorand anchoring** — via the existing `compliledger-algorand-adapter`
   (degrades gracefully when the adapter is absent).
 - **Demo dashboard** — minimal React + Vite frontend visualising the full flow.
@@ -147,7 +151,6 @@ working integrations: Solana settlement, XRPL, Base, Hedera, and Canton.
 
 - **HTTP x402 facilitator** — verification against a live facilitator endpoint
   (the abstraction exists; the mock is the default).
-- **Persistent storage** — proofs and actors are currently in-memory.
 - **MVP 2 actor / policy management APIs** — dedicated CRUD surfaces.
 
 ### Planned
@@ -180,9 +183,44 @@ Compli402 — x402 Payment (HTTP 402 until verified)
         ↓
 Execution Adapter
         ↓
-AIProof (deterministic hash)
+AIProof (deterministic hash, persisted in `ai_proofs`)
         ↓
 Algorand Anchor (via compliledger-algorand-adapter)
+```
+
+### Canonical persistent runtime (Phase 1 consolidation)
+
+CompliAGL is AI-native **execution governance** infrastructure. It does not own
+merchant, booking, payment, wallet, settlement, inventory, or fulfillment
+systems — external systems perform the underlying action. CompliAGL receives an
+actor's identity, intent, target and context; evaluates governance; produces a
+deterministic decision; issues an execution authorization; receives the external
+execution result; and generates an AIProof.
+
+The runtime has been consolidated onto a single, persistent SQLAlchemy
+foundation:
+
+| Concern | Canonical implementation | Table |
+|---------|--------------------------|-------|
+| Actor / agent | `app/services/actor_registry.py` | `agents` |
+| Policy | `app/services/policy_repository.py` | `policies` |
+| Deterministic decision engine | `app/services/decision_engine.py` (one engine; outcomes `APPROVED` / `DENIED` / `ESCALATED`) | — |
+| AIProof | `app/services/aiproof_service.py` (unifies `ProofBundle` + `AIProofBundle`) | `ai_proofs` |
+| Execution | execution adapters; CompliAGL authorizes, external systems execute and return a result that is validated + recorded | — |
+| x402 | one **optional** execution adapter (`X402Adapter`) | — |
+
+Deprecated (retained for backward compatibility): the in-memory MVP2 registries,
+the transaction-centric `/transactions` evaluation flow, the legacy
+`proof_bundles` model, and the `/api/mvp2/*` routes. See
+[`docs/architecture/`](docs/architecture/) for the full inventory
+(`CONSOLIDATION_INVENTORY.md`), migration plan (`MIGRATION_PLAN.md`), and
+deprecated-route list (`DEPRECATED_ROUTES.md`).
+
+Database schema is managed by Alembic:
+
+```bash
+cd backend
+alembic upgrade head   # create / update the schema
 ```
 
 ---
