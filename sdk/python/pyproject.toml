@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "compliagl-sdk"
+version = "0.1.0"
+description = "Python Integration SDK for CompliAGL governed external execution"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "CompliAGL"}]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["compliagl*"]

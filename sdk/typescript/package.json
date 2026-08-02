@@ -1,0 +1,16 @@
+{
+  "name": "@compliagl/sdk",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for integrating external systems with CompliAGL.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {".": {"types": "./dist/index.d.ts", "import": "./dist/index.js"}},
+  "files": ["dist", "README.md"],
+  "engines": {"node": ">=18"},
+  "scripts": {"build": "tsc", "test": "vitest run", "example": "tsx examples/externalSystemDemo.ts"},
+  "keywords": ["compliagl", "compliance", "sdk"],
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {"@types/node": "26.1.2", "tsx": "4.23.4", "typescript": "7.0.2", "vitest": "4.1.10"}
+}

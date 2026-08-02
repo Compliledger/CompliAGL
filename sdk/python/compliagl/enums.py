@@ -1,0 +1,97 @@
+from enum import Enum
+
+
+class StrEnum(str, Enum):
+    def __str__(self) -> str:
+        return self.value
+
+
+class ActorType(StrEnum):
+    AI_AGENT = "AI_AGENT"
+    HUMAN = "HUMAN"
+    SERVICE = "SERVICE"
+    ORGANIZATION = "ORGANIZATION"
+    AUTONOMOUS_SERVICE = "AUTONOMOUS_SERVICE"
+    DEVICE = "DEVICE"
+    WORKFLOW = "WORKFLOW"
+
+
+class CredentialType(StrEnum):
+    NONE = "NONE"
+    DID = "DID"
+    VC = "VC"
+    HEDERA_ACCOUNT = "HEDERA_ACCOUNT"
+    HEDERA_AGENT_ACCOUNT = "HEDERA_AGENT_ACCOUNT"
+    OAUTH_OIDC = "OAUTH_OIDC"
+    ENTERPRISE_SERVICE = "ENTERPRISE_SERVICE"
+
+
+class IntentType(StrEnum):
+    PAYMENT = "PAYMENT"
+    TRANSFER = "TRANSFER"
+    API_CALL = "API_CALL"
+    DATA_ACCESS = "DATA_ACCESS"
+    MODEL_INVOCATION = "MODEL_INVOCATION"
+    WORKFLOW_ACTION = "WORKFLOW_ACTION"
+    CUSTOM = "CUSTOM"
+
+
+class IntentStatus(StrEnum):
+    PENDING = "PENDING"
+    SUBMITTED = "SUBMITTED"
+    EVALUATED = "EVALUATED"
+    AUTHORIZED = "AUTHORIZED"
+    EXECUTED = "EXECUTED"
+    DENIED = "DENIED"
+    EXPIRED = "EXPIRED"
+    CANCELLED = "CANCELLED"
+
+
+class TargetType(StrEnum):
+    ACTOR = "ACTOR"
+    ASSET = "ASSET"
+    TRANSACTION = "TRANSACTION"
+    SYSTEM = "SYSTEM"
+    MODEL = "MODEL"
+    DEVICE = "DEVICE"
+    PROCESS = "PROCESS"
+    DATASET = "DATASET"
+    MERCHANT = "MERCHANT"
+    API = "API"
+    SMART_CONTRACT = "SMART_CONTRACT"
+    ACCOUNT = "ACCOUNT"
+    WORKFLOW = "WORKFLOW"
+    CUSTOM = "CUSTOM"
+
+
+class DecisionOutcome(StrEnum):
+    APPROVED = "APPROVED"
+    DENIED = "DENIED"
+    ESCALATED = "ESCALATED"
+
+
+class AuthorizationStatus(StrEnum):
+    ISSUED = "ISSUED"
+    ACTIVE = "ACTIVE"
+    CONSUMED = "CONSUMED"
+    EXPIRED = "EXPIRED"
+    REVOKED = "REVOKED"
+    PENDING = "PENDING"
+    AUTHORIZED = "AUTHORIZED"
+
+
+class EnvironmentType(StrEnum):
+    PRODUCTION = "PRODUCTION"
+    STAGING = "STAGING"
+    DEVELOPMENT = "DEVELOPMENT"
+    TEST = "TEST"
+    SANDBOX = "SANDBOX"
+
+
+class ExecutionResultStatus(StrEnum):
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+    PARTIALLY_COMPLETED = "PARTIALLY_COMPLETED"
+    CANCELLED = "CANCELLED"
+    TIMED_OUT = "TIMED_OUT"
+    REJECTED_BY_EXTERNAL_SYSTEM = "REJECTED_BY_EXTERNAL_SYSTEM"
