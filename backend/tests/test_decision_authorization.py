@@ -78,7 +78,7 @@ CTL = "CTL-1"
 # --------------------------------------------------------------------------- #
 # Governance package builder (single mandatory identity control)
 # --------------------------------------------------------------------------- #
-def _package_payload(decision_conditions):
+def _package_payload(decision_conditions, *, control_expression="True"):
     return ExecutableGovernancePackageCreate(
         organization_id=ORG,
         package_name="decision-policy",
@@ -103,7 +103,7 @@ def _package_payload(decision_conditions):
                 "control_id": CTL,
                 "requirement_ids": ["REQ-1"],
                 "control_objective": "Identity delegation is valid.",
-                "evaluation_expression": "True",
+                "evaluation_expression": control_expression,
                 "expected_outcome": "APPROVED",
                 "mandatory": True,
                 "severity": "HIGH",
@@ -130,9 +130,9 @@ def _package_payload(decision_conditions):
     )
 
 
-def _publish(db, decision_conditions):
+def _publish(db, decision_conditions, *, control_expression="True"):
     pkg = governance_package_service.create(
-        db, _package_payload(decision_conditions)
+        db, _package_payload(decision_conditions, control_expression=control_expression)
     )
     result = governance_package_service.validate(db, ORG, pkg.id)
     assert result.valid, result.errors
@@ -168,10 +168,12 @@ def _registry(fixtures) -> ConnectorRegistry:
     )
 
 
-def _run_pipeline(db, decision_conditions, *, evidence_valid=True):
+def _run_pipeline(
+    db, decision_conditions, *, evidence_valid=True, control_expression="True"
+):
     """Publish, resolve, collect + evaluate, and return (resolution, actor,
     target, assessment)."""
-    _publish(db, decision_conditions)
+    _publish(db, decision_conditions, control_expression=control_expression)
     actor = actor_identity_service.create(
         db,
         ActorIdentityCreate(
@@ -325,6 +327,85 @@ def test_not_evaluable_assessment_never_approved(db_session):
     )
     decision = decision_service.decide_for_resolution(db_session, ORG, resolution.id)
     assert decision.outcome != DecisionOutcome.APPROVED.value
+
+
+# Safety-invariant regression test (three distinct ways a mandatory control
+# can fail to be affirmatively satisfied):
+#
+# * "control_not_satisfied"   -- sufficient, valid evidence, but the control's
+#   own evaluation_expression evaluates to False.
+# * "control_not_evaluable"   -- the control's evaluation_expression cannot be
+#   evaluated at all (raises inside the deterministic interpreter -- e.g. an
+#   unsupported construct -- which control_evaluation_service maps to
+#   NOT_EVALUABLE / CONTROL_EXPRESSION_ERROR rather than silently passing).
+# * "mandatory_evidence_invalid" -- the control's expression is trivially true,
+#   but its mandatory evidence requirement is backed by invalid evidence
+#   (bad signature, expired), which gates the control to NOT_SATISFIED before
+#   the expression is ever evaluated.
+#
+# In every case the governing policy's decision condition is
+# `_APPROVE_CONDITIONS`: an unconditional `"True"` that, taken alone, would
+# resolve to APPROVED on every request. The point of this test is that a
+# failing/unevaluable mandatory control must override that regardless.
+@pytest.mark.parametrize(
+    (
+        "run_kwargs",
+        "expected_assessment_outcome",
+        "expected_decision_outcome",
+        "expected_reason_code",
+    ),
+    [
+        pytest.param(
+            {"control_expression": "False"},
+            AssessmentOutcome.NOT_SATISFIED.value,
+            DecisionOutcome.DENIED.value,
+            "MANDATORY_CONTROL_FAILED",
+            id="control_not_satisfied",
+        ),
+        pytest.param(
+            {"control_expression": "len(evidence)"},
+            AssessmentOutcome.NOT_EVALUABLE.value,
+            DecisionOutcome.ESCALATED.value,
+            "ASSESSMENT_NOT_EVALUABLE",
+            id="control_not_evaluable",
+        ),
+        pytest.param(
+            {"evidence_valid": False},
+            AssessmentOutcome.NOT_SATISFIED.value,
+            DecisionOutcome.DENIED.value,
+            "MANDATORY_CONTROL_FAILED",
+            id="mandatory_evidence_invalid",
+        ),
+    ],
+)
+def test_mandatory_control_failure_overrides_approving_condition(
+    db_session,
+    run_kwargs,
+    expected_assessment_outcome,
+    expected_decision_outcome,
+    expected_reason_code,
+):
+    resolution, actor, target, assessment = _run_pipeline(
+        db_session, _APPROVE_CONDITIONS, **run_kwargs
+    )
+    assert assessment.overall_result == expected_assessment_outcome
+
+    decision = decision_service.decide_for_resolution(db_session, ORG, resolution.id)
+    explanation = decision_service.explain(db_session, ORG, decision.id)
+
+    # The would-be-approving condition still matched and is recorded as
+    # triggered -- proving the override happened, not that the condition was
+    # skipped or somehow failed to match.
+    triggered = explanation["decision_conditions_triggered"]
+    assert any(
+        c.get("condition_id") == "DC-APPROVE"
+        and c.get("resulting_decision") == DecisionOutcome.APPROVED.value
+        for c in triggered
+    )
+
+    assert decision.outcome != DecisionOutcome.APPROVED.value
+    assert decision.outcome == expected_decision_outcome
+    assert expected_reason_code in explanation["reason_codes"]
 
 
 def test_decision_is_immutable_reevaluation_supersedes(db_session):
