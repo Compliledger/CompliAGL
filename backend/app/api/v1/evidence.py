@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_org_id
 from app.core.database import get_db
+from app.services.evidence.connectors.production import default_production_registry
 from app.schemas.canonical.evidence import (
     CanonicalEvidencePackageResponse,
     EvidenceCollectionJobResponse,
@@ -59,6 +60,7 @@ def start_evidence_collection(
             payload.organization_id,
             payload.policy_resolution_id,
             production_mode=payload.production_mode,
+            registry=default_production_registry(),
         )
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
