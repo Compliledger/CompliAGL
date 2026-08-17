@@ -126,7 +126,13 @@ def assess_for_resolution(
             "engine_version": DETERMINISTIC_ENGINE_VERSION,
             "organization_id": org,
             "policy_resolution_id": policy_resolution_id,
-            "evidence_sufficiency_id": sufficiency.id,
+            # evidence_sufficiency_result_hash (a deterministic content hash)
+            # is the input identity here, not sufficiency.id -- sufficiency
+            # rows aren't deduped by evaluate_for_resolution (each direct
+            # call creates a fresh, immutable row like Decision/Assessment
+            # themselves), so a random per-row id must never leak into a
+            # "deterministic inputs" hash. See decision_service.py's
+            # identical fix for assessment_id/assessment_hash.
             "evidence_sufficiency_result": sufficiency.overall_result,
             "evidence_sufficiency_result_hash": sufficiency.result_hash,
             "control_evaluations": control_summaries,

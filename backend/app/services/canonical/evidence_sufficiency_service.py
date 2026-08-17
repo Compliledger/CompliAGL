@@ -189,7 +189,12 @@ def _overall_outcome(mandatory_statuses: list[str]) -> tuple[str, list[str]]:
 def evaluate_for_resolution(
     db: Session, organization_id: str, policy_resolution_id: str
 ) -> EvidenceSufficiency:
-    """Evaluate evidence sufficiency for a resolution and persist the record."""
+    """Evaluate evidence sufficiency for a resolution and persist the record.
+
+    Always persists a fresh, immutable record (like Decision/Assessment) --
+    callers that want to reuse an up-to-date existing record instead should
+    use :func:`evaluate_or_get_for_resolution`.
+    """
     org = organization_id
     package = CanonicalEvidencePackageRepository(db).latest_for_evaluation(
         org, policy_resolution_id
@@ -366,10 +371,50 @@ def latest_for_resolution(
 def evaluate_or_get_for_resolution(
     db: Session, organization_id: str, policy_resolution_id: str
 ) -> EvidenceSufficiency:
-    """Return the sufficiency record for a resolution, computing it if absent."""
-    existing = latest_for_resolution(db, organization_id, policy_resolution_id)
+    """Return the sufficiency record for a resolution, (re)computing it if stale
+    or absent.
+
+    Reuses the latest persisted record only when its ``input_hash`` still
+    matches the *current* evidence package + evidence requirement set
+    (cheap "latest" lookups, no full sufficiency evaluation performed) —
+    never on "a record merely exists". A second, more-complete evidence
+    collection produces a new CanonicalEvidencePackage, which must trigger a
+    fresh evaluation rather than reusing a record computed from the earlier,
+    incomplete package.
+    """
+    org = organization_id
+    existing = latest_for_resolution(db, org, policy_resolution_id)
     if existing is not None:
-        return existing
+        package = CanonicalEvidencePackageRepository(db).latest_for_evaluation(
+            org, policy_resolution_id
+        )
+        if package is not None:
+            evidence_set = None
+            if package.evidence_requirement_set_id:
+                evidence_set = EvidenceRequirementSetRepository(db).get(
+                    org, package.evidence_requirement_set_id
+                )
+            if evidence_set is None:
+                evidence_set = EvidenceRequirementSetRepository(
+                    db
+                ).latest_for_resolution(org, policy_resolution_id)
+            current_hash = hash_dict(
+                {
+                    "engine_version": DETERMINISTIC_ENGINE_VERSION,
+                    "organization_id": org,
+                    "policy_resolution_id": policy_resolution_id,
+                    "canonical_evidence_package_id": package.id,
+                    "canonical_evidence_package_hash": package.package_hash,
+                    "evidence_requirement_set_id": (
+                        evidence_set.id if evidence_set else None
+                    ),
+                    "evidence_requirement_set_result_hash": (
+                        evidence_set.result_hash if evidence_set else None
+                    ),
+                }
+            )
+            if existing.input_hash == current_hash:
+                return existing
     return evaluate_for_resolution(db, organization_id, policy_resolution_id)
 
 

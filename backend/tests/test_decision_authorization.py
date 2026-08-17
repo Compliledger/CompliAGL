@@ -350,6 +350,116 @@ def test_decision_is_immutable_reevaluation_supersedes(db_session):
     assert first.input_hash == second.input_hash
 
 
+# A policy that escalates for remediation while unsatisfied and approves once
+# the assessment becomes SATISFIED -- lets the SAME decision-condition set
+# produce different outcomes as the *assessment* changes, rather than baking
+# the outcome into a fixed condition (which wouldn't exercise recomputation).
+_REMEDIATION_CONDITIONS = [
+    {
+        "condition_id": "DC-APPROVE-IF-SATISFIED",
+        "expression": "assessment.overall_result == 'SATISFIED'",
+        "resulting_decision": "APPROVED",
+        "priority": 100,
+        "reason_code": "APPROVED_OK",
+        "terminal": True,
+    },
+    {
+        "condition_id": "DC-ESCALATE-FOR-REMEDIATION",
+        "expression": "assessment.overall_result != 'SATISFIED'",
+        "resulting_decision": "ESCALATED",
+        "priority": 200,
+        "reason_code": "NEEDS_REMEDIATION",
+        "terminal": True,
+    },
+]
+
+
+def test_decide_recomputes_after_evidence_is_corrected(db_session):
+    """Regression test for the "cache by existence, not by input identity" bug:
+    a decide() call made while evidence is still invalid must not permanently
+    pin the policy_resolution_id to that result. Once evidence collection is
+    corrected and rerun for the SAME policy_resolution_id, a later decide()
+    must reflect the corrected state (APPROVED), not repeat the first,
+    now-stale ESCALATED outcome.
+    """
+    _publish(db_session, _REMEDIATION_CONDITIONS)
+    actor = actor_identity_service.create(
+        db_session,
+        ActorIdentityCreate(
+            organization_id=ORG, actor_type=CanonicalActorType.AI_AGENT
+        ),
+    )
+    intent = intent_service.create(
+        db_session,
+        IntentCreate(
+            organization_id=ORG,
+            intent_type=IntentType.PAYMENT,
+            action="perform_action",
+            actor_id=actor.id,
+            amount_minor=25000,
+            amount_currency="USD",
+        ),
+    )
+    target = target_service.create(
+        db_session,
+        TargetCreate(
+            organization_id=ORG,
+            target_type=TargetType.MERCHANT,
+            external_identifier="counterparty-01",
+        ),
+    )
+    context = operational_context_service.create(
+        db_session,
+        OperationalContextCreate(
+            organization_id=ORG, jurisdiction="US", environment="STAGING"
+        ),
+    )
+    resolution = policy_resolution_service.resolve(
+        db_session,
+        PolicyResolutionCreate(
+            organization_id=ORG,
+            actor_identity_id=actor.id,
+            intent_id=intent.id,
+            target_id=target.id,
+            operational_context_id=context.id,
+        ),
+    )
+    applicability_service.evaluate_for_resolution(
+        db_session,
+        ApplicabilityEvaluationCreate(
+            organization_id=ORG, policy_resolution_id=resolution.id
+        ),
+    )
+
+    # Pass 1: invalid evidence -> control NOT_SATISFIED -> assessment
+    # NOT_SATISFIED -> policy escalates for remediation.
+    evidence_collection_service.start_collection(
+        db_session,
+        ORG,
+        resolution.id,
+        production_mode=False,
+        registry=_registry(_identity_fixture(actor.id, valid=False)),
+    )
+    first = decision_service.decide_for_resolution(db_session, ORG, resolution.id)
+    assert first.outcome == DecisionOutcome.ESCALATED.value
+
+    # Evidence is corrected and evidence collection is re-run for the SAME
+    # policy_resolution_id.
+    evidence_collection_service.start_collection(
+        db_session,
+        ORG,
+        resolution.id,
+        production_mode=False,
+        registry=_registry(_identity_fixture(actor.id, valid=True)),
+    )
+    second = decision_service.decide_for_resolution(db_session, ORG, resolution.id)
+
+    assert second.outcome == DecisionOutcome.APPROVED.value
+    # A genuinely new assessment was computed from the corrected evidence --
+    # not the first (stale) assessment reused unconditionally.
+    assert second.assessment_id != first.assessment_id
+
+
 def test_decision_records_full_binding(db_session):
     decision = _approved_decision(db_session)
     explanation = decision_service.explain(db_session, ORG, decision.id)

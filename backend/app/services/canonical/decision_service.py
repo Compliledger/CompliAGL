@@ -35,7 +35,6 @@ from app.repositories.canonical import (
     ActorIdentityRepository,
     AssessmentRepository,
     CanonicalEvidencePackageRepository,
-    ControlEvaluationRepository,
     DecisionRepository,
     ExecutableGovernancePackageRepository,
     IntentRepository,
@@ -282,25 +281,29 @@ def decide_for_resolution(
 
     actor, intent, target, context = _gather_inputs(db, org, resolution)
 
-    # Assessment (factual). Reuse the latest, or aggregate one if absent.
-    assessment = assessment_service.latest_for_resolution(
+    # Assessment (factual). Always recompute: assess_for_resolution's own
+    # upstream dependencies (evidence sufficiency, control determination) are
+    # now dedup-on-input-hash, so this is cheap when nothing has changed and
+    # correctly reflects newly-completed evidence when something has. Reusing
+    # `assessment_service.latest_for_resolution` here unconditionally would
+    # permanently pin a policy_resolution_id to whatever assessment happened
+    # to be computed on the very first decide() call, no matter how the
+    # upstream evidence/control state improves afterward.
+    assessment = assessment_service.assess_for_resolution(
         db, org, policy_resolution_id
     )
-    if assessment is None:
-        assessment = assessment_service.assess_for_resolution(
-            db, org, policy_resolution_id
-        )
 
     evidence_pkg = CanonicalEvidencePackageRepository(db).latest_for_evaluation(
         org, policy_resolution_id
     )
 
-    control_evaluations = ControlEvaluationRepository(db).list_for_resolution(
-        org, policy_resolution_id
-    )
-    control_evaluation_ids = sorted(
-        ce.control_evaluation_id for ce in control_evaluations
-    )
+    # Use exactly the control evaluations this assessment aggregated, not a
+    # standing query over every ControlEvaluation row ever created for this
+    # resolution -- assess_for_resolution creates a fresh batch on every
+    # call (never dedups), so querying "all history" here would make the
+    # list -- and therefore input_hash -- grow with duplicate business-ids
+    # on every decide() call even when nothing upstream actually changed.
+    control_evaluation_ids = sorted(_load(assessment.control_evaluation_ids) or [])
 
     selected_packages = _load(resolution.selected_packages) or []
     conditions, package_refs, requirement_ids, policy_package_hash = (
@@ -345,7 +348,11 @@ def decide_for_resolution(
             "engine_version": DETERMINISTIC_ENGINE_VERSION,
             "organization_id": org,
             "policy_resolution_id": policy_resolution_id,
-            "assessment_id": assessment.id,
+            # assessment_hash (a deterministic content hash) is the input
+            # identity here, not assessment.id -- assess_for_resolution
+            # creates a fresh row on every call by design (like Decision
+            # itself), so a random per-row id must never leak into a
+            # "deterministic inputs" hash.
             "assessment_hash": assessment.assessment_hash,
             "assessment_result": assessment.overall_result,
             "applicable_package_ids": package_refs,

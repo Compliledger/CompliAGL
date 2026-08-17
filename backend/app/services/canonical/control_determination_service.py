@@ -112,10 +112,55 @@ def _applicable_control_id(
     return f"acs-{digest[:24]}"
 
 
+def _current_applicability_input_hash(
+    db: Session, org: str, resolution: PolicyResolution
+) -> tuple[str, dict[tuple[str, str], str], list]:
+    """Compute the input_hash a fresh determination would use right now.
+
+    Derived solely from the current applicability results for this
+    resolution -- cheap (a couple of DB reads + hashing), no control
+    determination performed. Shared by :func:`determine_for_resolution` (as
+    its actual ``input_hash``) and :func:`determine_or_get_for_resolution`
+    (as a freshness check before deciding whether to reuse the latest
+    persisted record) so the two can never drift out of sync.
+    """
+    evaluations = ApplicabilityEvaluationRepository(db).list_for_resolution(
+        org, resolution.id, limit=10000
+    )
+    result_map: dict[tuple[str, str], str] = {
+        (e.package_id, e.requirement_id): e.result for e in evaluations
+    }
+    input_hash = hash_dict(
+        {
+            "engine_version": DETERMINISTIC_ENGINE_VERSION,
+            "organization_id": org,
+            "policy_resolution_id": resolution.id,
+            "policy_resolution_result_hash": resolution.result_hash,
+            "requirement_results": sorted(
+                [
+                    {
+                        "package_id": pkg_id,
+                        "requirement_id": rid,
+                        "result": result,
+                    }
+                    for (pkg_id, rid), result in result_map.items()
+                ],
+                key=lambda entry: (entry["package_id"], entry["requirement_id"]),
+            ),
+        }
+    )
+    return input_hash, result_map, evaluations
+
+
 def determine_for_resolution(
     db: Session, payload: ControlDeterminationCreate
 ) -> ApplicableControlSet:
-    """Determine the applicable controls for a resolution and persist the set."""
+    """Determine the applicable controls for a resolution and persist the set.
+
+    Always persists a fresh, immutable record (like Decision/Assessment) --
+    callers that want to reuse an up-to-date existing record instead should
+    use :func:`determine_or_get_for_resolution`.
+    """
     org = payload.organization_id
     resolution = PolicyResolutionRepository(db).get(
         org, payload.policy_resolution_id
@@ -125,13 +170,9 @@ def determine_for_resolution(
             f"PolicyResolution not found: {payload.policy_resolution_id}"
         )
 
-    # Per-requirement applicability results keyed by (package_id, requirement_id).
-    evaluations = ApplicabilityEvaluationRepository(db).list_for_resolution(
-        org, resolution.id, limit=10000
+    input_hash, result_map, evaluations = _current_applicability_input_hash(
+        db, org, resolution
     )
-    result_map: dict[tuple[str, str], str] = {
-        (e.package_id, e.requirement_id): e.result for e in evaluations
-    }
 
     selected_packages = _load(resolution.selected_packages) or []
     pkg_repo = ExecutableGovernancePackageRepository(db)
@@ -237,25 +278,6 @@ def determine_for_resolution(
     if not controls_out:
         reason_codes.append("NO_CONTROLS_SELECTED")
 
-    input_hash = hash_dict(
-        {
-            "engine_version": DETERMINISTIC_ENGINE_VERSION,
-            "organization_id": org,
-            "policy_resolution_id": resolution.id,
-            "policy_resolution_result_hash": resolution.result_hash,
-            "requirement_results": sorted(
-                [
-                    {
-                        "package_id": pkg_id,
-                        "requirement_id": rid,
-                        "result": result,
-                    }
-                    for (pkg_id, rid), result in result_map.items()
-                ],
-                key=lambda entry: (entry["package_id"], entry["requirement_id"]),
-            ),
-        }
-    )
     result_hash = hash_dict(
         {
             "input_hash": input_hash,
@@ -302,10 +324,27 @@ def get_for_resolution(
 def determine_or_get_for_resolution(
     db: Session, organization_id: str, policy_resolution_id: str
 ) -> ApplicableControlSet:
-    """Return the control set for a resolution, computing it if not present."""
-    existing = get_for_resolution(db, organization_id, policy_resolution_id)
-    if existing is not None:
-        return existing
+    """Return the control set for a resolution, (re)computing it if stale or absent.
+
+    Reuses the latest persisted record only when its ``input_hash`` still
+    matches the *current* applicability results (checked cheaply, without
+    running full control determination) — never on "a record merely
+    exists". A record computed from an incomplete or stale applicability
+    basis must be recomputed once that basis improves, not reused forever.
+    """
+    resolution = PolicyResolutionRepository(db).get(
+        organization_id, policy_resolution_id
+    )
+    if resolution is not None:
+        existing = ApplicableControlSetRepository(db).latest_for_resolution(
+            organization_id, resolution.id
+        )
+        if existing is not None:
+            current_hash, _, _ = _current_applicability_input_hash(
+                db, organization_id, resolution
+            )
+            if existing.input_hash == current_hash:
+                return existing
     return determine_for_resolution(
         db,
         ControlDeterminationCreate(

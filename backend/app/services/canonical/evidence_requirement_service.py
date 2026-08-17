@@ -104,7 +104,12 @@ def _evidence_state(
 def resolve_for_resolution(
     db: Session, payload: EvidenceRequirementResolutionCreate
 ) -> EvidenceRequirementSet:
-    """Resolve the evidence requirements for a resolution and persist the set."""
+    """Resolve the evidence requirements for a resolution and persist the set.
+
+    Always persists a fresh, immutable record (like Decision/Assessment) --
+    callers that want to reuse an up-to-date existing record instead should
+    use :func:`resolve_or_get_for_resolution`.
+    """
     org = payload.organization_id
     resolution = PolicyResolutionRepository(db).get(
         org, payload.policy_resolution_id
@@ -324,10 +329,37 @@ def get_for_resolution(
 def resolve_or_get_for_resolution(
     db: Session, organization_id: str, policy_resolution_id: str
 ) -> EvidenceRequirementSet:
-    """Return the evidence set for a resolution, computing it if not present."""
-    existing = get_for_resolution(db, organization_id, policy_resolution_id)
-    if existing is not None:
-        return existing
+    """Return the evidence set for a resolution, (re)computing it if stale or absent.
+
+    Reuses the latest persisted record only when its ``input_hash`` still
+    matches the *current* control set (control_determination_service's own
+    ``determine_or_get_for_resolution`` is itself cheap once up to date, so
+    this precheck costs little) — never on "a record merely exists".
+    """
+    resolution = PolicyResolutionRepository(db).get(
+        organization_id, policy_resolution_id
+    )
+    if resolution is not None:
+        existing = EvidenceRequirementSetRepository(db).latest_for_resolution(
+            organization_id, resolution.id
+        )
+        if existing is not None:
+            control_set = (
+                control_determination_service.determine_or_get_for_resolution(
+                    db, organization_id, resolution.id
+                )
+            )
+            current_hash = hash_dict(
+                {
+                    "engine_version": DETERMINISTIC_ENGINE_VERSION,
+                    "organization_id": organization_id,
+                    "policy_resolution_id": resolution.id,
+                    "applicable_control_set_id": control_set.id,
+                    "applicable_control_set_result_hash": control_set.result_hash,
+                }
+            )
+            if existing.input_hash == current_hash:
+                return existing
     return resolve_for_resolution(
         db,
         EvidenceRequirementResolutionCreate(

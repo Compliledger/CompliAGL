@@ -37,7 +37,6 @@ from app.models.control_evaluation import ControlEvaluation
 from app.repositories.canonical import (
     CanonicalEvidencePackageRepository,
     ControlEvaluationRepository,
-    ApplicableControlSetRepository,
     EvidenceRequirementSetRepository,
     NormalizedEvidenceRepository,
 )
@@ -158,13 +157,14 @@ def evaluate_for_resolution(
     """Evaluate every applicable control for a resolution and persist results."""
     org = organization_id
 
-    control_set = ApplicableControlSetRepository(db).latest_for_resolution(
-        org, policy_resolution_id
-    )
-    if control_set is None:
-        control_set = determine_or_get_for_resolution(
-            db, org, policy_resolution_id
-        )
+    # Always delegate to determine_or_get_for_resolution rather than reusing
+    # whatever ApplicableControlSet already exists: that helper is
+    # dedup-on-input-hash (see control_determination_service), so it already
+    # returns the existing record cheaply when nothing upstream changed, and
+    # correctly recomputes when it did. Reading "latest" directly here and
+    # only computing on None would bypass that check and keep serving a
+    # stale control set indefinitely once any record exists.
+    control_set = determine_or_get_for_resolution(db, org, policy_resolution_id)
     controls = _load(control_set.controls, []) or []
 
     sufficiency = evidence_sufficiency_service.evaluate_or_get_for_resolution(
