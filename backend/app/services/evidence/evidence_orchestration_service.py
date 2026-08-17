@@ -37,6 +37,7 @@ from app.repositories.canonical import (
     OperationalContextRepository,
     PolicyResolutionRepository,
     RawEvidenceRepository,
+    TargetRepository,
 )
 from app.services.canonical.deterministic_expression import (
     DETERMINISTIC_ENGINE_VERSION,
@@ -128,7 +129,13 @@ def _resolve_binding(
     target_id: Optional[str],
     intent_id: Optional[str],
 ) -> Optional[str]:
-    """Resolve a binding token (actor/target/intent) to a concrete runtime id."""
+    """Resolve a binding token (actor/target/intent) to a concrete runtime id.
+
+    ``target_id`` here is the value the ``"target"`` token resolves to — the
+    caller passes the ``Target.external_identifier`` (the identifier
+    namespace external systems/connectors actually report evidence against),
+    not CompliAGL's internal ``Target.id`` primary key.
+    """
     if not token:
         return None
     key = token.strip().lower()
@@ -156,6 +163,16 @@ def build_plan(
     actor_id = evidence_set.actor_identity_id
     target_id = evidence_set.target_id
     intent_id = evidence_set.intent_id
+
+    # The "target" binding token resolves to the Target's own
+    # external_identifier -- the namespace external connectors actually
+    # report evidence against -- not CompliAGL's internal Target.id primary
+    # key. `target_id` (the internal PK) is retained above for the plan's
+    # own FK-style linkage (see EvidenceOrchestrationPlan.target_id below).
+    target_external_id: Optional[str] = None
+    if target_id is not None:
+        target = TargetRepository(db).get(organization_id, target_id)
+        target_external_id = target.external_identifier if target else None
 
     requirements = _load(evidence_set.evidence_requirements, []) or []
     tasks: list[dict[str, Any]] = []
@@ -204,13 +221,13 @@ def build_plan(
         subject_id = _resolve_binding(
             req.get("subject"),
             actor_id=actor_id,
-            target_id=target_id,
+            target_id=target_external_id,
             intent_id=intent_id,
         )
         resolved_target_id = _resolve_binding(
             req.get("target"),
             actor_id=actor_id,
-            target_id=target_id,
+            target_id=target_external_id,
             intent_id=intent_id,
         )
 

@@ -384,7 +384,7 @@ def _control_result(controls, control_id):
 # --------------------------------------------------------------------------- #
 def test_all_controls_satisfied(db_session):
     resolution, actor, target = _resolution(db_session)
-    _collect(db_session, resolution, _base_fixtures(actor.id, target.id))
+    _collect(db_session, resolution, _base_fixtures(actor.id, target.external_identifier))
 
     sufficiency, controls, assessment = _run_stages(db_session, resolution)
 
@@ -411,7 +411,7 @@ def test_all_controls_satisfied(db_session):
 # --------------------------------------------------------------------------- #
 def test_one_mandatory_control_not_satisfied(db_session):
     resolution, actor, target = _resolution(db_session)
-    fixtures = _base_fixtures(actor.id, target.id)
+    fixtures = _base_fixtures(actor.id, target.external_identifier)
     fixtures["approval"][EV_APPROVAL]["expires_at"] = PAST  # expired
     _collect(db_session, resolution, fixtures)
 
@@ -445,7 +445,7 @@ def test_optional_control_failure(db_session):
         control_overrides={CTL_MERCHANT: {"mandatory": False}},
         evidence_overrides={EV_MERCHANT: {"mandatory": False}},
     )
-    fixtures = _base_fixtures(actor.id, target.id)
+    fixtures = _base_fixtures(actor.id, target.external_identifier)
     fixtures["merchant"][EV_MERCHANT]["expires_at"] = PAST  # expired
     _collect(db_session, resolution, fixtures)
 
@@ -476,7 +476,7 @@ def test_optional_control_failure(db_session):
 # --------------------------------------------------------------------------- #
 def test_stale_evidence_makes_control_not_evaluable(db_session):
     resolution, actor, target = _resolution(db_session)
-    fixtures = _base_fixtures(actor.id, target.id)
+    fixtures = _base_fixtures(actor.id, target.external_identifier)
     # Allowance has a P1D freshness window; a 2020 issue date is stale.
     fixtures["account"][EV_ALLOWANCE]["issued_at"] = PAST
     fixtures["account"][EV_ALLOWANCE]["expires_at"] = FAR_FUTURE
@@ -503,7 +503,7 @@ def test_manual_approval_requirement(db_session):
         db_session,
         evidence_overrides={EV_APPROVAL: {"validation_method": "manual_review"}},
     )
-    _collect(db_session, resolution, _base_fixtures(actor.id, target.id))
+    _collect(db_session, resolution, _base_fixtures(actor.id, target.external_identifier))
 
     sufficiency, controls, assessment = _run_stages(db_session, resolution)
 
@@ -530,7 +530,7 @@ def test_manual_approval_requirement(db_session):
 # --------------------------------------------------------------------------- #
 def test_deterministic_replay(db_session):
     resolution, actor, target = _resolution(db_session)
-    _collect(db_session, resolution, _base_fixtures(actor.id, target.id))
+    _collect(db_session, resolution, _base_fixtures(actor.id, target.external_identifier))
 
     suff1, controls1, assessment1 = _run_stages(db_session, resolution)
     suff2, controls2, assessment2 = _run_stages(db_session, resolution)
@@ -550,7 +550,7 @@ def test_deterministic_replay(db_session):
 # --------------------------------------------------------------------------- #
 def test_assessment_is_separate_from_decision(db_session):
     resolution, actor, target = _resolution(db_session)
-    _collect(db_session, resolution, _base_fixtures(actor.id, target.id))
+    _collect(db_session, resolution, _base_fixtures(actor.id, target.external_identifier))
 
     _, _, assessment = _run_stages(db_session, resolution)
 
@@ -574,7 +574,7 @@ def test_control_not_satisfied_without_normalized_evidence(db_session):
     # connector fails to produce the evidence — the control must not be
     # satisfied without normalized validated evidence.
     resolution, actor, target = _resolution(db_session)
-    fixtures = _base_fixtures(actor.id, target.id)
+    fixtures = _base_fixtures(actor.id, target.external_identifier)
     fixtures["merchant"][EV_MERCHANT] = {"behavior": "error", "error": "boom"}
     _collect(db_session, resolution, fixtures)
 
@@ -620,7 +620,7 @@ def test_control_expression_evaluates_normalized_evidence(db_session):
             },
         },
     )
-    _collect(db_session, resolution, _base_fixtures(actor.id, target.id))
+    _collect(db_session, resolution, _base_fixtures(actor.id, target.external_identifier))
 
     _, controls, assessment = _run_stages(db_session, resolution)
 

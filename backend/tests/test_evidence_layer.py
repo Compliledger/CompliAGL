@@ -381,7 +381,7 @@ def _normalized_by_req(db, job):
 # --------------------------------------------------------------------------- #
 def test_valid_identity_delegation(db_session):
     resolution, actor, target = _resolution(db_session)
-    registry = _registry(_base_fixtures(actor.id, target.id))
+    registry = _registry(_base_fixtures(actor.id, target.external_identifier))
     outcome = _run(db_session, resolution, registry)
 
     validations = _validation_by_req(db_session, outcome.job)
@@ -411,7 +411,7 @@ def test_valid_identity_delegation(db_session):
 
 def test_every_item_has_provenance_and_validation(db_session):
     resolution, actor, target = _resolution(db_session)
-    registry = _registry(_base_fixtures(actor.id, target.id))
+    registry = _registry(_base_fixtures(actor.id, target.external_identifier))
     outcome = _run(db_session, resolution, registry)
 
     raw = evidence_collection_service.list_raw_evidence(
@@ -438,7 +438,7 @@ def test_every_item_has_provenance_and_validation(db_session):
 
 def test_expired_evidence(db_session):
     resolution, actor, target = _resolution(db_session)
-    fixtures = _base_fixtures(actor.id, target.id)
+    fixtures = _base_fixtures(actor.id, target.external_identifier)
     fixtures["approval"][EV_APPROVAL]["expires_at"] = PAST
     registry = _registry(fixtures)
     outcome = _run(db_session, resolution, registry)
@@ -461,7 +461,7 @@ def test_expired_evidence(db_session):
 
 def test_stale_allowance_evidence(db_session):
     resolution, actor, target = _resolution(db_session)
-    fixtures = _base_fixtures(actor.id, target.id)
+    fixtures = _base_fixtures(actor.id, target.external_identifier)
     # Allowance has a P1D freshness window; a 2020 issue date is stale.
     fixtures["account"][EV_ALLOWANCE]["issued_at"] = PAST
     fixtures["account"][EV_ALLOWANCE]["expires_at"] = FAR_FUTURE
@@ -477,7 +477,7 @@ def test_stale_allowance_evidence(db_session):
 
 def test_untrusted_merchant_source(db_session):
     resolution, actor, target = _resolution(db_session)
-    fixtures = _base_fixtures(actor.id, target.id)
+    fixtures = _base_fixtures(actor.id, target.external_identifier)
     # Issuer not in the requirement's allowed issuers => untrusted source.
     fixtures["merchant"][EV_MERCHANT]["issuer"] = "rogue.example"
     registry = _registry(fixtures)
@@ -492,7 +492,7 @@ def test_untrusted_merchant_source(db_session):
 
 def test_target_mismatch(db_session):
     resolution, actor, target = _resolution(db_session)
-    fixtures = _base_fixtures(actor.id, target.id)
+    fixtures = _base_fixtures(actor.id, target.external_identifier)
     # Execution evidence binds to the wrong target.
     fixtures["execution"][EV_EXECUTION]["target_id"] = "wrong-target"
     registry = _registry(fixtures)
@@ -507,7 +507,7 @@ def test_target_mismatch(db_session):
 
 def test_connector_timeout(db_session):
     resolution, actor, target = _resolution(db_session)
-    fixtures = _base_fixtures(actor.id, target.id)
+    fixtures = _base_fixtures(actor.id, target.external_identifier)
     fixtures["approval"][EV_APPROVAL] = {"behavior": "timeout"}
     registry = _registry(fixtures)
     outcome = _run(db_session, resolution, registry)
@@ -530,7 +530,7 @@ def test_connector_timeout(db_session):
 
 def test_retry_then_success(db_session):
     resolution, actor, target = _resolution(db_session)
-    fixtures = _base_fixtures(actor.id, target.id)
+    fixtures = _base_fixtures(actor.id, target.external_identifier)
     # Fail the first two attempts, succeed on the third.
     fixtures["approval"][EV_APPROVAL]["fail_times"] = 2
     registry = _registry(fixtures)
@@ -546,7 +546,7 @@ def test_retry_then_success(db_session):
 
 def test_partial_connector_failure(db_session):
     resolution, actor, target = _resolution(db_session)
-    fixtures = _base_fixtures(actor.id, target.id)
+    fixtures = _base_fixtures(actor.id, target.external_identifier)
     fixtures["merchant"][EV_MERCHANT] = {"behavior": "error", "error": "boom"}
     registry = _registry(fixtures)
     outcome = _run(db_session, resolution, registry)
@@ -562,7 +562,7 @@ def test_partial_connector_failure(db_session):
 
 def test_no_silent_mock_fallback_in_production(db_session):
     resolution, actor, target = _resolution(db_session, environment="PRODUCTION")
-    registry = _registry(_base_fixtures(actor.id, target.id), is_mock=True)
+    registry = _registry(_base_fixtures(actor.id, target.external_identifier), is_mock=True)
     # production_mode omitted -> derived from the PRODUCTION context.
     outcome = _run(db_session, resolution, registry, production_mode=None)
 
@@ -588,7 +588,7 @@ def test_no_silent_mock_fallback_in_production(db_session):
 def test_production_allows_real_connectors(db_session):
     resolution, actor, target = _resolution(db_session, environment="PRODUCTION")
     # Non-mock connectors are accepted in production mode.
-    registry = _registry(_base_fixtures(actor.id, target.id), is_mock=False)
+    registry = _registry(_base_fixtures(actor.id, target.external_identifier), is_mock=False)
     outcome = _run(db_session, resolution, registry, production_mode=None)
 
     assert outcome.job.production_mode is True
@@ -599,7 +599,7 @@ def test_production_allows_real_connectors(db_session):
 
 def test_deterministic_normalized_hashes(db_session):
     resolution, actor, target = _resolution(db_session)
-    fixtures = _base_fixtures(actor.id, target.id)
+    fixtures = _base_fixtures(actor.id, target.external_identifier)
 
     reg1 = _registry(fixtures)
     out1 = _run(db_session, resolution, reg1)
@@ -621,7 +621,7 @@ def test_deterministic_normalized_hashes(db_session):
 
 def test_monetary_values_normalized_to_minor_units(db_session):
     resolution, actor, target = _resolution(db_session)
-    registry = _registry(_base_fixtures(actor.id, target.id))
+    registry = _registry(_base_fixtures(actor.id, target.external_identifier))
     outcome = _run(db_session, resolution, registry)
 
     import json
@@ -634,7 +634,7 @@ def test_monetary_values_normalized_to_minor_units(db_session):
 
 def test_pii_excluded_from_public_projections(db_session):
     resolution, actor, target = _resolution(db_session)
-    fixtures = _base_fixtures(actor.id, target.id)
+    fixtures = _base_fixtures(actor.id, target.external_identifier)
     # The identity source returns a PII-laden payload but publishes only
     # non-PII claims for normalization.
     fixtures["identity"][EV_IDENTITY]["sensitivity"] = (
@@ -678,7 +678,7 @@ def test_pii_excluded_from_public_projections(db_session):
 
 def test_unresolved_when_no_connector(db_session):
     resolution, actor, target = _resolution(db_session)
-    fixtures = _base_fixtures(actor.id, target.id)
+    fixtures = _base_fixtures(actor.id, target.external_identifier)
     # Registry lacks the execution-result connector entirely.
     registry = ConnectorRegistry(
         [
