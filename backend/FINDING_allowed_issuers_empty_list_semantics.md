@@ -95,3 +95,32 @@ step.
 `allowed_issuers: []` is safe/intentional "no restriction, defer to the
 connector's own trusted-issuer list" — not a footgun that silently rejects
 all evidence. No code change is indicated by this finding.
+
+---
+
+## Final outcome (2026-08-17, later same night): pipeline reached real APPROVED
+
+Both runs documented above ended in `DENIED`/`MANDATORY_CONTROL_FAILED` due to
+the target-binding identifier mismatch (see
+`PENDING_REVIEW_target_binding_identifier_mismatch.md`), which was still
+unfixed at the time this document was written. That mismatch has since been
+fixed (CompliAGL backend commit `c362b89`), and a separate, previously
+undiscovered bug was found and fixed the same night in the Gateway repo
+(`CompliAGL-Execution-Gateway`): the draft SecureRob governance package's
+`control_definitions[].evaluation_expression` fields were written against a
+`context.operational_state_snapshot.*` namespace that
+`control_evaluation_service._evidence_facts()` never binds — only
+`evidence[...][claims][...]` is bound for that code path. Fixed in Gateway
+commits `d0fe2d2` (expression fix) and `e8f779c` (doc/prose correction
+distinguishing `control_definitions[].evaluation_expression`'s binding from
+`decision_conditions[].expression`'s).
+
+With both fixes in place, a live end-to-end run
+(`CompliAGL-Execution-Gateway/trial_final_combined_fix_v2_result.md`) reached
+a genuine `outcome: "APPROVED"` / `reason_codes: ["DECISION_APPROVED",
+"APPROVED_BY_POLICY"]` — not a replay, not a cached/stale result. The
+`allowed_issuers` question this document investigates was already correctly
+ruled out as a factor before this final fix, and remains correctly ruled out:
+it played no role in either the `DENIED` result documented above or the
+`APPROVED` result that followed the target-binding and expression-namespace
+fixes.

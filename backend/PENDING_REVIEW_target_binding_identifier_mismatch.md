@@ -1,8 +1,15 @@
 # Pending review: `target` binding resolves to the wrong identifier for Gateway-style connectors
 
-**Status:** NOT APPLIED. Found and written up 2026-08-17 during SecureRob pilot
-debugging; deliberately held for fresh review rather than applied same-night.
-Nothing in this document has been implemented.
+**Status:** FIXED. Applied in backend commit `c362b89` ("Fix target binding to
+resolve external_identifier, not internal PK"), later on 2026-08-17, after
+the fresh review this document was held for. Combined with a separate,
+previously undiscovered Gateway-side fix (governance package
+`control_definitions[].evaluation_expression` binding a dead `context.*`
+namespace instead of `evidence.*` — Gateway commits `d0fe2d2`, `e8f779c`),
+this fix contributed to a real, live, end-to-end `APPROVED` decision. See
+"Final outcome" section near the end of this document for details. Everything
+below this point up through "Confirmation update" reflects the pre-fix
+investigation and is kept for the record.
 
 **2026-08-17 update: `TARGET_MISMATCH` is now confirmed as the live, actual
 blocker via real collected evidence — not just a theoretical concern.** See
@@ -243,3 +250,38 @@ returned real, non-stale `DENIED` outcomes (not `ESCALATED`/
 stale-cache bug from `BUG_REPORT.md` (fixed in commit `4bd15c2`, prior to
 this session) is still confirmed fixed; it did not resurface or interfere
 with this test.
+
+---
+
+## Final outcome (2026-08-17, later same night): fix applied, reached real APPROVED
+
+After the review this document was held for, the fix was applied as backend
+commit `c362b89` ("Fix target binding to resolve external_identifier, not
+internal PK") — resolving option 1/2/3 from "Proposed direction" above in
+favor of making the binding resolve correctly for external-identifier-style
+connectors like SecureRob's, per that commit's message (not re-derived here;
+see the commit itself for exactly which of the three options it took and how
+the two existing execution-result tests were kept passing).
+
+Fixing this alone was not sufficient to reach `APPROVED`: the same night, a
+second, independent bug was found in the Gateway repo's draft SecureRob
+governance package. Its `control_definitions[].evaluation_expression` fields
+were written against `context.operational_state_snapshot.*`, a namespace
+`control_evaluation_service._evidence_facts()` never binds — only
+`evidence[...][claims][...]` is bound on that code path (the
+`decision_conditions[].expression` path does bind `context.*`, which is what
+led to the original, incorrect assumption that both paths shared the same
+namespace). Fixed in Gateway commits `d0fe2d2` and `e8f779c`.
+
+With **both** fixes in place — this document's target-binding fix
+(`c362b89`) and the Gateway's expression-namespace fix (`d0fe2d2`/`e8f779c`)
+— a fresh live end-to-end run through the real Gateway -> CompliAGL pipeline
+reached a genuine `outcome: "APPROVED"`, `reason_codes: ["DECISION_APPROVED",
+"APPROVED_BY_POLICY"]`. Full evidence:
+`CompliAGL-Execution-Gateway/trial_final_combined_fix_v2_result.md`. This is
+not a replay or a cached/stale result — it is a first-time, correctly-derived
+`APPROVED` decision for that run's `policy_resolution_id`.
+
+This closes out the finding: the identifier-namespace mismatch this document
+describes was real, was the confirmed blocker at the time of writing, and is
+now fixed and verified live, not just reviewed and merged.
