@@ -15,6 +15,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.models.organization import Organization
 from app.models.policy import Policy
 from app.mvp2.schemas.actor import ActorType
 from app.services import actor_registry
@@ -67,7 +68,33 @@ def seed_demo_policies(db: Session) -> None:
     db.commit()
 
 
+def seed_organizations(db: Session) -> None:
+    """Idempotently persist the known, real organizations.
+
+    ``organization_id`` is validated against this table on every canonical
+    read/write (see ``app.services.canonical.organization_service``), so the
+    tenants already in use must exist here. This runs on every boot — the
+    same idempotent pattern as the rest of this module — because Alembic
+    migrations are not invoked as part of deployment (see Procfile).
+    """
+    for organization_id, organization_name in (
+        ("default-org", "Default Organization"),
+        ("securerob-pilot", "SecureRob Pilot"),
+    ):
+        org = db.get(Organization, organization_id)
+        if org is None:
+            db.add(
+                Organization(
+                    organization_id=organization_id,
+                    organization_name=organization_name,
+                    status="ACTIVE",
+                )
+            )
+    db.commit()
+
+
 def seed_demo_data(db: Session) -> None:
-    """Seed all canonical demo data (actors + policies)."""
+    """Seed all canonical demo data (organizations + actors + policies)."""
+    seed_organizations(db)
     seed_demo_actors(db)
     seed_demo_policies(db)

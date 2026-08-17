@@ -11,6 +11,14 @@ class NotFoundError(CanonicalError):
     """A referenced canonical resource does not exist in the tenant."""
 
 
+class OrganizationNotFoundError(NotFoundError):
+    """The given ``organization_id`` does not name a real, active tenant."""
+
+    def __init__(self, organization_id: str) -> None:
+        self.organization_id = organization_id
+        super().__init__(f"Unknown organization_id: {organization_id!r}")
+
+
 class ConflictError(CanonicalError):
     """A uniqueness/idempotency constraint was violated."""
 

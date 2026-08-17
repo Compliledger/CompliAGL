@@ -3,11 +3,13 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.core.config import settings
 from app.db.init_db import init_db
+from app.services.canonical.errors import NotFoundError
 
 # --- Route imports ---
 from app.api.routes.health import router as health_router
@@ -67,6 +69,15 @@ app = FastAPI(
     description="Agent Governance Layer — policy, identity, and proof engine for agent wallets.",
     lifespan=lifespan,
 )
+
+# Fallback for endpoints that don't already catch NotFoundError themselves
+# (most do, per-router, and map it to their own 404 response — this only
+# catches the remainder, e.g. create endpoints that read organization_id
+# straight out of the request body).
+@app.exception_handler(NotFoundError)
+async def _not_found_handler(request: Request, exc: NotFoundError) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
 
 # --- CORS (permissive – hackathon demo) ---
 app.add_middleware(

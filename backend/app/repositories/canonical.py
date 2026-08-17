@@ -44,6 +44,7 @@ from app.models.monitoring_event import MonitoringEvent
 from app.models.reevaluation_run import ReevaluationRun
 from app.models.policy_resolution import PolicyResolution
 from app.models.target import Target
+from app.services.canonical import organization_service
 
 ModelT = TypeVar("ModelT")
 
@@ -61,6 +62,7 @@ class TenantRepository(Generic[ModelT]):
         """Return a base query already filtered to the tenant."""
         if not organization_id:
             raise ValueError("organization_id is required for tenant isolation")
+        organization_service.require_active(self.db, organization_id)
         return self.db.query(self.model).filter(
             self.model.organization_id == organization_id  # type: ignore[attr-defined]
         )
@@ -96,6 +98,9 @@ class TenantRepository(Generic[ModelT]):
 
     # -- writes ------------------------------------------------------------ #
     def add(self, obj: ModelT) -> ModelT:
+        organization_service.require_active(
+            self.db, obj.organization_id  # type: ignore[attr-defined]
+        )
         self.db.add(obj)
         self.db.commit()
         self.db.refresh(obj)

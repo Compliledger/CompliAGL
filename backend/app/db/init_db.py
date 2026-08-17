@@ -12,6 +12,9 @@ from app.models.proof_bundle import ProofBundle  # noqa: F401  (deprecated)
 from app.models.aiproof import AIProof  # noqa: F401  (legacy x402 proof bundle)
 from app.models.canonical_aiproof import CanonicalAIProof  # noqa: F401  (canonical proof)
 
+# Tenant registry — the real, validated organization boundary.
+from app.models.organization import Organization  # noqa: F401
+
 # Canonical first-class runtime domain objects.
 from app.models.actor_identity import ActorIdentity  # noqa: F401
 from app.models.intent import Intent  # noqa: F401

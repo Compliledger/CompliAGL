@@ -9,8 +9,11 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import Header, HTTPException, Query
+from fastapi import Depends, Header, HTTPException, Query
+from sqlalchemy.orm import Session
 
+from app.core.database import get_db
+from app.services.canonical import organization_service
 
 # Roles permitted to author (create) executable governance packages. Only
 # CompliLedger service identities or authorized governance administrators may
@@ -23,13 +26,25 @@ PACKAGE_AUTHOR_ROLES = frozenset(
 def get_org_id(
     x_organization_id: Optional[str] = Header(default=None, alias="X-Organization-Id"),
     organization_id: Optional[str] = Query(default=None),
+    db: Session = Depends(get_db),
 ) -> str:
-    """Resolve the caller's tenant, preferring the header over the query param."""
+    """Resolve and validate the caller's tenant.
+
+    Prefers the header over the query param. The resolved value must name a
+    real, active :class:`~app.models.organization.Organization` — an unknown
+    or inactive ``organization_id`` is rejected here rather than silently
+    accepted.
+    """
     org = x_organization_id or organization_id
     if not org:
         raise HTTPException(
             status_code=400,
             detail="organization_id is required (X-Organization-Id header or query param).",
+        )
+    if not organization_service.exists_active(db, org):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Unknown organization_id: {org!r}",
         )
     return org
 
