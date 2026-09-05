@@ -55,6 +55,17 @@ class Decision(CanonicalMixin, Base):
     intent_hash = Column(String, nullable=True)
     target_hash = Column(String, nullable=True)
     context_hash = Column(String, nullable=True)
+    # Null when the governing package didn't set requires_authority_context
+    # (no CompliIdentity call was made). authority_hash content-hashes the
+    # normalized authority facts including CompliIdentity's own
+    # authority_revision fingerprint -- CompliIdentity is already the system
+    # of record for the authority snapshot itself (proof_ref,
+    # integrity.content_hash), so this binds the snapshot's identity into
+    # the Decision's lineage rather than duplicating it as a second audit
+    # trail.
+    authority_status = Column(String, nullable=True)
+    authority_reason = Column(String, nullable=True)
+    authority_hash = Column(String, nullable=True)
 
     # --- Determinism / provenance ---
     engine_version = Column(String, nullable=True)

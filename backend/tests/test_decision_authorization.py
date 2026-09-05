@@ -40,6 +40,7 @@ from app.services.canonical import (
     actor_identity_service,
     applicability_service,
     assessment_service,
+    authority_context_service,
     authorization_service,
     control_evaluation_service,
     decision_service,
@@ -50,6 +51,7 @@ from app.services.canonical import (
     policy_resolution_service,
     target_service,
 )
+from app.services.canonical.authority_context_service import AuthorityContext
 from app.services.canonical.errors import ConflictError
 from app.services.evidence import evidence_collection_service
 from app.services.evidence.connectors import ConnectorRegistry, simulators
@@ -78,11 +80,17 @@ CTL = "CTL-1"
 # --------------------------------------------------------------------------- #
 # Governance package builder (single mandatory identity control)
 # --------------------------------------------------------------------------- #
-def _package_payload(decision_conditions, *, control_expression="True"):
+def _package_payload(
+    decision_conditions,
+    *,
+    control_expression="True",
+    requires_authority_context=False,
+):
     return ExecutableGovernancePackageCreate(
         organization_id=ORG,
         package_name="decision-policy",
         package_version="1.0.0",
+        requires_authority_context=requires_authority_context,
         requirements=[
             {
                 "requirement_id": "REQ-1",
@@ -130,9 +138,20 @@ def _package_payload(decision_conditions, *, control_expression="True"):
     )
 
 
-def _publish(db, decision_conditions, *, control_expression="True"):
+def _publish(
+    db,
+    decision_conditions,
+    *,
+    control_expression="True",
+    requires_authority_context=False,
+):
     pkg = governance_package_service.create(
-        db, _package_payload(decision_conditions, control_expression=control_expression)
+        db,
+        _package_payload(
+            decision_conditions,
+            control_expression=control_expression,
+            requires_authority_context=requires_authority_context,
+        ),
     )
     result = governance_package_service.validate(db, ORG, pkg.id)
     assert result.valid, result.errors
@@ -169,15 +188,30 @@ def _registry(fixtures) -> ConnectorRegistry:
 
 
 def _run_pipeline(
-    db, decision_conditions, *, evidence_valid=True, control_expression="True"
+    db,
+    decision_conditions,
+    *,
+    evidence_valid=True,
+    control_expression="True",
+    requires_authority_context=False,
 ):
     """Publish, resolve, collect + evaluate, and return (resolution, actor,
     target, assessment)."""
-    _publish(db, decision_conditions, control_expression=control_expression)
+    _publish(
+        db,
+        decision_conditions,
+        control_expression=control_expression,
+        requires_authority_context=requires_authority_context,
+    )
     actor = actor_identity_service.create(
         db,
         ActorIdentityCreate(
-            organization_id=ORG, actor_type=CanonicalActorType.AI_AGENT
+            organization_id=ORG,
+            actor_type=CanonicalActorType.AI_AGENT,
+            # Gives _authority_principal_id a real value to map to, so the
+            # authority-context tests below actually reach the (fake) client
+            # instead of short-circuiting on a missing principal id.
+            wallet_or_agent_account_id="agent-01",
         ),
     )
     intent = intent_service.create(
@@ -801,6 +835,218 @@ def test_api_decision_and_authorization_flow(api_env):
         f"/api/v1/execution-authorizations/{auth['id']}/consume", headers=headers
     )
     assert replay.status_code == 409
+
+
+# --------------------------------------------------------------------------- #
+# CompliIdentity authority-context integration
+# --------------------------------------------------------------------------- #
+_AUTHORITY_ESCALATE_CONDITIONS = [
+    {
+        "condition_id": "DC-AUTHORITY-ESCALATE",
+        "expression": "authority.reason == 'approval_required'",
+        "resulting_decision": "ESCALATED",
+        "priority": 10,
+        "reason_code": "HUMAN_APPROVAL_REQUIRED",
+        "terminal": True,
+    },
+    {
+        "condition_id": "DC-APPROVE",
+        "expression": "True",
+        "resulting_decision": "APPROVED",
+        "priority": 100,
+        "reason_code": "APPROVED_OK",
+        "terminal": True,
+    },
+]
+_AUTHORITY_DENY_CONDITIONS = [
+    {
+        "condition_id": "DC-AUTHORITY-DENY",
+        "expression": "authority.reason == 'principal_not_found'",
+        "resulting_decision": "DENIED",
+        "priority": 10,
+        "reason_code": "PRINCIPAL_NOT_FOUND",
+        "terminal": True,
+    },
+    {
+        "condition_id": "DC-APPROVE",
+        "expression": "True",
+        "resulting_decision": "APPROVED",
+        "priority": 100,
+        "reason_code": "APPROVED_OK",
+        "terminal": True,
+    },
+]
+
+
+class _FakeAuthorityClient:
+    """Stands in for authority_context_service.AuthorityContextClient in
+    tests -- no real CompliIdentity is reachable from this test suite."""
+
+    def __init__(self, context: AuthorityContext):
+        self._context = context
+
+    def fetch(self, **kwargs):
+        return self._context
+
+
+def _patch_authority_client(monkeypatch, context: AuthorityContext) -> None:
+    monkeypatch.setattr(
+        authority_context_service,
+        "default_client",
+        lambda **kwargs: _FakeAuthorityClient(context),
+    )
+
+
+def test_package_without_authority_requirement_never_calls_compliidentity(
+    db_session, monkeypatch
+):
+    """Packages that don't set requires_authority_context must be completely
+    unaffected by this integration -- not even a client lookup happens. This
+    is what keeps the existing demo travel-booking package and every other
+    test in this suite unmodified by the integration's existence."""
+
+    def _boom(**kwargs):
+        raise AssertionError(
+            "authority_context_service.default_client() must not be called "
+            "when the governing package didn't set requires_authority_context"
+        )
+
+    monkeypatch.setattr(authority_context_service, "default_client", _boom)
+
+    decision = _approved_decision(db_session)
+    assert decision.authority_status is None
+    assert decision.authority_reason is None
+    assert decision.authority_hash is None
+
+
+def test_authority_context_unconfigured_forces_escalation_over_approval(
+    db_session,
+):
+    """requires_authority_context=True with CompliIdentity unconfigured in
+    this test environment (no COMPLIIDENTITY_BASE_URL /
+    COMPLIIDENTITY_SERVICE_PRINCIPAL_ID) must fail closed: an
+    otherwise-unconditionally-approving decision condition is downgraded to
+    ESCALATED, never APPROVED. No monkeypatching -- this is the real
+    default_client() behavior when unconfigured."""
+    resolution, actor, target, assessment = _run_pipeline(
+        db_session, _APPROVE_CONDITIONS, requires_authority_context=True
+    )
+    assert assessment.overall_result == AssessmentOutcome.SATISFIED.value
+
+    decision = decision_service.decide_for_resolution(db_session, ORG, resolution.id)
+    explanation = decision_service.explain(db_session, ORG, decision.id)
+
+    # The approving condition still matched and is recorded as triggered --
+    # proving the override happened, not that the condition failed to match.
+    triggered = explanation["decision_conditions_triggered"]
+    assert any(
+        c.get("condition_id") == "DC-APPROVE"
+        and c.get("resulting_decision") == DecisionOutcome.APPROVED.value
+        for c in triggered
+    )
+
+    assert decision.outcome == DecisionOutcome.ESCALATED.value
+    assert "AUTHORITY_CONTEXT_UNAVAILABLE" in explanation["reason_codes"]
+    assert decision.authority_status == "UNAVAILABLE"
+    assert decision.authority_hash is not None
+
+
+def test_authority_context_unavailable_from_client_also_overrides_approval(
+    db_session, monkeypatch
+):
+    """Same guarantee, but via a client that IS configured/reachable and
+    still reports UNAVAILABLE -- e.g. CompliIdentity's own 503
+    context_unevaluable fail-closed response -- not just the unconfigured
+    path above."""
+    _patch_authority_client(
+        monkeypatch,
+        AuthorityContext(status="UNAVAILABLE", reason="context_unevaluable"),
+    )
+    resolution, actor, target, assessment = _run_pipeline(
+        db_session, _APPROVE_CONDITIONS, requires_authority_context=True
+    )
+    decision = decision_service.decide_for_resolution(db_session, ORG, resolution.id)
+
+    assert decision.outcome == DecisionOutcome.ESCALATED.value
+    assert decision.authority_status == "UNAVAILABLE"
+    assert decision.authority_reason == "context_unevaluable"
+
+
+def test_authority_context_approval_required_reason_drives_package_condition(
+    db_session, monkeypatch
+):
+    """A successful CompliIdentity call whose authority_for_request.reason is
+    'approval_required' is exposed as an ordinary package-authorable fact
+    (authority.reason) -- the package's own decision condition, not engine
+    logic, is what turns it into ESCALATED."""
+    _patch_authority_client(
+        monkeypatch,
+        AuthorityContext(
+            status="OK",
+            reason="approval_required",
+            sufficient=False,
+            active=True,
+            current_trust_state="present",
+            authority_revision="rev-1",
+        ),
+    )
+    resolution, actor, target, assessment = _run_pipeline(
+        db_session,
+        _AUTHORITY_ESCALATE_CONDITIONS,
+        requires_authority_context=True,
+    )
+    decision = decision_service.decide_for_resolution(db_session, ORG, resolution.id)
+    explanation = decision_service.explain(db_session, ORG, decision.id)
+
+    assert decision.outcome == DecisionOutcome.ESCALATED.value
+    assert "HUMAN_APPROVAL_REQUIRED" in explanation["reason_codes"]
+    assert decision.authority_status == "OK"
+    assert decision.authority_reason == "approval_required"
+
+
+def test_authority_context_known_denied_drives_package_deny_condition(
+    db_session, monkeypatch
+):
+    """KNOWN_DENIED (e.g. 404 principal_not_found) is a real fact
+    CompliIdentity reported, not a system failure -- it must NOT trigger the
+    structural UNAVAILABLE guard, and is instead handled the same way as any
+    other authority.reason: via a package-authored condition."""
+    _patch_authority_client(
+        monkeypatch,
+        AuthorityContext(status="KNOWN_DENIED", reason="principal_not_found"),
+    )
+    resolution, actor, target, assessment = _run_pipeline(
+        db_session,
+        _AUTHORITY_DENY_CONDITIONS,
+        requires_authority_context=True,
+    )
+    decision = decision_service.decide_for_resolution(db_session, ORG, resolution.id)
+    explanation = decision_service.explain(db_session, ORG, decision.id)
+
+    assert decision.outcome == DecisionOutcome.DENIED.value
+    assert "PRINCIPAL_NOT_FOUND" in explanation["reason_codes"]
+    assert decision.authority_status == "KNOWN_DENIED"
+
+
+def test_authority_context_ok_allows_approval_when_package_requires_it(
+    db_session, monkeypatch
+):
+    """The structural guard only fires on UNAVAILABLE -- a successful
+    authority context does not block an otherwise-approving decision."""
+    _patch_authority_client(
+        monkeypatch,
+        AuthorityContext(
+            status="OK", sufficient=True, active=True, current_trust_state="present"
+        ),
+    )
+    resolution, actor, target, assessment = _run_pipeline(
+        db_session, _APPROVE_CONDITIONS, requires_authority_context=True
+    )
+    assert assessment.overall_result == AssessmentOutcome.SATISFIED.value
+
+    decision = decision_service.decide_for_resolution(db_session, ORG, resolution.id)
+    assert decision.outcome == DecisionOutcome.APPROVED.value
+    assert decision.authority_status == "OK"
 
 
 def test_api_issue_rejected_for_denied_decision(api_env):

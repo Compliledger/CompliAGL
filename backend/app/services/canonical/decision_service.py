@@ -43,6 +43,8 @@ from app.repositories.canonical import (
     TargetRepository,
 )
 from app.services.canonical import assessment_service, runtime_facts
+from app.services.canonical import authority_context_service
+from app.services.canonical.authority_context_service import AuthorityContext
 from app.services.canonical.deterministic_expression import (
     DETERMINISTIC_ENGINE_VERSION,
 )
@@ -53,6 +55,7 @@ from app.services.canonical.package_interpreter import (
 )
 from app.utils.canonical_enums import (
     AssessmentOutcome,
+    CanonicalActorType,
     DecisionOutcome,
     DecisionSupersessionStatus,
     PolicyResolutionStatus,
@@ -125,6 +128,7 @@ def _resolve_outcome(
     no_policy: bool,
     condition_outcome: Optional[str],
     assessment_outcome: str,
+    authority_status: Optional[str] = None,
 ) -> tuple[str, list[str]]:
     """Map assessment + explicit decision conditions to a business outcome.
 
@@ -136,7 +140,21 @@ def _resolve_outcome(
     * a ``NOT_SATISFIED`` assessment (failed mandatory control) denies unless the
       policy explicitly escalates for remediation;
     * ``APPROVED`` requires both an explicit approving condition and a
-      ``SATISFIED`` assessment.
+      ``SATISFIED`` assessment -- and, when the governing package required a
+      CompliIdentity authority-context check, that the check actually
+      succeeded (``authority_status != "UNAVAILABLE"``). This mirrors the
+      ``NOT_EVALUABLE`` guard above: when the authority plane's state is
+      simply unknown (unreachable, timed out, malformed, or CompliIdentity's
+      own ``context_unevaluable`` fail-closed response), that is never a
+      business fact a package condition should have to remember to check --
+      it structurally downgrades to ESCALATED regardless of which decision
+      condition matched. Known-bad authority reasons (permission_missing,
+      delegation_revoked, principal_not_found, ...) are real facts CompliIdentity
+      did successfully report, so those stay purely package-authored via
+      ``authority.reason`` conditions, same as any other runtime fact.
+      ``authority_status`` is ``None`` whenever the package didn't declare
+      ``requires_authority_context`` -- no guard applies, and this branch
+      behaves exactly as it did before this integration existed.
     """
     D = DecisionOutcome
     A = AssessmentOutcome
@@ -162,6 +180,8 @@ def _resolve_outcome(
 
     # assessment SATISFIED
     if condition_outcome == D.APPROVED.value:
+        if authority_status == "UNAVAILABLE":
+            return D.ESCALATED.value, ["AUTHORITY_CONTEXT_UNAVAILABLE"]
         return D.APPROVED.value, ["APPROVED_BY_POLICY"]
     if condition_outcome == D.ESCALATED.value:
         return D.ESCALATED.value, ["ESCALATED_BY_POLICY"]
@@ -196,11 +216,20 @@ def _gather_inputs(db: Session, org: str, resolution: PolicyResolution):
 
 def _package_conditions(
     db: Session, org: str, selected_packages: list[dict[str, Any]]
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str], Optional[str]]:
-    """Return (decision_conditions, package_refs, requirement_ids, package_hash)."""
+) -> tuple[
+    list[dict[str, Any]], list[dict[str, Any]], list[str], Optional[str], bool
+]:
+    """Return (decision_conditions, package_refs, requirement_ids, package_hash,
+    requires_authority_context).
+
+    ``requires_authority_context`` is True when *any* selected package
+    declares it -- a CompliIdentity call is made if any applicable package
+    needs one, even if others don't.
+    """
     conditions: list[dict[str, Any]] = []
     package_refs: list[dict[str, Any]] = []
     requirement_ids: set[str] = set()
+    requires_authority_context = False
 
     repo = ExecutableGovernancePackageRepository(db)
     for entry in selected_packages:
@@ -223,18 +252,89 @@ def _package_conditions(
         )
         if pkg is None:
             continue
+        if getattr(pkg, "requires_authority_context", False):
+            requires_authority_context = True
         for cond in _load(pkg.decision_conditions) or []:
             if isinstance(cond, dict):
                 conditions.append({**cond, "package_id": package_id})
 
     package_refs.sort(key=lambda p: str(p.get("package_id") or ""))
     aggregate_hash = hash_dict({"packages": package_refs}) if package_refs else None
-    return conditions, package_refs, sorted(requirement_ids), aggregate_hash
+    return (
+        conditions,
+        package_refs,
+        sorted(requirement_ids),
+        aggregate_hash,
+        requires_authority_context,
+    )
 
 
-def _build_context(actor, intent, target, context, assessment, evidence_pkg):
+# --------------------------------------------------------------------------- #
+# CompliIdentity authority-context integration
+# --------------------------------------------------------------------------- #
+def _authority_principal_id(actor) -> Optional[str]:
+    """Map an ActorIdentity to the ``principal_id`` CompliIdentity's
+    authority-context endpoint expects.
+
+    ASSUMPTION, confirmed not contractually specified by CompliIdentity's
+    contract doc (``principal_id`` is documented as an opaque, tenant-scoped
+    identifier from CompliIdentity's point of view -- the mapping is a
+    CompliAGL-side integration choice): human actors use
+    ``human_principal_id``; every other actor type (agent, service, etc.)
+    uses ``wallet_or_agent_account_id``. If this turns out wrong against
+    real CompliIdentity, it's a one-line fix here.
+    """
+    if actor.actor_type == CanonicalActorType.HUMAN.value:
+        return actor.human_principal_id
+    return actor.wallet_or_agent_account_id or actor.human_principal_id
+
+
+def _authority_request_params(intent) -> dict[str, Any]:
+    """Map an Intent to CompliIdentity's ``resource`` / ``action`` probe
+    fields.
+
+    ASSUMPTION: the contract's own example pairs a fixed probe verb
+    (``action: "request"``) with a business-object noun (``resource``), not
+    literally ``intent.action``. ``resource`` is read from
+    ``intent.parameters["compliidentity_resource"]`` when the governance
+    package author supplied one, falling back to ``intent.intent_type``.
+    When the intent carries an amount, it's passed as the
+    ``attribute``/``value`` probe pair so CompliIdentity's
+    ``authority_for_request`` is scoped to the actual proposed action
+    (per the contract owner's guidance), not just a generic liveness check.
+    """
+    params = _load(intent.parameters) or {}
+    resource = params.get("compliidentity_resource") or intent.intent_type
+    result: dict[str, Any] = {"resource": resource, "action": "request"}
+    if intent.amount_minor is not None:
+        result["attribute"] = "amount"
+        result["value"] = str(intent.amount_minor)
+    return result
+
+
+def _fetch_authority_context(org: str, actor, intent) -> AuthorityContext:
+    """Fetch authority context for this decision. Never raises -- a missing
+    client, missing principal mapping, or any client-reported failure all
+    normalize to ``UNAVAILABLE`` via the same path as a network error.
+    """
+    client = authority_context_service.default_client()
+    if client is None:
+        return AuthorityContext(status="UNAVAILABLE", reason="not_configured")
+    principal_id = _authority_principal_id(actor)
+    if not principal_id:
+        return AuthorityContext(status="UNAVAILABLE", reason="no_principal_id")
+    return client.fetch(
+        organization_id=org,
+        principal_id=principal_id,
+        **_authority_request_params(intent),
+    )
+
+
+def _build_context(
+    actor, intent, target, context, assessment, evidence_pkg, authority=None
+):
     facts = runtime_facts.build_facts(
-        actor=actor, intent=intent, target=target, context=context
+        actor=actor, intent=intent, target=target, context=context, authority=authority
     )
     intent_params = facts.get("intent", {}).get("parameters", {}) or {}
     decision_context: dict[str, Any] = dict(facts)
@@ -306,18 +406,31 @@ def decide_for_resolution(
     control_evaluation_ids = sorted(_load(assessment.control_evaluation_ids) or [])
 
     selected_packages = _load(resolution.selected_packages) or []
-    conditions, package_refs, requirement_ids, policy_package_hash = (
-        _package_conditions(db, org, selected_packages)
-    )
-
-    facts, decision_context = _build_context(
-        actor, intent, target, context, assessment, evidence_pkg
-    )
+    (
+        conditions,
+        package_refs,
+        requirement_ids,
+        policy_package_hash,
+        requires_authority_context,
+    ) = _package_conditions(db, org, selected_packages)
 
     no_policy = (
         not selected_packages
         or resolution.status == PolicyResolutionStatus.NO_APPLICABLE_POLICY.value
     )
+
+    # Only ever call CompliIdentity for packages that opted in
+    # (requires_authority_context=True) and only when there's an applicable
+    # policy to begin with -- a no_policy resolution already resolves to
+    # DENIED regardless, so the call would be pure waste.
+    authority: Optional[AuthorityContext] = None
+    if requires_authority_context and not no_policy:
+        authority = _fetch_authority_context(org, actor, intent)
+
+    facts, decision_context = _build_context(
+        actor, intent, target, context, assessment, evidence_pkg, authority
+    )
+
     condition_outcome, triggered = (
         (None, []) if no_policy else _evaluate_conditions(conditions, decision_context)
     )
@@ -326,6 +439,7 @@ def decide_for_resolution(
         no_policy=no_policy,
         condition_outcome=condition_outcome,
         assessment_outcome=assessment.overall_result,
+        authority_status=authority.status if authority is not None else None,
     )
 
     reason_codes = [f"DECISION_{outcome}"] + mapping_reasons
@@ -342,7 +456,23 @@ def decide_for_resolution(
     evidence_package_hash = (
         evidence_pkg.package_hash if evidence_pkg is not None else None
     )
+    # Content-hashes the normalized authority facts, including
+    # CompliIdentity's own authority_revision fingerprint -- see the
+    # authority_hash column comment on the Decision model for why this binds
+    # the snapshot's identity rather than duplicating it as a second audit
+    # record. None when the package didn't require an authority-context call.
+    authority_hash = hash_dict(facts["authority"]) if "authority" in facts else None
 
+    # NOTE for a future cross-repo hash-mismatch debug: "authority_hash" was
+    # added to this payload by the CompliIdentity authority-context
+    # integration migration. Its presence (as a key, even when the value is
+    # None) changes input_hash/decision_hash for every decision computed
+    # from this point on relative to anything computed before it -- checked
+    # at the time: no in-repo code recomputes input_hash from a persisted
+    # Decision to compare against a prior value, and IntegrationEventType.
+    # DECISION_CREATED has no live publisher, so no outbox payload schema
+    # needed updating either. Not ruled out: an external system polling the
+    # public DecisionResponse.input_hash field and recomputing it itself.
     input_hash = hash_dict(
         {
             "engine_version": DETERMINISTIC_ENGINE_VERSION,
@@ -364,6 +494,7 @@ def decide_for_resolution(
             "intent_hash": intent_hash,
             "target_hash": target_hash,
             "context_hash": context_hash,
+            "authority_hash": authority_hash,
         }
     )
     decided_at = utc_now()
@@ -401,6 +532,9 @@ def decide_for_resolution(
         intent_hash=intent_hash,
         target_hash=target_hash,
         context_hash=context_hash,
+        authority_status=authority.status if authority is not None else None,
+        authority_reason=authority.reason if authority is not None else None,
+        authority_hash=authority_hash,
         engine_version=DETERMINISTIC_ENGINE_VERSION,
         input_hash=input_hash,
         decision_hash=decision_hash,
@@ -468,11 +602,14 @@ def explain(
         "evidence_package_id": decision.evidence_package_id,
         "evidence_package_hash": decision.evidence_package_hash,
         "policy_package_hash": decision.policy_package_hash,
+        "authority_status": decision.authority_status,
+        "authority_reason": decision.authority_reason,
         "input_hashes": {
             "actor_hash": decision.actor_hash,
             "intent_hash": decision.intent_hash,
             "target_hash": decision.target_hash,
             "context_hash": decision.context_hash,
+            "authority_hash": decision.authority_hash,
         },
         "engine_version": decision.engine_version,
         "decision_hash": decision.decision_hash,

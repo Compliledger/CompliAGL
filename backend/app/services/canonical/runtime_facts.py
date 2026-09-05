@@ -20,6 +20,7 @@ from app.models.actor_identity import ActorIdentity
 from app.models.intent import Intent
 from app.models.operational_context import OperationalContext
 from app.models.target import Target
+from app.services.canonical.authority_context_service import AuthorityContext
 
 
 def _load(raw: Optional[str]) -> Any:
@@ -95,17 +96,41 @@ def build_context_facts(context: OperationalContext) -> dict[str, Any]:
     }
 
 
+def build_authority_facts(authority: AuthorityContext) -> dict[str, Any]:
+    return {
+        "status": authority.status,
+        "reason": authority.reason,
+        "sufficient": authority.sufficient,
+        "active": authority.active,
+        "current_trust_state": authority.current_trust_state,
+        "authority_revision": authority.authority_revision,
+    }
+
+
 def build_facts(
     *,
     actor: ActorIdentity,
     intent: Intent,
     target: Optional[Target],
     context: Optional[OperationalContext],
+    authority: Optional[AuthorityContext] = None,
 ) -> dict[str, Any]:
     """Build the nested runtime-facts mapping for the governed tuple.
 
     ``target`` / ``context`` keys are omitted entirely when the corresponding
-    input is absent, so references to them evaluate to ``INDETERMINATE``.
+    input is absent, so references to them evaluate to ``INDETERMINATE`` --
+    both are legitimately optional depending on intent type.
+
+    ``authority`` follows the same omit-when-absent rule, but for a different
+    reason: it is only ever provided at all when the governing package
+    declared ``requires_authority_context: true`` (see decision_service.py).
+    Packages that don't declare it never see an ``authority`` key, so they
+    behave exactly as they did before this integration existed. Packages
+    that *do* declare it always get the key -- even when the underlying
+    CompliIdentity call failed (``authority.status == "UNAVAILABLE"``) -- so
+    package-authored conditions can inspect it if they choose to, though the
+    engine-level fail-closed guard in ``decision_service._resolve_outcome``
+    does not depend on them doing so.
     """
     facts: dict[str, Any] = {
         "actor": build_actor_facts(actor),
@@ -115,6 +140,8 @@ def build_facts(
         facts["target"] = build_target_facts(target)
     if context is not None:
         facts["context"] = build_context_facts(context)
+    if authority is not None:
+        facts["authority"] = build_authority_facts(authority)
     return facts
 
 
