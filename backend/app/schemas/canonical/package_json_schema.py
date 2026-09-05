@@ -61,6 +61,7 @@ GOVERNANCE_PACKAGE_JSON_SCHEMA: dict[str, Any] = {
         },
         "conflict_resolution_rules": {"type": "array"},
         "metadata": {"type": "object"},
+        "requires_authority_context": {"type": "boolean"},
     },
     "$defs": {
         "requirement": {

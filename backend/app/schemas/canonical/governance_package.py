@@ -139,6 +139,12 @@ class ExecutableGovernancePackageCreate(BaseModel):
     conflict_resolution_rules: list[dict[str, Any]] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
+    # Opt-in: set True only for packages whose decision conditions read
+    # CompliIdentity authority-context facts (authority.reason / .sufficient
+    # / .active / .current_trust_state). Packages that leave this False never
+    # trigger a CompliIdentity call and are unaffected by this integration.
+    requires_authority_context: bool = False
+
 
 class ExecutableGovernancePackageResponse(CanonicalResponseBase):
     """Executable governance package as returned by the API."""
@@ -166,6 +172,7 @@ class ExecutableGovernancePackageResponse(CanonicalResponseBase):
     decision_conditions: list[dict[str, Any]] = Field(default_factory=list)
     conflict_resolution_rules: list[dict[str, Any]] = Field(default_factory=list)
     package_metadata: dict[str, Any] = Field(default_factory=dict)
+    requires_authority_context: bool = False
 
 
 class PackageApproveRequest(BaseModel):

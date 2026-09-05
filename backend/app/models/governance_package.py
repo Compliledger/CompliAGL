@@ -17,7 +17,7 @@ are immutable — any change requires a new version.
 
 from __future__ import annotations
 
-from sqlalchemy import Column, DateTime, String, Text
+from sqlalchemy import Boolean, Column, DateTime, String, Text
 
 from app.core.database import Base
 from app.models._mixins import CanonicalMixin
@@ -65,3 +65,9 @@ class ExecutableGovernancePackage(CanonicalMixin, Base):
     decision_conditions = Column(Text, nullable=False, default="[]")
     conflict_resolution_rules = Column(Text, nullable=False, default="[]")
     package_metadata = Column(Text, nullable=True)
+
+    # Opt-in: only packages that set this call CompliIdentity's authority-
+    # context endpoint at decision time (see decision_service.py /
+    # authority_context_service.py). Defaults False so every package that
+    # predates this integration keeps behaving exactly as before.
+    requires_authority_context = Column(Boolean, nullable=False, default=False)

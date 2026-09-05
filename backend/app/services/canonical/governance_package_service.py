@@ -92,6 +92,7 @@ def build_package_document(obj: ExecutableGovernancePackage) -> dict[str, Any]:
         "decision_conditions": _load(obj.decision_conditions) or [],
         "conflict_resolution_rules": _load(obj.conflict_resolution_rules) or [],
         "metadata": _load(obj.package_metadata) or {},
+        "requires_authority_context": bool(obj.requires_authority_context),
     }
 
 
@@ -153,6 +154,7 @@ def create(
         ),
         conflict_resolution_rules=_dump(payload.conflict_resolution_rules),
         package_metadata=_dump(payload.metadata),
+        requires_authority_context=payload.requires_authority_context,
     )
     obj.package_hash = compute_package_hash(obj)
     return repo.add(obj)
