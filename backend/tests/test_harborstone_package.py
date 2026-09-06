@@ -15,7 +15,10 @@ from app.db.harborstone_package import (
     AMOUNT_THRESHOLD_MINOR,
     build_harborstone_package,
 )
-from app.services.canonical.package_interpreter import evaluate_expression
+from app.services.canonical.package_interpreter import (
+    DeterministicPackageInterpreter,
+    evaluate_expression,
+)
 
 
 @pytest.fixture(scope="module")
@@ -33,6 +36,24 @@ def _fire(conditions, context):
         for c in conditions
         if evaluate_expression(c["expression"], context)
     ]
+
+
+def _decide(conditions, context):
+    """The priority-ordered, terminal-aware outcome (what the engine does)."""
+    result = DeterministicPackageInterpreter().interpret(
+        {"decision_conditions": conditions}, context
+    )
+    return result.decision, result.matched_condition_id
+
+
+_ESCALATED_250K = {
+    "authority": {
+        "reason": "approval_required",
+        "approval_required": True,
+        "sufficient": False,
+    },
+    "intent": {"amount_currency": "USD", "amount_minor": AMOUNT_THRESHOLD_MINOR},
+}
 
 
 def test_package_opts_into_authority_context():
@@ -112,3 +133,72 @@ def test_non_usd_does_not_match_amount_clause(conditions):
         "intent": {"amount_currency": "EUR", "amount_minor": 999_999_999},
     }
     assert _fire(conditions, ctx) == []
+
+
+# --------------------------------------------------------------------------- #
+# Human-approval re-decision path (package v1.1.0)
+# --------------------------------------------------------------------------- #
+def _approval(*, expired=False, authorized=True):
+    return {
+        "approval": {
+            "present": True,
+            "approver_authorized": authorized,
+            "expired": expired,
+        }
+    }
+
+
+def test_first_decision_without_approval_fact_still_escalates(conditions):
+    # No `approval` key -> the guard clause reads as "no valid approval" and
+    # the escalation still fires; the new APPROVED-VIA-HUMAN condition does not.
+    assert _decide(conditions, _ESCALATED_250K) == (
+        "ESCALATED",
+        "DC-HARBORSTONE-HUMAN-APPROVAL",
+    )
+
+
+def test_valid_approval_upgrades_escalation_to_approved(conditions):
+    ctx = {**_ESCALATED_250K, **_approval()}
+    assert _decide(conditions, ctx) == (
+        "APPROVED",
+        "DC-HARBORSTONE-APPROVED-VIA-HUMAN",
+    )
+    # The guard also suppresses the escalation condition from matching at all.
+    assert "DC-HARBORSTONE-HUMAN-APPROVAL" not in _fire(conditions, ctx)
+
+
+def test_expired_approval_does_not_upgrade(conditions):
+    ctx = {**_ESCALATED_250K, **_approval(expired=True)}
+    assert _decide(conditions, ctx) == (
+        "ESCALATED",
+        "DC-HARBORSTONE-HUMAN-APPROVAL",
+    )
+    assert "DC-HARBORSTONE-APPROVED-VIA-HUMAN" not in _fire(conditions, ctx)
+
+
+def test_approval_never_overrides_a_hard_denial(conditions):
+    ctx = {
+        "authority": {
+            "reason": "permission_missing",
+            "approval_required": False,
+            "sufficient": False,
+        },
+        "intent": {"amount_currency": "USD", "amount_minor": AMOUNT_THRESHOLD_MINOR},
+        **_approval(),
+    }
+    assert _decide(conditions, ctx) == (
+        "DENIED",
+        "DC-HARBORSTONE-AUTHORITY-DENIED",
+    )
+    assert "DC-HARBORSTONE-APPROVED-VIA-HUMAN" not in _fire(conditions, ctx)
+
+
+def test_approved_via_human_is_checked_before_the_escalation_condition(conditions):
+    ordered = sorted(conditions, key=lambda c: c["priority"])
+    ids = [c["condition_id"] for c in ordered]
+    assert ids.index("DC-HARBORSTONE-APPROVED-VIA-HUMAN") < ids.index(
+        "DC-HARBORSTONE-HUMAN-APPROVAL"
+    )
+    assert ids.index("DC-HARBORSTONE-AUTHORITY-DENIED") < ids.index(
+        "DC-HARBORSTONE-APPROVED-VIA-HUMAN"
+    )

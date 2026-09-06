@@ -1,6 +1,6 @@
 {
   "_WARNING": "The sanctions-screening control in this run is a PLACEHOLDER (CTL-PLACEHOLDER-SANCTIONS-SCREENING, evaluation_expression 'True'). These results prove the CompliIdentity authority-context integration and the decision-engine wiring ONLY. They do NOT prove that sanctions screening works. See backend/PENDING_REVIEW_harborstone_screening_control_placeholder.md.",
-  "generated_at": "2026-09-06T08:17:58.944202+00:00",
+  "generated_at": "2026-09-06T13:08:53.924602+00:00",
   "compliidentity_base_url": "http://127.0.0.1:8137",
   "compliidentity_service_principal_id": "ae24b758-edb6-4ffa-895e-78990ca8293c",
   "tenant__organization_id": "harborstone-demo",
@@ -16,12 +16,9 @@
     "connector_id": "sim-harborstone-screening-PLACEHOLDER",
     "reference": "backend/PENDING_REVIEW_harborstone_screening_control_placeholder.md"
   },
-  "not_run": {
-    "4c": "Jordan submits a valid approval -> CompliAGL re-evaluates -> APPROVED with the first decision preserved. Human-approval orchestration does not exist yet -- see docs/HUMAN_APPROVAL_ORCHESTRATION_GAP.md."
-  },
   "summary": {
-    "passed": 6,
-    "total": 6
+    "passed": 9,
+    "total": 9
   },
   "scenarios": [
     {
@@ -41,7 +38,7 @@
       },
       "assessment_result": "SATISFIED",
       "decision": {
-        "decision_id": "50851803-288f-4aef-a904-c261bba076d4",
+        "decision_id": "574c1724-85d4-4b23-8f4c-4540e68c93ab",
         "outcome": "DENIED",
         "reason_codes": [
           "DECISION_DENIED",
@@ -51,7 +48,7 @@
         "decision_conditions_triggered": [
           {
             "condition_id": "DC-HARBORSTONE-AUTHORITY-DENIED",
-            "package_id": "66730ff4-7e17-414f-9d8f-e4aab49ad8cb",
+            "package_id": "c4a48baa-f742-49f2-b3ab-5e9fd2768053",
             "resulting_decision": "DENIED",
             "reason_code": "AUTHORITY_DENIED",
             "priority": 10,
@@ -60,14 +57,18 @@
         ],
         "authority_status": "OK",
         "authority_reason": "permission_missing",
-        "input_hash": "58c1f991f3ef5710df28d2c4e4db0ef9e2aaf8942a0a0e43e8b9836bb087cefc",
-        "decision_hash": "9c9852e40313f41469318728b99441ac995a984ec8f2720d3ef297dc36676a00",
+        "required_approver_types": [],
+        "input_hash": "8d6c8a3b4e6c61b369ebeed3604e4538055bd218443fcef19e6b2fae41432e96",
+        "decision_hash": "13cd4eb1bbdd426cfe481a5006b00bef316a745cd2f7edfdb566705567795e71",
+        "approval_hash": null,
+        "prior_decision_id": null,
+        "superseded_by_decision_id": null,
         "supersession_status": "CURRENT"
       },
       "no_execution_authorization": {
         "issued": false,
         "raised": "ConflictError",
-        "message": "Execution authorization can only be issued for an APPROVED decision (decision 50851803-288f-4aef-a904-c261bba076d4 is DENIED)."
+        "message": "Execution authorization can only be issued for an APPROVED decision (decision 574c1724-85d4-4b23-8f4c-4540e68c93ab is DENIED)."
       },
       "compliidentity_calls": [
         {
@@ -90,13 +91,13 @@
             "trust_refresh_required"
           ],
           "authority_revision": "f0eda3e54b3f54cface88093cdcb99880cb98ffe74314721f1b1884ff931e77c",
-          "integrity_content_hash": "9a30251332fbe6a1f81cc1f8064cc0873a3919997fb0588c960e9e931427d255",
+          "integrity_content_hash": "9b7e19da70db5870c414b7499facc79ac1771ce2453a0fc9c436897e3655f233",
           "raw_response": {
             "contract_id": "compliidentity.agl.authority.v1",
             "contract_version": "1",
             "tenant_id": "harborstone-demo",
             "principal_id": "302415c0-00ab-49b0-8a65-01175c0deb68",
-            "evaluated_at": "2026-09-06T08:17:56.735659Z",
+            "evaluated_at": "2026-09-06T13:08:45.899198Z",
             "principal": {
               "principal_id": "302415c0-00ab-49b0-8a65-01175c0deb68",
               "principal_type": "AI_AGENT",
@@ -165,7 +166,7 @@
             "credential_state": [],
             "assurance": {
               "current": false,
-              "evaluated_at": "2026-09-06T08:17:56.735659Z",
+              "evaluated_at": "2026-09-06T13:08:45.899198Z",
               "ial": {
                 "kind": "IAL",
                 "not_applicable": true,
@@ -297,8 +298,8 @@
             "executes": false,
             "agl_decision": "not_made",
             "integrity": {
-              "content_hash": "9a30251332fbe6a1f81cc1f8064cc0873a3919997fb0588c960e9e931427d255",
-              "signature": "06c31ceedddb50e5ee12f9fb1eb54443a093ba7b21223df4d0669437f6e759bc72e433611a4d5019091ca7c3d0392dc2050307a7027017edd1fdf92a2ac9ea08",
+              "content_hash": "9b7e19da70db5870c414b7499facc79ac1771ce2453a0fc9c436897e3655f233",
+              "signature": "b180f83abf2b850f0739761228e69b7940b23110299fe326e85676dcbca33f76c51540544872f9bd1eda04997ec48ce33cfdf0a2bda3ad4b977604d92adc640a",
               "signature_algorithm": "ed25519",
               "signer_key_id": "compliidentity.proof.ed25519.dev"
             },
@@ -327,7 +328,7 @@
       },
       "assessment_result": "SATISFIED",
       "decision": {
-        "decision_id": "43440edd-eeab-494d-b688-e72fe7dfcb52",
+        "decision_id": "1e011296-8b7f-4047-9529-cb164c79c6a8",
         "outcome": "ESCALATED",
         "reason_codes": [
           "DECISION_ESCALATED",
@@ -337,7 +338,7 @@
         "decision_conditions_triggered": [
           {
             "condition_id": "DC-HARBORSTONE-HUMAN-APPROVAL",
-            "package_id": "66730ff4-7e17-414f-9d8f-e4aab49ad8cb",
+            "package_id": "c4a48baa-f742-49f2-b3ab-5e9fd2768053",
             "resulting_decision": "ESCALATED",
             "reason_code": "HUMAN_APPROVAL_REQUIRED",
             "priority": 20,
@@ -346,14 +347,20 @@
         ],
         "authority_status": "OK",
         "authority_reason": "approval_required",
-        "input_hash": "dd4e19034c1775165d061f1dc1900a948e2c181c309a9ca880f715c968a6e0f0",
-        "decision_hash": "fd19d68bf2a3614b81f5a4570ee8b8318f1d6934035efc96094aeb9e71808fef",
+        "required_approver_types": [
+          "HUMAN"
+        ],
+        "input_hash": "8d57a4336810f20def5a0d14564e1ae2aa81078c0216358bbcd1bb3aa1fcf872",
+        "decision_hash": "21f07b47c11db72be80f263eb97098623d69a0c8bb68f875bcf3247b97742167",
+        "approval_hash": null,
+        "prior_decision_id": null,
+        "superseded_by_decision_id": null,
         "supersession_status": "CURRENT"
       },
       "no_execution_authorization": {
         "issued": false,
         "raised": "ConflictError",
-        "message": "Execution authorization can only be issued for an APPROVED decision (decision 43440edd-eeab-494d-b688-e72fe7dfcb52 is ESCALATED)."
+        "message": "Execution authorization can only be issued for an APPROVED decision (decision 1e011296-8b7f-4047-9529-cb164c79c6a8 is ESCALATED)."
       },
       "compliidentity_calls": [
         {
@@ -379,13 +386,13 @@
             "trust_refresh_required"
           ],
           "authority_revision": "8d84261bf9f081b91a9604bd2bbf7c7db6a0d9b933dee2adc1fb20825e449fdc",
-          "integrity_content_hash": "b9897dc82d17931adf834264361017490e07822d871f5aaf1cb78334b4f22f37",
+          "integrity_content_hash": "88fa0934742c52d7dfedf2316315eb51842e70a000aab40a373a8568f057bdf5",
           "raw_response": {
             "contract_id": "compliidentity.agl.authority.v1",
             "contract_version": "1",
             "tenant_id": "harborstone-demo",
             "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
-            "evaluated_at": "2026-09-06T08:17:57.066639Z",
+            "evaluated_at": "2026-09-06T13:08:46.295723Z",
             "principal": {
               "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
               "principal_type": "AI_AGENT",
@@ -513,7 +520,7 @@
             "credential_state": [],
             "assurance": {
               "current": false,
-              "evaluated_at": "2026-09-06T08:17:57.066639Z",
+              "evaluated_at": "2026-09-06T13:08:46.295723Z",
               "ial": {
                 "kind": "IAL",
                 "not_applicable": true,
@@ -729,8 +736,8 @@
             "executes": false,
             "agl_decision": "not_made",
             "integrity": {
-              "content_hash": "b9897dc82d17931adf834264361017490e07822d871f5aaf1cb78334b4f22f37",
-              "signature": "90b0db1ceb8019d5e5b77b8e203e0661a860fba12f4761cf63500f71474c20c5785e5779c5517a9f656595f99b48038e79f670d465f81c5bc12d6b328a622f09",
+              "content_hash": "88fa0934742c52d7dfedf2316315eb51842e70a000aab40a373a8568f057bdf5",
+              "signature": "b54769bbe2dbb32b29860c2f8c4eb9c0f67deecb46dd282356ddd25e477d3de479c2553b8bb97ed5aacf8f61ce8eb20468dfb37e85cadc49c57d00130c6e090a",
               "signature_algorithm": "ed25519",
               "signer_key_id": "compliidentity.proof.ed25519.dev"
             },
@@ -738,6 +745,1799 @@
           }
         }
       ],
+      "PASS": true
+    },
+    {
+      "id": "4c",
+      "title": "Jordan approves the escalated decision; CompliAGL re-evaluates to APPROVED, first decision preserved",
+      "proves": "escalation_approval_service.submit() verifies Jordan's authority to approve LIVE against CompliIdentity (real aml.action:approve probe -> sufficient:true, HUMAN principal, matching Decision.required_approver_types distilled from CompliIdentity's own applicable_approvals on AIRA's probe); then decide_for_resolution(prior_decision_id=) upgrades the escalation via DC-HARBORSTONE-APPROVED-VIA-HUMAN. The prior ESCALATED decision is preserved + SUPERSEDED, a NEW APPROVED decision is created, the approval is CONSUMED, and only then does an ExecutionAuthorization issue.",
+      "does_NOT_prove": "that real sanctions screening passed -- CTL-PLACEHOLDER-SANCTIONS-SCREENING is a stand-in (True)",
+      "actor": "jordan",
+      "compliidentity": {
+        "resource": "aml.action",
+        "action": "approve",
+        "resource_instance": "HARBORSTONE-2024-0042",
+        "approver_principal_id": "e35d7b95-1a10-4654-9b02-2181df052f96"
+      },
+      "expected": {
+        "outcome": "APPROVED",
+        "first_decision_preserved": true
+      },
+      "required_approver_types_on_first_decision": [
+        "HUMAN"
+      ],
+      "first_decision": {
+        "decision_id": "08ee0eb5-b11e-4b2c-b207-4e3f15a0a819",
+        "outcome": "ESCALATED",
+        "reason_codes": [
+          "DECISION_ESCALATED",
+          "ESCALATED_BY_POLICY",
+          "HUMAN_APPROVAL_REQUIRED"
+        ],
+        "decision_conditions_triggered": [
+          {
+            "condition_id": "DC-HARBORSTONE-HUMAN-APPROVAL",
+            "package_id": "c4a48baa-f742-49f2-b3ab-5e9fd2768053",
+            "resulting_decision": "ESCALATED",
+            "reason_code": "HUMAN_APPROVAL_REQUIRED",
+            "priority": 20,
+            "terminal": true
+          }
+        ],
+        "authority_status": "OK",
+        "authority_reason": "approval_required",
+        "required_approver_types": [
+          "HUMAN"
+        ],
+        "input_hash": "1abc0ab63cb94f51093c0a0ce5b596e38dd7f426af3485ea4e39b90e6f9ec899",
+        "decision_hash": "bd02b9666fa17adc8ee2574a911b7f24e5494530e7d0e3de389c5d34722d9354",
+        "approval_hash": null,
+        "prior_decision_id": null,
+        "superseded_by_decision_id": "760564c3-dd68-43be-97a9-5b2ac2cef7d5",
+        "supersession_status": "SUPERSEDED"
+      },
+      "escalation_approval": {
+        "escalation_approval_id": "EAP-c7fe7ced438e1dae",
+        "approver_principal_id": "e35d7b95-1a10-4654-9b02-2181df052f96",
+        "approver_principal_type": "HUMAN",
+        "approver_authority_hash": "14613da257b889eb537c9af3486674cff4456b4f45a61895b5562e5597c02d63",
+        "valid_until": "2026-09-06 13:23:47.089937",
+        "status_after_reevaluation": "CONSUMED",
+        "consumed_by_decision_id": "760564c3-dd68-43be-97a9-5b2ac2cef7d5"
+      },
+      "reevaluated_decision": {
+        "decision_id": "760564c3-dd68-43be-97a9-5b2ac2cef7d5",
+        "outcome": "APPROVED",
+        "reason_codes": [
+          "DECISION_APPROVED",
+          "APPROVED_BY_POLICY",
+          "HARBORSTONE_APPROVED_VIA_HUMAN"
+        ],
+        "decision_conditions_triggered": [
+          {
+            "condition_id": "DC-HARBORSTONE-APPROVED-VIA-HUMAN",
+            "package_id": "c4a48baa-f742-49f2-b3ab-5e9fd2768053",
+            "resulting_decision": "APPROVED",
+            "reason_code": "HARBORSTONE_APPROVED_VIA_HUMAN",
+            "priority": 15,
+            "terminal": true
+          }
+        ],
+        "authority_status": "OK",
+        "authority_reason": "approval_required",
+        "required_approver_types": [
+          "HUMAN"
+        ],
+        "input_hash": "abf66434b8fdc277216d8bdeb3bd32ac4315d83397aef29920f0e6661b94005d",
+        "decision_hash": "cb8a8b78e43956ccded210d33ea6dd17afd131fb6db44204f33780dd2cbdd788",
+        "approval_hash": "63181396aa9970452bd6463abbfe8347ef62e86bd515c9d298ab1518defc3037",
+        "prior_decision_id": "08ee0eb5-b11e-4b2c-b207-4e3f15a0a819",
+        "superseded_by_decision_id": null,
+        "supersession_status": "CURRENT"
+      },
+      "first_decision_after_reevaluation": {
+        "decision_id": "08ee0eb5-b11e-4b2c-b207-4e3f15a0a819",
+        "outcome": "ESCALATED",
+        "reason_codes": [
+          "DECISION_ESCALATED",
+          "ESCALATED_BY_POLICY",
+          "HUMAN_APPROVAL_REQUIRED"
+        ],
+        "decision_conditions_triggered": [
+          {
+            "condition_id": "DC-HARBORSTONE-HUMAN-APPROVAL",
+            "package_id": "c4a48baa-f742-49f2-b3ab-5e9fd2768053",
+            "resulting_decision": "ESCALATED",
+            "reason_code": "HUMAN_APPROVAL_REQUIRED",
+            "priority": 20,
+            "terminal": true
+          }
+        ],
+        "authority_status": "OK",
+        "authority_reason": "approval_required",
+        "required_approver_types": [
+          "HUMAN"
+        ],
+        "input_hash": "1abc0ab63cb94f51093c0a0ce5b596e38dd7f426af3485ea4e39b90e6f9ec899",
+        "decision_hash": "bd02b9666fa17adc8ee2574a911b7f24e5494530e7d0e3de389c5d34722d9354",
+        "approval_hash": null,
+        "prior_decision_id": null,
+        "superseded_by_decision_id": "760564c3-dd68-43be-97a9-5b2ac2cef7d5",
+        "supersession_status": "SUPERSEDED"
+      },
+      "no_execution_authorization": {
+        "issued": false,
+        "raised": "ConflictError",
+        "message": "Execution authorization can only be issued for an APPROVED decision (decision 08ee0eb5-b11e-4b2c-b207-4e3f15a0a819 is ESCALATED)."
+      },
+      "execution_authorization_after_approval": {
+        "issued": true,
+        "authorization_id": "ae6e90c2-f5e6-4a8b-bb52-f9e43ad3b7c0",
+        "decision_id": "760564c3-dd68-43be-97a9-5b2ac2cef7d5"
+      },
+      "compliidentity_calls": {
+        "first_decision": [
+          {
+            "request": {
+              "organization_id": "harborstone-demo",
+              "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
+              "resource": "aml.action",
+              "action": "propose",
+              "resource_instance": "HARBORSTONE-2024-0042",
+              "attribute": "amount",
+              "value": "25000000"
+            },
+            "authority_status": "OK",
+            "authority_reason": "approval_required",
+            "sufficient": false,
+            "permission_present": true,
+            "approval_required": true,
+            "limit_exceeded": false,
+            "findings": [
+              "permission_present",
+              "approval_required",
+              "trust_absent",
+              "trust_refresh_required"
+            ],
+            "authority_revision": "8d84261bf9f081b91a9604bd2bbf7c7db6a0d9b933dee2adc1fb20825e449fdc",
+            "integrity_content_hash": "a55e6b9f57bfb345b44134155a9176d1613bf97bc71301301b2c2f2ad5255ed1",
+            "raw_response": {
+              "contract_id": "compliidentity.agl.authority.v1",
+              "contract_version": "1",
+              "tenant_id": "harborstone-demo",
+              "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
+              "evaluated_at": "2026-09-06T13:08:46.648173Z",
+              "principal": {
+                "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
+                "principal_type": "AI_AGENT",
+                "status": "ACTIVE",
+                "did": null,
+                "binding_kinds": []
+              },
+              "principal_type": "AI_AGENT",
+              "active": true,
+              "roles": [
+                {
+                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                  "name": "aira-aml-investigator",
+                  "system_role": false,
+                  "version": 1,
+                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c"
+                }
+              ],
+              "permissions": [
+                {
+                  "permission_id": "7c9e1c98-001e-4afd-a1c6-e635236ed99c",
+                  "resource": "aml.action",
+                  "action": "propose",
+                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "scope": "*",
+                  "source_kind": "assignment",
+                  "delegation_id": null,
+                  "expires_at": null,
+                  "lineage": [
+                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
+                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
+                    "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1",
+                    "permission:7c9e1c98-001e-4afd-a1c6-e635236ed99c"
+                  ]
+                },
+                {
+                  "permission_id": "ef6ab7cc-20f4-46c9-a777-5b83c6b9cfd9",
+                  "resource": "aml.case",
+                  "action": "assess",
+                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "scope": "*",
+                  "source_kind": "assignment",
+                  "delegation_id": null,
+                  "expires_at": null,
+                  "lineage": [
+                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
+                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
+                    "role_permission:69ac5432-8237-4f44-84e4-5ff724585197:v1",
+                    "permission:ef6ab7cc-20f4-46c9-a777-5b83c6b9cfd9"
+                  ]
+                },
+                {
+                  "permission_id": "17fd1c95-84d4-4247-958f-ff82f1ad95e0",
+                  "resource": "aml.case",
+                  "action": "read",
+                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "scope": "*",
+                  "source_kind": "assignment",
+                  "delegation_id": null,
+                  "expires_at": null,
+                  "lineage": [
+                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
+                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
+                    "role_permission:dc565684-3ebf-4ac5-8574-9f09b4f2f91b:v1",
+                    "permission:17fd1c95-84d4-4247-958f-ff82f1ad95e0"
+                  ]
+                },
+                {
+                  "permission_id": "6b661e3b-9c39-4d0e-be19-41173a4314b0",
+                  "resource": "aml.escalation",
+                  "action": "create",
+                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "scope": "*",
+                  "source_kind": "assignment",
+                  "delegation_id": null,
+                  "expires_at": null,
+                  "lineage": [
+                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
+                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
+                    "role_permission:5cb43175-5871-48d0-aae1-74703195b04b:v1",
+                    "permission:6b661e3b-9c39-4d0e-be19-41173a4314b0"
+                  ]
+                },
+                {
+                  "permission_id": "1da46aee-93e6-4fe4-82a4-d49db8fadfa5",
+                  "resource": "sanctions.screening",
+                  "action": "read",
+                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "scope": "*",
+                  "source_kind": "assignment",
+                  "delegation_id": null,
+                  "expires_at": null,
+                  "lineage": [
+                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
+                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
+                    "role_permission:16f4634c-9734-463d-856c-06a01bff75e8:v1",
+                    "permission:1da46aee-93e6-4fe4-82a4-d49db8fadfa5"
+                  ]
+                }
+              ],
+              "resource_scope": [
+                "HARBORSTONE-2024-0042"
+              ],
+              "action_scope": [
+                "*"
+              ],
+              "limits": [],
+              "approval_thresholds": [
+                {
+                  "resource": "aml.action",
+                  "action": "propose",
+                  "attribute": "amount",
+                  "threshold": "24999999",
+                  "approver_principal_type": "HUMAN",
+                  "unit": null,
+                  "source": "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1"
+                }
+              ],
+              "delegation_chain": [],
+              "credential_state": [],
+              "assurance": {
+                "current": false,
+                "evaluated_at": "2026-09-06T13:08:46.648173Z",
+                "ial": {
+                  "kind": "IAL",
+                  "not_applicable": true,
+                  "established": false,
+                  "current": false,
+                  "level": null,
+                  "status": null,
+                  "valid_until": null,
+                  "issuer": null,
+                  "provider": null,
+                  "evidence_ref": null,
+                  "record_id": null,
+                  "reasons": [
+                    "not_applicable_to_principal_type"
+                  ]
+                },
+                "aal": {
+                  "kind": "AAL",
+                  "not_applicable": true,
+                  "established": false,
+                  "current": false,
+                  "level": null,
+                  "status": null,
+                  "valid_until": null,
+                  "issuer": null,
+                  "provider": null,
+                  "evidence_ref": null,
+                  "record_id": null,
+                  "reasons": [
+                    "not_applicable_to_principal_type"
+                  ]
+                },
+                "fal": {
+                  "kind": "FAL",
+                  "not_applicable": true,
+                  "established": false,
+                  "current": false,
+                  "level": null,
+                  "status": null,
+                  "valid_until": null,
+                  "issuer": null,
+                  "provider": null,
+                  "evidence_ref": null,
+                  "record_id": null,
+                  "reasons": [
+                    "not_applicable_to_principal_type"
+                  ]
+                },
+                "reasons": [
+                  "assurance_not_applicable"
+                ]
+              },
+              "current_trust_state": {
+                "present": false,
+                "fail_closed": true,
+                "stale": false,
+                "refresh_required": true,
+                "decision_id": null,
+                "outcome": null,
+                "valid_until": null,
+                "policy_id": null,
+                "policy_version": null,
+                "reason_codes": [
+                  "trust_state_absent"
+                ]
+              },
+              "proof_ref": null,
+              "policy_refs": [
+                {
+                  "kind": "assignment",
+                  "identifier": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "version": "1"
+                },
+                {
+                  "kind": "contract",
+                  "identifier": "compliidentity.agl.authority.v1",
+                  "version": "1"
+                },
+                {
+                  "kind": "permission",
+                  "identifier": "17fd1c95-84d4-4247-958f-ff82f1ad95e0",
+                  "version": null
+                },
+                {
+                  "kind": "permission",
+                  "identifier": "1da46aee-93e6-4fe4-82a4-d49db8fadfa5",
+                  "version": null
+                },
+                {
+                  "kind": "permission",
+                  "identifier": "6b661e3b-9c39-4d0e-be19-41173a4314b0",
+                  "version": null
+                },
+                {
+                  "kind": "permission",
+                  "identifier": "7c9e1c98-001e-4afd-a1c6-e635236ed99c",
+                  "version": null
+                },
+                {
+                  "kind": "permission",
+                  "identifier": "ef6ab7cc-20f4-46c9-a777-5b83c6b9cfd9",
+                  "version": null
+                },
+                {
+                  "kind": "role",
+                  "identifier": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                  "version": "1"
+                },
+                {
+                  "kind": "role_permission",
+                  "identifier": "16f4634c-9734-463d-856c-06a01bff75e8",
+                  "version": "1"
+                },
+                {
+                  "kind": "role_permission",
+                  "identifier": "2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527",
+                  "version": "1"
+                },
+                {
+                  "kind": "role_permission",
+                  "identifier": "5cb43175-5871-48d0-aae1-74703195b04b",
+                  "version": "1"
+                },
+                {
+                  "kind": "role_permission",
+                  "identifier": "69ac5432-8237-4f44-84e4-5ff724585197",
+                  "version": "1"
+                },
+                {
+                  "kind": "role_permission",
+                  "identifier": "dc565684-3ebf-4ac5-8574-9f09b4f2f91b",
+                  "version": "1"
+                }
+              ],
+              "request": {
+                "resource": "aml.action",
+                "action": "propose",
+                "attribute": "amount",
+                "value": "25000000",
+                "environment": null,
+                "resource_instance": "HARBORSTONE-2024-0042"
+              },
+              "authority_for_request": {
+                "sufficient": false,
+                "permission_present": true,
+                "limit_exceeded": false,
+                "approval_required": true,
+                "findings": [
+                  "permission_present",
+                  "approval_required",
+                  "trust_absent",
+                  "trust_refresh_required"
+                ],
+                "matching_permissions": [
+                  {
+                    "permission_id": "7c9e1c98-001e-4afd-a1c6-e635236ed99c",
+                    "resource": "aml.action",
+                    "action": "propose",
+                    "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                    "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                    "scope": "*",
+                    "source_kind": "assignment",
+                    "delegation_id": null,
+                    "expires_at": null,
+                    "lineage": [
+                      "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
+                      "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
+                      "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1",
+                      "permission:7c9e1c98-001e-4afd-a1c6-e635236ed99c"
+                    ]
+                  }
+                ],
+                "applicable_limits": [],
+                "applicable_approvals": [
+                  {
+                    "resource": "aml.action",
+                    "action": "propose",
+                    "attribute": "amount",
+                    "threshold": "24999999",
+                    "approver_principal_type": "HUMAN",
+                    "unit": null,
+                    "source": "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1"
+                  }
+                ]
+              },
+              "evidence": [
+                {
+                  "kind": "assignment",
+                  "identifier": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "status": null
+                }
+              ],
+              "cache": {
+                "max_age_seconds": 0,
+                "must_revalidate": true,
+                "no_store": true,
+                "cache_control": "no-store",
+                "not_after": "2026-09-07T07:46:46Z",
+                "revalidate_on": [
+                  "iam.assignment.revoked",
+                  "iam.grant.revoked",
+                  "delegation.revoked",
+                  "principal.status_changed",
+                  "principal.disabled",
+                  "credentials.revoked",
+                  "assurance.revoked",
+                  "trust.decision.superseded",
+                  "proof.invalidated"
+                ]
+              },
+              "authority_revision": "8d84261bf9f081b91a9604bd2bbf7c7db6a0d9b933dee2adc1fb20825e449fdc",
+              "authorizes": false,
+              "executes": false,
+              "agl_decision": "not_made",
+              "integrity": {
+                "content_hash": "a55e6b9f57bfb345b44134155a9176d1613bf97bc71301301b2c2f2ad5255ed1",
+                "signature": "9d851c0558981da67a6e2e4fb5630c75bb26d702c20b8d183397573343b8d532538dd6fecdfa967aaa5cb944d3c20e975923d277a936fa31050a9104ace09905",
+                "signature_algorithm": "ed25519",
+                "signer_key_id": "compliidentity.proof.ed25519.dev"
+              },
+              "error": null
+            }
+          }
+        ],
+        "approver_probe": [
+          {
+            "request": {
+              "organization_id": "harborstone-demo",
+              "principal_id": "e35d7b95-1a10-4654-9b02-2181df052f96",
+              "resource": "aml.action",
+              "action": "approve",
+              "resource_instance": "HARBORSTONE-2024-0042",
+              "attribute": "amount",
+              "value": "25000000"
+            },
+            "authority_status": "OK",
+            "authority_reason": null,
+            "sufficient": true,
+            "permission_present": true,
+            "approval_required": false,
+            "limit_exceeded": false,
+            "findings": [
+              "permission_present",
+              "trust_absent",
+              "trust_refresh_required"
+            ],
+            "authority_revision": "9fe43933f6a51a5f6292ce262238a8b51b544a4fa2da04f4e2d9a5c33e9fc0c4",
+            "integrity_content_hash": "ca2244c65f95c18ba2241ebac618d8ce478d7f9398b06bb0ace929ca1ab9e88a",
+            "raw_response": {
+              "contract_id": "compliidentity.agl.authority.v1",
+              "contract_version": "1",
+              "tenant_id": "harborstone-demo",
+              "principal_id": "e35d7b95-1a10-4654-9b02-2181df052f96",
+              "evaluated_at": "2026-09-06T13:08:47.077226Z",
+              "principal": {
+                "principal_id": "e35d7b95-1a10-4654-9b02-2181df052f96",
+                "principal_type": "HUMAN",
+                "status": "ACTIVE",
+                "did": null,
+                "binding_kinds": []
+              },
+              "principal_type": "HUMAN",
+              "active": true,
+              "roles": [
+                {
+                  "role_id": "19319b0e-0254-48e0-9893-ec66593730b2",
+                  "name": "jordan-aml-approver",
+                  "system_role": false,
+                  "version": 1,
+                  "assignment_id": "ac5f1f70-a29a-4006-944f-4b1580a83c2c"
+                }
+              ],
+              "permissions": [
+                {
+                  "permission_id": "42e41882-cb56-4184-8503-6028b67848e2",
+                  "resource": "aml.action",
+                  "action": "approve",
+                  "role_id": "19319b0e-0254-48e0-9893-ec66593730b2",
+                  "assignment_id": "ac5f1f70-a29a-4006-944f-4b1580a83c2c",
+                  "scope": "*",
+                  "source_kind": "assignment",
+                  "delegation_id": null,
+                  "expires_at": null,
+                  "lineage": [
+                    "role:19319b0e-0254-48e0-9893-ec66593730b2:v1",
+                    "assignment:ac5f1f70-a29a-4006-944f-4b1580a83c2c:v1",
+                    "role_permission:4e9ca954-1daf-43c2-a40a-e28ffc600872:v1",
+                    "permission:42e41882-cb56-4184-8503-6028b67848e2"
+                  ]
+                }
+              ],
+              "resource_scope": [
+                "HARBORSTONE-2024-0042"
+              ],
+              "action_scope": [
+                "*"
+              ],
+              "limits": [],
+              "approval_thresholds": [],
+              "delegation_chain": [],
+              "credential_state": [],
+              "assurance": {
+                "current": false,
+                "evaluated_at": "2026-09-06T13:08:47.077226Z",
+                "ial": {
+                  "kind": "IAL",
+                  "not_applicable": false,
+                  "established": false,
+                  "current": false,
+                  "level": null,
+                  "status": null,
+                  "valid_until": null,
+                  "issuer": null,
+                  "provider": null,
+                  "evidence_ref": null,
+                  "record_id": null,
+                  "reasons": [
+                    "not_established"
+                  ]
+                },
+                "aal": {
+                  "kind": "AAL",
+                  "not_applicable": false,
+                  "established": false,
+                  "current": false,
+                  "level": null,
+                  "status": null,
+                  "valid_until": null,
+                  "issuer": null,
+                  "provider": null,
+                  "evidence_ref": null,
+                  "record_id": null,
+                  "reasons": [
+                    "not_established"
+                  ]
+                },
+                "fal": {
+                  "kind": "FAL",
+                  "not_applicable": false,
+                  "established": false,
+                  "current": false,
+                  "level": null,
+                  "status": null,
+                  "valid_until": null,
+                  "issuer": null,
+                  "provider": null,
+                  "evidence_ref": null,
+                  "record_id": null,
+                  "reasons": [
+                    "not_established"
+                  ]
+                },
+                "reasons": [
+                  "no_assurance_established"
+                ]
+              },
+              "current_trust_state": {
+                "present": false,
+                "fail_closed": true,
+                "stale": false,
+                "refresh_required": true,
+                "decision_id": null,
+                "outcome": null,
+                "valid_until": null,
+                "policy_id": null,
+                "policy_version": null,
+                "reason_codes": [
+                  "trust_state_absent"
+                ]
+              },
+              "proof_ref": null,
+              "policy_refs": [
+                {
+                  "kind": "assignment",
+                  "identifier": "ac5f1f70-a29a-4006-944f-4b1580a83c2c",
+                  "version": "1"
+                },
+                {
+                  "kind": "contract",
+                  "identifier": "compliidentity.agl.authority.v1",
+                  "version": "1"
+                },
+                {
+                  "kind": "permission",
+                  "identifier": "42e41882-cb56-4184-8503-6028b67848e2",
+                  "version": null
+                },
+                {
+                  "kind": "role",
+                  "identifier": "19319b0e-0254-48e0-9893-ec66593730b2",
+                  "version": "1"
+                },
+                {
+                  "kind": "role_permission",
+                  "identifier": "4e9ca954-1daf-43c2-a40a-e28ffc600872",
+                  "version": "1"
+                }
+              ],
+              "request": {
+                "resource": "aml.action",
+                "action": "approve",
+                "attribute": "amount",
+                "value": "25000000",
+                "environment": null,
+                "resource_instance": "HARBORSTONE-2024-0042"
+              },
+              "authority_for_request": {
+                "sufficient": true,
+                "permission_present": true,
+                "limit_exceeded": false,
+                "approval_required": false,
+                "findings": [
+                  "permission_present",
+                  "trust_absent",
+                  "trust_refresh_required"
+                ],
+                "matching_permissions": [
+                  {
+                    "permission_id": "42e41882-cb56-4184-8503-6028b67848e2",
+                    "resource": "aml.action",
+                    "action": "approve",
+                    "role_id": "19319b0e-0254-48e0-9893-ec66593730b2",
+                    "assignment_id": "ac5f1f70-a29a-4006-944f-4b1580a83c2c",
+                    "scope": "*",
+                    "source_kind": "assignment",
+                    "delegation_id": null,
+                    "expires_at": null,
+                    "lineage": [
+                      "role:19319b0e-0254-48e0-9893-ec66593730b2:v1",
+                      "assignment:ac5f1f70-a29a-4006-944f-4b1580a83c2c:v1",
+                      "role_permission:4e9ca954-1daf-43c2-a40a-e28ffc600872:v1",
+                      "permission:42e41882-cb56-4184-8503-6028b67848e2"
+                    ]
+                  }
+                ],
+                "applicable_limits": [],
+                "applicable_approvals": []
+              },
+              "evidence": [
+                {
+                  "kind": "assignment",
+                  "identifier": "ac5f1f70-a29a-4006-944f-4b1580a83c2c",
+                  "status": null
+                }
+              ],
+              "cache": {
+                "max_age_seconds": 0,
+                "must_revalidate": true,
+                "no_store": true,
+                "cache_control": "no-store",
+                "not_after": null,
+                "revalidate_on": [
+                  "iam.assignment.revoked",
+                  "iam.grant.revoked",
+                  "delegation.revoked",
+                  "principal.status_changed",
+                  "principal.disabled",
+                  "credentials.revoked",
+                  "assurance.revoked",
+                  "trust.decision.superseded",
+                  "proof.invalidated"
+                ]
+              },
+              "authority_revision": "9fe43933f6a51a5f6292ce262238a8b51b544a4fa2da04f4e2d9a5c33e9fc0c4",
+              "authorizes": false,
+              "executes": false,
+              "agl_decision": "not_made",
+              "integrity": {
+                "content_hash": "ca2244c65f95c18ba2241ebac618d8ce478d7f9398b06bb0ace929ca1ab9e88a",
+                "signature": "5554f2460d41e7852470c31b0e7a82b82c957415cfb9a5d792692ea07b7c6f808ae3d83d70ea15b1a5738edeece1f4c80cee23c471eead7a52665783c07aaa0d",
+                "signature_algorithm": "ed25519",
+                "signer_key_id": "compliidentity.proof.ed25519.dev"
+              },
+              "error": null
+            }
+          }
+        ],
+        "reevaluation": [
+          {
+            "request": {
+              "organization_id": "harborstone-demo",
+              "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
+              "resource": "aml.action",
+              "action": "propose",
+              "resource_instance": "HARBORSTONE-2024-0042",
+              "attribute": "amount",
+              "value": "25000000"
+            },
+            "authority_status": "OK",
+            "authority_reason": "approval_required",
+            "sufficient": false,
+            "permission_present": true,
+            "approval_required": true,
+            "limit_exceeded": false,
+            "findings": [
+              "permission_present",
+              "approval_required",
+              "trust_absent",
+              "trust_refresh_required"
+            ],
+            "authority_revision": "8d84261bf9f081b91a9604bd2bbf7c7db6a0d9b933dee2adc1fb20825e449fdc",
+            "integrity_content_hash": "44f19de1d60f0cbce1c7c7cc230d5d4f0ff0781c6463b12476721bc95f43275b",
+            "raw_response": {
+              "contract_id": "compliidentity.agl.authority.v1",
+              "contract_version": "1",
+              "tenant_id": "harborstone-demo",
+              "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
+              "evaluated_at": "2026-09-06T13:08:47.557443Z",
+              "principal": {
+                "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
+                "principal_type": "AI_AGENT",
+                "status": "ACTIVE",
+                "did": null,
+                "binding_kinds": []
+              },
+              "principal_type": "AI_AGENT",
+              "active": true,
+              "roles": [
+                {
+                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                  "name": "aira-aml-investigator",
+                  "system_role": false,
+                  "version": 1,
+                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c"
+                }
+              ],
+              "permissions": [
+                {
+                  "permission_id": "7c9e1c98-001e-4afd-a1c6-e635236ed99c",
+                  "resource": "aml.action",
+                  "action": "propose",
+                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "scope": "*",
+                  "source_kind": "assignment",
+                  "delegation_id": null,
+                  "expires_at": null,
+                  "lineage": [
+                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
+                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
+                    "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1",
+                    "permission:7c9e1c98-001e-4afd-a1c6-e635236ed99c"
+                  ]
+                },
+                {
+                  "permission_id": "ef6ab7cc-20f4-46c9-a777-5b83c6b9cfd9",
+                  "resource": "aml.case",
+                  "action": "assess",
+                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "scope": "*",
+                  "source_kind": "assignment",
+                  "delegation_id": null,
+                  "expires_at": null,
+                  "lineage": [
+                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
+                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
+                    "role_permission:69ac5432-8237-4f44-84e4-5ff724585197:v1",
+                    "permission:ef6ab7cc-20f4-46c9-a777-5b83c6b9cfd9"
+                  ]
+                },
+                {
+                  "permission_id": "17fd1c95-84d4-4247-958f-ff82f1ad95e0",
+                  "resource": "aml.case",
+                  "action": "read",
+                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "scope": "*",
+                  "source_kind": "assignment",
+                  "delegation_id": null,
+                  "expires_at": null,
+                  "lineage": [
+                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
+                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
+                    "role_permission:dc565684-3ebf-4ac5-8574-9f09b4f2f91b:v1",
+                    "permission:17fd1c95-84d4-4247-958f-ff82f1ad95e0"
+                  ]
+                },
+                {
+                  "permission_id": "6b661e3b-9c39-4d0e-be19-41173a4314b0",
+                  "resource": "aml.escalation",
+                  "action": "create",
+                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "scope": "*",
+                  "source_kind": "assignment",
+                  "delegation_id": null,
+                  "expires_at": null,
+                  "lineage": [
+                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
+                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
+                    "role_permission:5cb43175-5871-48d0-aae1-74703195b04b:v1",
+                    "permission:6b661e3b-9c39-4d0e-be19-41173a4314b0"
+                  ]
+                },
+                {
+                  "permission_id": "1da46aee-93e6-4fe4-82a4-d49db8fadfa5",
+                  "resource": "sanctions.screening",
+                  "action": "read",
+                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "scope": "*",
+                  "source_kind": "assignment",
+                  "delegation_id": null,
+                  "expires_at": null,
+                  "lineage": [
+                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
+                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
+                    "role_permission:16f4634c-9734-463d-856c-06a01bff75e8:v1",
+                    "permission:1da46aee-93e6-4fe4-82a4-d49db8fadfa5"
+                  ]
+                }
+              ],
+              "resource_scope": [
+                "HARBORSTONE-2024-0042"
+              ],
+              "action_scope": [
+                "*"
+              ],
+              "limits": [],
+              "approval_thresholds": [
+                {
+                  "resource": "aml.action",
+                  "action": "propose",
+                  "attribute": "amount",
+                  "threshold": "24999999",
+                  "approver_principal_type": "HUMAN",
+                  "unit": null,
+                  "source": "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1"
+                }
+              ],
+              "delegation_chain": [],
+              "credential_state": [],
+              "assurance": {
+                "current": false,
+                "evaluated_at": "2026-09-06T13:08:47.557443Z",
+                "ial": {
+                  "kind": "IAL",
+                  "not_applicable": true,
+                  "established": false,
+                  "current": false,
+                  "level": null,
+                  "status": null,
+                  "valid_until": null,
+                  "issuer": null,
+                  "provider": null,
+                  "evidence_ref": null,
+                  "record_id": null,
+                  "reasons": [
+                    "not_applicable_to_principal_type"
+                  ]
+                },
+                "aal": {
+                  "kind": "AAL",
+                  "not_applicable": true,
+                  "established": false,
+                  "current": false,
+                  "level": null,
+                  "status": null,
+                  "valid_until": null,
+                  "issuer": null,
+                  "provider": null,
+                  "evidence_ref": null,
+                  "record_id": null,
+                  "reasons": [
+                    "not_applicable_to_principal_type"
+                  ]
+                },
+                "fal": {
+                  "kind": "FAL",
+                  "not_applicable": true,
+                  "established": false,
+                  "current": false,
+                  "level": null,
+                  "status": null,
+                  "valid_until": null,
+                  "issuer": null,
+                  "provider": null,
+                  "evidence_ref": null,
+                  "record_id": null,
+                  "reasons": [
+                    "not_applicable_to_principal_type"
+                  ]
+                },
+                "reasons": [
+                  "assurance_not_applicable"
+                ]
+              },
+              "current_trust_state": {
+                "present": false,
+                "fail_closed": true,
+                "stale": false,
+                "refresh_required": true,
+                "decision_id": null,
+                "outcome": null,
+                "valid_until": null,
+                "policy_id": null,
+                "policy_version": null,
+                "reason_codes": [
+                  "trust_state_absent"
+                ]
+              },
+              "proof_ref": null,
+              "policy_refs": [
+                {
+                  "kind": "assignment",
+                  "identifier": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "version": "1"
+                },
+                {
+                  "kind": "contract",
+                  "identifier": "compliidentity.agl.authority.v1",
+                  "version": "1"
+                },
+                {
+                  "kind": "permission",
+                  "identifier": "17fd1c95-84d4-4247-958f-ff82f1ad95e0",
+                  "version": null
+                },
+                {
+                  "kind": "permission",
+                  "identifier": "1da46aee-93e6-4fe4-82a4-d49db8fadfa5",
+                  "version": null
+                },
+                {
+                  "kind": "permission",
+                  "identifier": "6b661e3b-9c39-4d0e-be19-41173a4314b0",
+                  "version": null
+                },
+                {
+                  "kind": "permission",
+                  "identifier": "7c9e1c98-001e-4afd-a1c6-e635236ed99c",
+                  "version": null
+                },
+                {
+                  "kind": "permission",
+                  "identifier": "ef6ab7cc-20f4-46c9-a777-5b83c6b9cfd9",
+                  "version": null
+                },
+                {
+                  "kind": "role",
+                  "identifier": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                  "version": "1"
+                },
+                {
+                  "kind": "role_permission",
+                  "identifier": "16f4634c-9734-463d-856c-06a01bff75e8",
+                  "version": "1"
+                },
+                {
+                  "kind": "role_permission",
+                  "identifier": "2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527",
+                  "version": "1"
+                },
+                {
+                  "kind": "role_permission",
+                  "identifier": "5cb43175-5871-48d0-aae1-74703195b04b",
+                  "version": "1"
+                },
+                {
+                  "kind": "role_permission",
+                  "identifier": "69ac5432-8237-4f44-84e4-5ff724585197",
+                  "version": "1"
+                },
+                {
+                  "kind": "role_permission",
+                  "identifier": "dc565684-3ebf-4ac5-8574-9f09b4f2f91b",
+                  "version": "1"
+                }
+              ],
+              "request": {
+                "resource": "aml.action",
+                "action": "propose",
+                "attribute": "amount",
+                "value": "25000000",
+                "environment": null,
+                "resource_instance": "HARBORSTONE-2024-0042"
+              },
+              "authority_for_request": {
+                "sufficient": false,
+                "permission_present": true,
+                "limit_exceeded": false,
+                "approval_required": true,
+                "findings": [
+                  "permission_present",
+                  "approval_required",
+                  "trust_absent",
+                  "trust_refresh_required"
+                ],
+                "matching_permissions": [
+                  {
+                    "permission_id": "7c9e1c98-001e-4afd-a1c6-e635236ed99c",
+                    "resource": "aml.action",
+                    "action": "propose",
+                    "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                    "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                    "scope": "*",
+                    "source_kind": "assignment",
+                    "delegation_id": null,
+                    "expires_at": null,
+                    "lineage": [
+                      "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
+                      "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
+                      "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1",
+                      "permission:7c9e1c98-001e-4afd-a1c6-e635236ed99c"
+                    ]
+                  }
+                ],
+                "applicable_limits": [],
+                "applicable_approvals": [
+                  {
+                    "resource": "aml.action",
+                    "action": "propose",
+                    "attribute": "amount",
+                    "threshold": "24999999",
+                    "approver_principal_type": "HUMAN",
+                    "unit": null,
+                    "source": "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1"
+                  }
+                ]
+              },
+              "evidence": [
+                {
+                  "kind": "assignment",
+                  "identifier": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "status": null
+                }
+              ],
+              "cache": {
+                "max_age_seconds": 0,
+                "must_revalidate": true,
+                "no_store": true,
+                "cache_control": "no-store",
+                "not_after": "2026-09-07T07:46:46Z",
+                "revalidate_on": [
+                  "iam.assignment.revoked",
+                  "iam.grant.revoked",
+                  "delegation.revoked",
+                  "principal.status_changed",
+                  "principal.disabled",
+                  "credentials.revoked",
+                  "assurance.revoked",
+                  "trust.decision.superseded",
+                  "proof.invalidated"
+                ]
+              },
+              "authority_revision": "8d84261bf9f081b91a9604bd2bbf7c7db6a0d9b933dee2adc1fb20825e449fdc",
+              "authorizes": false,
+              "executes": false,
+              "agl_decision": "not_made",
+              "integrity": {
+                "content_hash": "44f19de1d60f0cbce1c7c7cc230d5d4f0ff0781c6463b12476721bc95f43275b",
+                "signature": "8d3e90e5aaa7ce9b410bb21f25d48625759726e8b0bc77541b2100a292104f0bff309d6d1b4db4047fa5dc02d58229f44953b1bc087800ce4f3de9bf5547a50d",
+                "signature_algorithm": "ed25519",
+                "signer_key_id": "compliidentity.proof.ed25519.dev"
+              },
+              "error": null
+            }
+          }
+        ]
+      },
+      "PASS": true
+    },
+    {
+      "id": "4c-neg-wrong-approver",
+      "title": "an approver without aml.action:approve authority is rejected",
+      "proves": "submit() rejects SENTRY -- CompliIdentity reports sufficient:false for SENTRY on aml.action:approve -- no EscalationApproval is recorded and the decision stays ESCALATED",
+      "does_NOT_prove": "anything about sanctions screening (placeholder control)",
+      "actor": "sentry",
+      "compliidentity": {
+        "resource": "aml.action",
+        "action": "approve",
+        "resource_instance": "HARBORSTONE-2024-0042",
+        "approver_principal_id": "302415c0-00ab-49b0-8a65-01175c0deb68"
+      },
+      "expected": {
+        "approval_rejected": true,
+        "decision_still": "ESCALATED"
+      },
+      "first_decision": {
+        "decision_id": "32c3d175-b526-4f2b-b36f-ae492590b843",
+        "outcome": "ESCALATED",
+        "reason_codes": [
+          "DECISION_ESCALATED",
+          "ESCALATED_BY_POLICY",
+          "HUMAN_APPROVAL_REQUIRED"
+        ],
+        "decision_conditions_triggered": [
+          {
+            "condition_id": "DC-HARBORSTONE-HUMAN-APPROVAL",
+            "package_id": "c4a48baa-f742-49f2-b3ab-5e9fd2768053",
+            "resulting_decision": "ESCALATED",
+            "reason_code": "HUMAN_APPROVAL_REQUIRED",
+            "priority": 20,
+            "terminal": true
+          }
+        ],
+        "authority_status": "OK",
+        "authority_reason": "approval_required",
+        "required_approver_types": [
+          "HUMAN"
+        ],
+        "input_hash": "08a392329690900e1b24c80ac13ff8bbb7779a4dfe2aa31cc70472063222435b",
+        "decision_hash": "bbe7e7719aef317b38815ccce03af782891a174e8f71f2d93dcab7ff472b2ce6",
+        "approval_hash": null,
+        "prior_decision_id": null,
+        "superseded_by_decision_id": null,
+        "supersession_status": "CURRENT"
+      },
+      "approval_attempt": {
+        "rejected": true,
+        "reason": "not_sufficient",
+        "message": "Approver authority could not be verified against CompliIdentity (not_sufficient); no approval recorded."
+      },
+      "no_execution_authorization": {
+        "issued": false,
+        "raised": "ConflictError",
+        "message": "Execution authorization can only be issued for an APPROVED decision (decision 32c3d175-b526-4f2b-b36f-ae492590b843 is ESCALATED)."
+      },
+      "compliidentity_calls": {
+        "approver_probe": [
+          {
+            "request": {
+              "organization_id": "harborstone-demo",
+              "principal_id": "302415c0-00ab-49b0-8a65-01175c0deb68",
+              "resource": "aml.action",
+              "action": "approve",
+              "resource_instance": "HARBORSTONE-2024-0042",
+              "attribute": "amount",
+              "value": "25000000"
+            },
+            "authority_status": "OK",
+            "authority_reason": "permission_missing",
+            "sufficient": false,
+            "permission_present": false,
+            "approval_required": false,
+            "limit_exceeded": false,
+            "findings": [
+              "permission_missing",
+              "trust_absent",
+              "trust_refresh_required"
+            ],
+            "authority_revision": "a3ce5b8bc420d0985e0826b91fd815bd0c2704d8323675b8987833b4566d23f5",
+            "integrity_content_hash": "3b768e0888288a3cf870fd9eea6cf64be730d1aa6c101e912480769b732b62b9",
+            "raw_response": {
+              "contract_id": "compliidentity.agl.authority.v1",
+              "contract_version": "1",
+              "tenant_id": "harborstone-demo",
+              "principal_id": "302415c0-00ab-49b0-8a65-01175c0deb68",
+              "evaluated_at": "2026-09-06T13:08:49.165857Z",
+              "principal": {
+                "principal_id": "302415c0-00ab-49b0-8a65-01175c0deb68",
+                "principal_type": "AI_AGENT",
+                "status": "ACTIVE",
+                "did": null,
+                "binding_kinds": []
+              },
+              "principal_type": "AI_AGENT",
+              "active": true,
+              "roles": [],
+              "permissions": [
+                {
+                  "permission_id": "1da46aee-93e6-4fe4-82a4-d49db8fadfa5",
+                  "resource": "sanctions.screening",
+                  "action": "read",
+                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                  "assignment_id": "delegation:c464d43b-c69a-4004-989c-3f9bbdc061c3",
+                  "scope": "*",
+                  "source_kind": "delegation",
+                  "delegation_id": "c464d43b-c69a-4004-989c-3f9bbdc061c3",
+                  "expires_at": "2026-09-07T07:46:46Z",
+                  "lineage": [
+                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
+                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
+                    "role_permission:16f4634c-9734-463d-856c-06a01bff75e8:v1",
+                    "permission:1da46aee-93e6-4fe4-82a4-d49db8fadfa5",
+                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
+                    "delegation:c464d43b-c69a-4004-989c-3f9bbdc061c3:v1"
+                  ]
+                }
+              ],
+              "resource_scope": [
+                "HARBORSTONE-2024-0042"
+              ],
+              "action_scope": [
+                "*"
+              ],
+              "limits": [],
+              "approval_thresholds": [
+                {
+                  "resource": "aml.action",
+                  "action": "propose",
+                  "attribute": "amount",
+                  "threshold": "24999999",
+                  "approver_principal_type": "HUMAN",
+                  "unit": null,
+                  "source": "delegation:c464d43b-c69a-4004-989c-3f9bbdc061c3:v1:role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1"
+                }
+              ],
+              "delegation_chain": [
+                {
+                  "delegation_id": "c464d43b-c69a-4004-989c-3f9bbdc061c3",
+                  "status": "ACTIVE",
+                  "live": true,
+                  "delegator_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
+                  "delegate_id": "302415c0-00ab-49b0-8a65-01175c0deb68",
+                  "parent_id": null,
+                  "actions": [
+                    "read"
+                  ],
+                  "resource_selector": "sanctions.screening",
+                  "valid_until": "2026-09-07T07:46:46Z",
+                  "depth": 0
+                }
+              ],
+              "credential_state": [],
+              "assurance": {
+                "current": false,
+                "evaluated_at": "2026-09-06T13:08:49.165857Z",
+                "ial": {
+                  "kind": "IAL",
+                  "not_applicable": true,
+                  "established": false,
+                  "current": false,
+                  "level": null,
+                  "status": null,
+                  "valid_until": null,
+                  "issuer": null,
+                  "provider": null,
+                  "evidence_ref": null,
+                  "record_id": null,
+                  "reasons": [
+                    "not_applicable_to_principal_type"
+                  ]
+                },
+                "aal": {
+                  "kind": "AAL",
+                  "not_applicable": true,
+                  "established": false,
+                  "current": false,
+                  "level": null,
+                  "status": null,
+                  "valid_until": null,
+                  "issuer": null,
+                  "provider": null,
+                  "evidence_ref": null,
+                  "record_id": null,
+                  "reasons": [
+                    "not_applicable_to_principal_type"
+                  ]
+                },
+                "fal": {
+                  "kind": "FAL",
+                  "not_applicable": true,
+                  "established": false,
+                  "current": false,
+                  "level": null,
+                  "status": null,
+                  "valid_until": null,
+                  "issuer": null,
+                  "provider": null,
+                  "evidence_ref": null,
+                  "record_id": null,
+                  "reasons": [
+                    "not_applicable_to_principal_type"
+                  ]
+                },
+                "reasons": [
+                  "assurance_not_applicable"
+                ]
+              },
+              "current_trust_state": {
+                "present": false,
+                "fail_closed": true,
+                "stale": false,
+                "refresh_required": true,
+                "decision_id": null,
+                "outcome": null,
+                "valid_until": null,
+                "policy_id": null,
+                "policy_version": null,
+                "reason_codes": [
+                  "trust_state_absent"
+                ]
+              },
+              "proof_ref": null,
+              "policy_refs": [
+                {
+                  "kind": "contract",
+                  "identifier": "compliidentity.agl.authority.v1",
+                  "version": "1"
+                },
+                {
+                  "kind": "delegation",
+                  "identifier": "c464d43b-c69a-4004-989c-3f9bbdc061c3",
+                  "version": "1"
+                }
+              ],
+              "request": {
+                "resource": "aml.action",
+                "action": "approve",
+                "attribute": "amount",
+                "value": "25000000",
+                "environment": null,
+                "resource_instance": "HARBORSTONE-2024-0042"
+              },
+              "authority_for_request": {
+                "sufficient": false,
+                "permission_present": false,
+                "limit_exceeded": false,
+                "approval_required": false,
+                "findings": [
+                  "permission_missing",
+                  "trust_absent",
+                  "trust_refresh_required"
+                ],
+                "matching_permissions": [],
+                "applicable_limits": [],
+                "applicable_approvals": []
+              },
+              "evidence": [
+                {
+                  "kind": "delegation",
+                  "identifier": "c464d43b-c69a-4004-989c-3f9bbdc061c3",
+                  "status": "ACTIVE"
+                }
+              ],
+              "cache": {
+                "max_age_seconds": 0,
+                "must_revalidate": true,
+                "no_store": true,
+                "cache_control": "no-store",
+                "not_after": "2026-09-07T07:46:46Z",
+                "revalidate_on": [
+                  "iam.assignment.revoked",
+                  "iam.grant.revoked",
+                  "delegation.revoked",
+                  "principal.status_changed",
+                  "principal.disabled",
+                  "credentials.revoked",
+                  "assurance.revoked",
+                  "trust.decision.superseded",
+                  "proof.invalidated"
+                ]
+              },
+              "authority_revision": "a3ce5b8bc420d0985e0826b91fd815bd0c2704d8323675b8987833b4566d23f5",
+              "authorizes": false,
+              "executes": false,
+              "agl_decision": "not_made",
+              "integrity": {
+                "content_hash": "3b768e0888288a3cf870fd9eea6cf64be730d1aa6c101e912480769b732b62b9",
+                "signature": "abc2da1bc672a1cd5eddb35d220e354b901f07976c505cb49ce6f60e1a4b5511248565568471073c5ffeb82402688a29bdcf2a637c0e5fdc2d87d9a6b257360e",
+                "signature_algorithm": "ed25519",
+                "signer_key_id": "compliidentity.proof.ed25519.dev"
+              },
+              "error": null
+            }
+          }
+        ]
+      },
+      "PASS": true
+    },
+    {
+      "id": "4c-neg-expired-approval",
+      "title": "an expired approval does not upgrade the escalation",
+      "proves": "the approval is authority-verified and recorded, but approval.expired is true at re-decision time, so DC-HARBORSTONE-APPROVED-VIA-HUMAN does not fire -- the re-decision is still ESCALATED and the approval is not consumed",
+      "does_NOT_prove": "anything about sanctions screening (placeholder control)",
+      "actor": "jordan",
+      "compliidentity": {
+        "resource": "aml.action",
+        "action": "approve",
+        "resource_instance": "HARBORSTONE-2024-0042"
+      },
+      "expected": {
+        "reevaluation_outcome": "ESCALATED",
+        "approval_consumed": false
+      },
+      "first_decision": {
+        "decision_id": "ce1f4411-1e99-4e6f-9070-cf06ed2d6454",
+        "outcome": "ESCALATED",
+        "reason_codes": [
+          "DECISION_ESCALATED",
+          "ESCALATED_BY_POLICY",
+          "HUMAN_APPROVAL_REQUIRED"
+        ],
+        "decision_conditions_triggered": [
+          {
+            "condition_id": "DC-HARBORSTONE-HUMAN-APPROVAL",
+            "package_id": "c4a48baa-f742-49f2-b3ab-5e9fd2768053",
+            "resulting_decision": "ESCALATED",
+            "reason_code": "HUMAN_APPROVAL_REQUIRED",
+            "priority": 20,
+            "terminal": true
+          }
+        ],
+        "authority_status": "OK",
+        "authority_reason": "approval_required",
+        "required_approver_types": [
+          "HUMAN"
+        ],
+        "input_hash": "c142e8d12de777f4e22b8e7cd2743727a191d452820f15efb517379ab03758b1",
+        "decision_hash": "bc431eac124eb54d121a6bf4bce2eab27ac3c87f5a36a30a08d3225e09903799",
+        "approval_hash": null,
+        "prior_decision_id": null,
+        "superseded_by_decision_id": "8ce35968-d442-4133-9eba-94f8a6e3e303",
+        "supersession_status": "SUPERSEDED"
+      },
+      "escalation_approval": {
+        "escalation_approval_id": "EAP-fce4e483b15f7895",
+        "valid_until": "2026-09-06 13:08:49.343887",
+        "status_after_reevaluation": "ACTIVE",
+        "consumed_by_decision_id": null
+      },
+      "reevaluated_decision": {
+        "decision_id": "8ce35968-d442-4133-9eba-94f8a6e3e303",
+        "outcome": "ESCALATED",
+        "reason_codes": [
+          "DECISION_ESCALATED",
+          "ESCALATED_BY_POLICY",
+          "HUMAN_APPROVAL_REQUIRED"
+        ],
+        "decision_conditions_triggered": [
+          {
+            "condition_id": "DC-HARBORSTONE-HUMAN-APPROVAL",
+            "package_id": "c4a48baa-f742-49f2-b3ab-5e9fd2768053",
+            "resulting_decision": "ESCALATED",
+            "reason_code": "HUMAN_APPROVAL_REQUIRED",
+            "priority": 20,
+            "terminal": true
+          }
+        ],
+        "authority_status": "OK",
+        "authority_reason": "approval_required",
+        "required_approver_types": [
+          "HUMAN"
+        ],
+        "input_hash": "13b1d788280389d98cedbbc588b3e9567ee83f7c7143ac3c9f33904c5d26cf69",
+        "decision_hash": "b1ce17e9cf6d1d66b9d25cc2dd3d7be243e4a795d88310ff29caf2d835696d49",
+        "approval_hash": "22391689edaa45143a6df169866c8c844068a73184d6413c08d10177e854ccdc",
+        "prior_decision_id": "ce1f4411-1e99-4e6f-9070-cf06ed2d6454",
+        "superseded_by_decision_id": null,
+        "supersession_status": "CURRENT"
+      },
+      "no_execution_authorization": {
+        "issued": false,
+        "raised": "ConflictError",
+        "message": "Execution authorization can only be issued for an APPROVED decision (decision 8ce35968-d442-4133-9eba-94f8a6e3e303 is ESCALATED)."
+      },
+      "compliidentity_calls": {
+        "approver_probe": [
+          {
+            "request": {
+              "organization_id": "harborstone-demo",
+              "principal_id": "e35d7b95-1a10-4654-9b02-2181df052f96",
+              "resource": "aml.action",
+              "action": "approve",
+              "resource_instance": "HARBORSTONE-2024-0042",
+              "attribute": "amount",
+              "value": "25000000"
+            },
+            "authority_status": "OK",
+            "authority_reason": null,
+            "sufficient": true,
+            "permission_present": true,
+            "approval_required": false,
+            "limit_exceeded": false,
+            "findings": [
+              "permission_present",
+              "trust_absent",
+              "trust_refresh_required"
+            ],
+            "authority_revision": "9fe43933f6a51a5f6292ce262238a8b51b544a4fa2da04f4e2d9a5c33e9fc0c4",
+            "integrity_content_hash": "b6ad6e51e72bc63740ee49c74207c3749a43a7c1a065a60a287937ea23d04771",
+            "raw_response": {
+              "contract_id": "compliidentity.agl.authority.v1",
+              "contract_version": "1",
+              "tenant_id": "harborstone-demo",
+              "principal_id": "e35d7b95-1a10-4654-9b02-2181df052f96",
+              "evaluated_at": "2026-09-06T13:08:50.827442Z",
+              "principal": {
+                "principal_id": "e35d7b95-1a10-4654-9b02-2181df052f96",
+                "principal_type": "HUMAN",
+                "status": "ACTIVE",
+                "did": null,
+                "binding_kinds": []
+              },
+              "principal_type": "HUMAN",
+              "active": true,
+              "roles": [
+                {
+                  "role_id": "19319b0e-0254-48e0-9893-ec66593730b2",
+                  "name": "jordan-aml-approver",
+                  "system_role": false,
+                  "version": 1,
+                  "assignment_id": "ac5f1f70-a29a-4006-944f-4b1580a83c2c"
+                }
+              ],
+              "permissions": [
+                {
+                  "permission_id": "42e41882-cb56-4184-8503-6028b67848e2",
+                  "resource": "aml.action",
+                  "action": "approve",
+                  "role_id": "19319b0e-0254-48e0-9893-ec66593730b2",
+                  "assignment_id": "ac5f1f70-a29a-4006-944f-4b1580a83c2c",
+                  "scope": "*",
+                  "source_kind": "assignment",
+                  "delegation_id": null,
+                  "expires_at": null,
+                  "lineage": [
+                    "role:19319b0e-0254-48e0-9893-ec66593730b2:v1",
+                    "assignment:ac5f1f70-a29a-4006-944f-4b1580a83c2c:v1",
+                    "role_permission:4e9ca954-1daf-43c2-a40a-e28ffc600872:v1",
+                    "permission:42e41882-cb56-4184-8503-6028b67848e2"
+                  ]
+                }
+              ],
+              "resource_scope": [
+                "HARBORSTONE-2024-0042"
+              ],
+              "action_scope": [
+                "*"
+              ],
+              "limits": [],
+              "approval_thresholds": [],
+              "delegation_chain": [],
+              "credential_state": [],
+              "assurance": {
+                "current": false,
+                "evaluated_at": "2026-09-06T13:08:50.827442Z",
+                "ial": {
+                  "kind": "IAL",
+                  "not_applicable": false,
+                  "established": false,
+                  "current": false,
+                  "level": null,
+                  "status": null,
+                  "valid_until": null,
+                  "issuer": null,
+                  "provider": null,
+                  "evidence_ref": null,
+                  "record_id": null,
+                  "reasons": [
+                    "not_established"
+                  ]
+                },
+                "aal": {
+                  "kind": "AAL",
+                  "not_applicable": false,
+                  "established": false,
+                  "current": false,
+                  "level": null,
+                  "status": null,
+                  "valid_until": null,
+                  "issuer": null,
+                  "provider": null,
+                  "evidence_ref": null,
+                  "record_id": null,
+                  "reasons": [
+                    "not_established"
+                  ]
+                },
+                "fal": {
+                  "kind": "FAL",
+                  "not_applicable": false,
+                  "established": false,
+                  "current": false,
+                  "level": null,
+                  "status": null,
+                  "valid_until": null,
+                  "issuer": null,
+                  "provider": null,
+                  "evidence_ref": null,
+                  "record_id": null,
+                  "reasons": [
+                    "not_established"
+                  ]
+                },
+                "reasons": [
+                  "no_assurance_established"
+                ]
+              },
+              "current_trust_state": {
+                "present": false,
+                "fail_closed": true,
+                "stale": false,
+                "refresh_required": true,
+                "decision_id": null,
+                "outcome": null,
+                "valid_until": null,
+                "policy_id": null,
+                "policy_version": null,
+                "reason_codes": [
+                  "trust_state_absent"
+                ]
+              },
+              "proof_ref": null,
+              "policy_refs": [
+                {
+                  "kind": "assignment",
+                  "identifier": "ac5f1f70-a29a-4006-944f-4b1580a83c2c",
+                  "version": "1"
+                },
+                {
+                  "kind": "contract",
+                  "identifier": "compliidentity.agl.authority.v1",
+                  "version": "1"
+                },
+                {
+                  "kind": "permission",
+                  "identifier": "42e41882-cb56-4184-8503-6028b67848e2",
+                  "version": null
+                },
+                {
+                  "kind": "role",
+                  "identifier": "19319b0e-0254-48e0-9893-ec66593730b2",
+                  "version": "1"
+                },
+                {
+                  "kind": "role_permission",
+                  "identifier": "4e9ca954-1daf-43c2-a40a-e28ffc600872",
+                  "version": "1"
+                }
+              ],
+              "request": {
+                "resource": "aml.action",
+                "action": "approve",
+                "attribute": "amount",
+                "value": "25000000",
+                "environment": null,
+                "resource_instance": "HARBORSTONE-2024-0042"
+              },
+              "authority_for_request": {
+                "sufficient": true,
+                "permission_present": true,
+                "limit_exceeded": false,
+                "approval_required": false,
+                "findings": [
+                  "permission_present",
+                  "trust_absent",
+                  "trust_refresh_required"
+                ],
+                "matching_permissions": [
+                  {
+                    "permission_id": "42e41882-cb56-4184-8503-6028b67848e2",
+                    "resource": "aml.action",
+                    "action": "approve",
+                    "role_id": "19319b0e-0254-48e0-9893-ec66593730b2",
+                    "assignment_id": "ac5f1f70-a29a-4006-944f-4b1580a83c2c",
+                    "scope": "*",
+                    "source_kind": "assignment",
+                    "delegation_id": null,
+                    "expires_at": null,
+                    "lineage": [
+                      "role:19319b0e-0254-48e0-9893-ec66593730b2:v1",
+                      "assignment:ac5f1f70-a29a-4006-944f-4b1580a83c2c:v1",
+                      "role_permission:4e9ca954-1daf-43c2-a40a-e28ffc600872:v1",
+                      "permission:42e41882-cb56-4184-8503-6028b67848e2"
+                    ]
+                  }
+                ],
+                "applicable_limits": [],
+                "applicable_approvals": []
+              },
+              "evidence": [
+                {
+                  "kind": "assignment",
+                  "identifier": "ac5f1f70-a29a-4006-944f-4b1580a83c2c",
+                  "status": null
+                }
+              ],
+              "cache": {
+                "max_age_seconds": 0,
+                "must_revalidate": true,
+                "no_store": true,
+                "cache_control": "no-store",
+                "not_after": null,
+                "revalidate_on": [
+                  "iam.assignment.revoked",
+                  "iam.grant.revoked",
+                  "delegation.revoked",
+                  "principal.status_changed",
+                  "principal.disabled",
+                  "credentials.revoked",
+                  "assurance.revoked",
+                  "trust.decision.superseded",
+                  "proof.invalidated"
+                ]
+              },
+              "authority_revision": "9fe43933f6a51a5f6292ce262238a8b51b544a4fa2da04f4e2d9a5c33e9fc0c4",
+              "authorizes": false,
+              "executes": false,
+              "agl_decision": "not_made",
+              "integrity": {
+                "content_hash": "b6ad6e51e72bc63740ee49c74207c3749a43a7c1a065a60a287937ea23d04771",
+                "signature": "2236208cb7b5f654726a31da1214e57c1277bec3e54ce61f6cf177090f1f133f1e4a84ecfd3dd70a951819f3aa869c89aefaab649edc843e501716b39c75ec0c",
+                "signature_algorithm": "ed25519",
+                "signer_key_id": "compliidentity.proof.ed25519.dev"
+              },
+              "error": null
+            }
+          }
+        ]
+      },
       "PASS": true
     },
     {
@@ -756,7 +2556,7 @@
       },
       "assessment_result": "SATISFIED",
       "decision": {
-        "decision_id": "0cff1f93-b595-4d28-8a79-7a0a23b17f86",
+        "decision_id": "58d828cc-c111-4366-9c69-7ea5645e17d0",
         "outcome": "DENIED",
         "reason_codes": [
           "DECISION_DENIED",
@@ -766,7 +2566,7 @@
         "decision_conditions_triggered": [
           {
             "condition_id": "DC-HARBORSTONE-AUTHORITY-DENIED",
-            "package_id": "66730ff4-7e17-414f-9d8f-e4aab49ad8cb",
+            "package_id": "c4a48baa-f742-49f2-b3ab-5e9fd2768053",
             "resulting_decision": "DENIED",
             "reason_code": "AUTHORITY_DENIED",
             "priority": 10,
@@ -775,14 +2575,20 @@
         ],
         "authority_status": "OK",
         "authority_reason": "permission_missing",
-        "input_hash": "70815c7e3b0a6b2389f9621cd1fedcce5fa46600bc4c9c4fcb436f0b18f22d69",
-        "decision_hash": "004cd8370020ed40e14a50da09026053f026a2e5df4762b1c4e2b68213c810c5",
+        "required_approver_types": [
+          "HUMAN"
+        ],
+        "input_hash": "3041fab04a9191f73944fd195da2cb3c529d8ab2e999c1d5b8f0d20bbf73c397",
+        "decision_hash": "6b2136af032a347c0774b6dbfe2e0601621dbd83b5871615a354d981cdbab04b",
+        "approval_hash": null,
+        "prior_decision_id": null,
+        "superseded_by_decision_id": null,
         "supersession_status": "CURRENT"
       },
       "no_execution_authorization": {
         "issued": false,
         "raised": "ConflictError",
-        "message": "Execution authorization can only be issued for an APPROVED decision (decision 0cff1f93-b595-4d28-8a79-7a0a23b17f86 is DENIED)."
+        "message": "Execution authorization can only be issued for an APPROVED decision (decision 58d828cc-c111-4366-9c69-7ea5645e17d0 is DENIED)."
       },
       "compliidentity_calls": [
         {
@@ -805,13 +2611,13 @@
             "trust_refresh_required"
           ],
           "authority_revision": "d82f26cecd2e949684dd358b4e99d40c42d16404d1848808e414e05744289051",
-          "integrity_content_hash": "54fe4173e5394782143458749e176c39301d85c993a116bca65187092d4c2ddd",
+          "integrity_content_hash": "33c8a0935a4422ffa725be43b211831d567eb353e9cadc6aa61e32ad10bcac66",
           "raw_response": {
             "contract_id": "compliidentity.agl.authority.v1",
             "contract_version": "1",
             "tenant_id": "harborstone-demo",
             "principal_id": "302415c0-00ab-49b0-8a65-01175c0deb68",
-            "evaluated_at": "2026-09-06T08:17:57.395925Z",
+            "evaluated_at": "2026-09-06T13:08:52.038036Z",
             "principal": {
               "principal_id": "302415c0-00ab-49b0-8a65-01175c0deb68",
               "principal_type": "AI_AGENT",
@@ -880,7 +2686,7 @@
             "credential_state": [],
             "assurance": {
               "current": false,
-              "evaluated_at": "2026-09-06T08:17:57.395925Z",
+              "evaluated_at": "2026-09-06T13:08:52.038036Z",
               "ial": {
                 "kind": "IAL",
                 "not_applicable": true,
@@ -1022,8 +2828,8 @@
             "executes": false,
             "agl_decision": "not_made",
             "integrity": {
-              "content_hash": "54fe4173e5394782143458749e176c39301d85c993a116bca65187092d4c2ddd",
-              "signature": "dff22d6b218c84fad15faa4c19243ff9b561227f950b51aad7c5c6197cf845078f53a2aac9f37badee91ebcdcf9907ce0b9324dbe3837f30c2d35fcaf2c9bc0a",
+              "content_hash": "33c8a0935a4422ffa725be43b211831d567eb353e9cadc6aa61e32ad10bcac66",
+              "signature": "351c9ede4fb48cc2b4678dcef7fe8a64dc305e9dd1643dadc908cf2d1a5204bae74eae81d43a4969dd53709f1c65dc699d555fec5221032e4dfcb3c2edac1704",
               "signature_algorithm": "ed25519",
               "signer_key_id": "compliidentity.proof.ed25519.dev"
             },
@@ -1049,7 +2855,7 @@
       },
       "assessment_result": "SATISFIED",
       "decision": {
-        "decision_id": "b6a9c36e-77f9-4d1e-b166-56c930948c12",
+        "decision_id": "a03f63cd-f92f-4fd1-b5b7-487a2b9c55a1",
         "outcome": "DENIED",
         "reason_codes": [
           "DECISION_DENIED",
@@ -1059,7 +2865,7 @@
         "decision_conditions_triggered": [
           {
             "condition_id": "DC-HARBORSTONE-AUTHORITY-DENIED",
-            "package_id": "66730ff4-7e17-414f-9d8f-e4aab49ad8cb",
+            "package_id": "c4a48baa-f742-49f2-b3ab-5e9fd2768053",
             "resulting_decision": "DENIED",
             "reason_code": "AUTHORITY_DENIED",
             "priority": 10,
@@ -1068,14 +2874,18 @@
         ],
         "authority_status": "OK",
         "authority_reason": "permission_missing",
-        "input_hash": "6831fe39a7037d49f6b2930a2563c7a66b710e37cdf5a5a5ca4f9d261c9fe780",
-        "decision_hash": "00ebf9dd786c839c0040be39e57b71729d2128728a79fe590211f2e5981ac319",
+        "required_approver_types": [],
+        "input_hash": "aaaa8caaf145a25ca642a4559383e107d55c50d7df0523f9d01a7895065d517e",
+        "decision_hash": "1b082426f63a87df255af8734b3ec86d11bf68489ac1d98bc34e1e3418c62398",
+        "approval_hash": null,
+        "prior_decision_id": null,
+        "superseded_by_decision_id": null,
         "supersession_status": "CURRENT"
       },
       "no_execution_authorization": {
         "issued": false,
         "raised": "ConflictError",
-        "message": "Execution authorization can only be issued for an APPROVED decision (decision b6a9c36e-77f9-4d1e-b166-56c930948c12 is DENIED)."
+        "message": "Execution authorization can only be issued for an APPROVED decision (decision a03f63cd-f92f-4fd1-b5b7-487a2b9c55a1 is DENIED)."
       },
       "compliidentity_calls": [
         {
@@ -1098,13 +2908,13 @@
             "trust_refresh_required"
           ],
           "authority_revision": "6d40629863e50087caeeaa8c84d18e36f7d6d2b7d70218bc766e6908c9bc7a90",
-          "integrity_content_hash": "f4436d4a2585a45210dc3eae7111e129573bea2821bbc69f5e1aca2e0b809c89",
+          "integrity_content_hash": "abe4aed413530912cf9db330527104c823420b90c0b15471abbd3a78fc81dcbc",
           "raw_response": {
             "contract_id": "compliidentity.agl.authority.v1",
             "contract_version": "1",
             "tenant_id": "harborstone-demo",
             "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
-            "evaluated_at": "2026-09-06T08:17:57.898871Z",
+            "evaluated_at": "2026-09-06T13:08:52.825831Z",
             "principal": {
               "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
               "principal_type": "AI_AGENT",
@@ -1232,7 +3042,7 @@
             "credential_state": [],
             "assurance": {
               "current": false,
-              "evaluated_at": "2026-09-06T08:17:57.898871Z",
+              "evaluated_at": "2026-09-06T13:08:52.825831Z",
               "ial": {
                 "kind": "IAL",
                 "not_applicable": true,
@@ -1419,8 +3229,8 @@
             "executes": false,
             "agl_decision": "not_made",
             "integrity": {
-              "content_hash": "f4436d4a2585a45210dc3eae7111e129573bea2821bbc69f5e1aca2e0b809c89",
-              "signature": "5a5fd720817e01945b271cd3cace817931f21ac9217fd79890261454cf7609d540f46577d843ed41ad220479dcc447f9b1c8325d29dacc92176040ee1ddce308",
+              "content_hash": "abe4aed413530912cf9db330527104c823420b90c0b15471abbd3a78fc81dcbc",
+              "signature": "2742f58bb9f2e174193b8c7d38c79795ea9e973b0d65395d9ac5884b7d98ac7d0c47f2e8e2f0d9d18df75c8bba99441fac815efd9df8166e064228ba41736b00",
               "signature_algorithm": "ed25519",
               "signer_key_id": "compliidentity.proof.ed25519.dev"
             },
@@ -1446,7 +3256,7 @@
       },
       "assessment_result": "SATISFIED",
       "decision": {
-        "decision_id": "8a1d5046-6754-4958-9276-00b6f2949f56",
+        "decision_id": "a6d9d18d-d984-4c84-b8d6-9235b3c290f1",
         "outcome": "DENIED",
         "reason_codes": [
           "DECISION_DENIED",
@@ -1456,7 +3266,7 @@
         "decision_conditions_triggered": [
           {
             "condition_id": "DC-HARBORSTONE-AUTHORITY-DENIED",
-            "package_id": "66730ff4-7e17-414f-9d8f-e4aab49ad8cb",
+            "package_id": "c4a48baa-f742-49f2-b3ab-5e9fd2768053",
             "resulting_decision": "DENIED",
             "reason_code": "AUTHORITY_DENIED",
             "priority": 10,
@@ -1465,14 +3275,20 @@
         ],
         "authority_status": "OK",
         "authority_reason": "resource_scope_unmatched",
-        "input_hash": "4bfc112d56c7a4415d35a72a13b4c324020caad098d807ccc900aa44bb88d180",
-        "decision_hash": "a42f1b432299239ae8cef8196bb9818c8ddf7103245efdc0fcdcd62c43f44000",
+        "required_approver_types": [
+          "HUMAN"
+        ],
+        "input_hash": "c4f31c197e0c3cf35e9fcdb129ee1f4bbeb373656b75307df2bc4ce11526043a",
+        "decision_hash": "6ef6d6f4592e4d61762df2a4f0a36f44c37d0088f90c0cedd49be2ac7ae4f170",
+        "approval_hash": null,
+        "prior_decision_id": null,
+        "superseded_by_decision_id": null,
         "supersession_status": "CURRENT"
       },
       "no_execution_authorization": {
         "issued": false,
         "raised": "ConflictError",
-        "message": "Execution authorization can only be issued for an APPROVED decision (decision 8a1d5046-6754-4958-9276-00b6f2949f56 is DENIED)."
+        "message": "Execution authorization can only be issued for an APPROVED decision (decision a6d9d18d-d984-4c84-b8d6-9235b3c290f1 is DENIED)."
       },
       "compliidentity_calls": [
         {
@@ -1498,13 +3314,13 @@
             "trust_refresh_required"
           ],
           "authority_revision": "8d84261bf9f081b91a9604bd2bbf7c7db6a0d9b933dee2adc1fb20825e449fdc",
-          "integrity_content_hash": "369f2dda92108069121774c15737bdf27b8b4e751f83a6839f975f4c057c6e3b",
+          "integrity_content_hash": "dfbe3f0de0ece9da14cbf31849f514bb789a9bbac40286dc8195181c8ebf21ef",
           "raw_response": {
             "contract_id": "compliidentity.agl.authority.v1",
             "contract_version": "1",
             "tenant_id": "harborstone-demo",
             "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
-            "evaluated_at": "2026-09-06T08:17:58.841946Z",
+            "evaluated_at": "2026-09-06T13:08:53.893660Z",
             "principal": {
               "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
               "principal_type": "AI_AGENT",
@@ -1632,7 +3448,7 @@
             "credential_state": [],
             "assurance": {
               "current": false,
-              "evaluated_at": "2026-09-06T08:17:58.841946Z",
+              "evaluated_at": "2026-09-06T13:08:53.893660Z",
               "ial": {
                 "kind": "IAL",
                 "not_applicable": true,
@@ -1848,8 +3664,8 @@
             "executes": false,
             "agl_decision": "not_made",
             "integrity": {
-              "content_hash": "369f2dda92108069121774c15737bdf27b8b4e751f83a6839f975f4c057c6e3b",
-              "signature": "74ce1472211cb1168932027e658efa21e450203a90601a29d95539b7412cd295f455e33d2602c21390a19cb8fc31dccdbb08882f2b69af3536aa31ae25d11b08",
+              "content_hash": "dfbe3f0de0ece9da14cbf31849f514bb789a9bbac40286dc8195181c8ebf21ef",
+              "signature": "f17b0ca13ad9ae5105f6fedd8e6f0a8b6845a01d0ee7a522866f71adced0f2f2c4c9fa064aac817e172f96581acc465170d31c03d7b398b5edacd71693b73c01",
               "signature_algorithm": "ed25519",
               "signer_key_id": "compliidentity.proof.ed25519.dev"
             },

@@ -230,6 +230,47 @@ authority-context calls. Full confirmed reference:
    would ESCALATE every HarborStone decision. It is informational only,
    exposed as `authority.current_trust_state` for visibility.
 
+## Resolved (2026-09-06) — human-approval re-decision path (package v1.1.0)
+
+The escalation from Section 2 is now resolvable. Once
+`escalation_approval_service.submit()` records an authority-verified
+`EscalationApproval` against the ESCALATED decision (approver probed live for
+`<resource>/approve/<instance>`, `sufficient == true`, approver's own
+`principal_type == "HUMAN"`, and the approver type matches the
+`applicable_approvals[].approver_principal_type` CompliIdentity declared on
+the *actor's* decision-time probe, persisted as `Decision.required_approver_
+types`), a re-decision (`decide_for_resolution(..., prior_decision_id=)`)
+exposes it as the `approval` runtime fact and:
+
+9. **New condition `DC-HARBORSTONE-APPROVED-VIA-HUMAN` (priority 15,
+   terminal, APPROVED).** Fires when `approval.present and
+   approval.approver_authorized and not approval.expired` and
+   `authority.reason` is not a hard-denial code. Priority 15 puts it after
+   the hard-denial condition (10) and before the escalation condition (20).
+   `reason_code: HARBORSTONE_APPROVED_VIA_HUMAN`.
+
+10. **`DC-HARBORSTONE-HUMAN-APPROVAL` gains a guard**
+    (`... and not (<approval is valid>)`) so it stops escalating once a valid
+    approval is present. Redundant with the priority ordering + terminal
+    semantics, kept as defense in depth against a future reorder. An
+    **expired** approval does not satisfy the guard, so the decision
+    re-escalates — the expired-approval case is a real "not APPROVED".
+
+11. **`_resolve_outcome` is unchanged.** The upgrade is entirely
+    package-authored. The engine still structurally blocks APPROVED behind a
+    SATISFIED assessment and a non-UNAVAILABLE authority status, so a re-probe
+    that comes back UNAVAILABLE still downgrades the re-decision to ESCALATED.
+
+12. **The prior ESCALATED decision is preserved.** `decide_for_resolution`
+    marks it SUPERSEDED, links `superseded_by_decision_id` /
+    `prior_decision_id` both ways, and marks the consumed approval CONSUMED
+    (one approval authorises exactly one re-decision). An
+    `ExecutionAuthorization` can only then be issued, against the new APPROVED
+    decision.
+
+Evidenced end-to-end against live CompliIdentity in
+`demo3_step2/compliagl_scenarios.py` scenario 4c (+ `4c-neg-*`).
+
 ## Still open — needs Claude Code to check against real source
 
 1. Exact `authorized_parameter_constraints` to populate at authorization-

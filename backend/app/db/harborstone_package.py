@@ -17,13 +17,21 @@ HarborStone demo run. See ``PENDING_REVIEW_harborstone_screening_control_
 placeholder.md`` at the repo root for what replaces it and why it isn't
 designed yet.
 
-The three decision conditions below are the real, reviewed design from
+The decision conditions below are the real, reviewed design from
 ``HARBORSTONE_GOVERNANCE_PACKAGE_DESIGN.md`` (amount-units bug already
 caught and fixed there -- see that doc's "Resolved" item 3): they reference
 ``intent.amount_minor`` (integer minor units, e.g. cents), not
 ``intent.parameters.amount``, and match the exact field
 ``authority_context_service._authority_request_params()`` already sends to
 CompliIdentity, so the probe and the threshold never disagree.
+
+Package v1.1.0 adds the human-approval re-decision path
+(``DC-HARBORSTONE-APPROVED-VIA-HUMAN`` + a guard on
+``DC-HARBORSTONE-HUMAN-APPROVAL``): once ``escalation_approval_service``
+records an authority-verified approval and a re-decision runs, the engine
+exposes it as the ``approval`` runtime fact and the escalation upgrades to
+APPROVED, with the prior ESCALATED decision preserved and superseded. See
+that design doc's 2026-09-06 "human-approval re-decision" Resolved section.
 
 The ``authority.reason`` values the DENIED / ESCALATED conditions test are
 CompliIdentity's real finding codes, confirmed against 13 live
@@ -59,7 +67,13 @@ from app.schemas.canonical.governance_package import (
 )
 
 PACKAGE_NAME = "harborstone-aml-sanctions-screening"
-PACKAGE_VERSION = "1.0.0"
+# 1.1.0 adds the human-approval re-decision path: DC-HARBORSTONE-APPROVED-VIA-
+# HUMAN upgrades an escalation once an authority-verified EscalationApproval is
+# present (as the `approval` runtime fact), and DC-HARBORSTONE-HUMAN-APPROVAL
+# gains a guard so it stops escalating once that approval exists. Additive --
+# the DENIED / plain-ESCALATED / clean-APPROVE paths are unchanged for every
+# case that has no approval fact.
+PACKAGE_VERSION = "1.1.0"
 
 REQ_PLACEHOLDER_SCREENING = "REQ-PLACEHOLDER-SANCTIONS-SCREENING"
 CTL_PLACEHOLDER_SCREENING = "CTL-PLACEHOLDER-SANCTIONS-SCREENING"
@@ -69,6 +83,29 @@ EV_PLACEHOLDER_SCREENING = "EV-PLACEHOLDER-SANCTIONS-SCREENING"
 # minor unit (major * 100) -- not universal across currencies, which is why
 # every condition below also guards on amount_currency == "USD".
 AMOUNT_THRESHOLD_MINOR = 25_000_000
+
+# CompliIdentity's real hard-denial finding codes (confirmed against 13 live
+# authority-context responses -- see COMPLIIDENTITY_CONTRACT_VOCABULARY_
+# CONFIRMED.md). `approval_required` is deliberately NOT here -- it is the
+# escalation, not a denial.
+_AUTHORITY_DENY_REASONS = [
+    "permission_missing",
+    "delegation_revoked",
+    "principal_not_active",
+    "resource_scope_unmatched",
+    "limit_exceeded",
+]
+
+# A currently-valid, authority-verified human approval, as the `approval`
+# runtime fact (decision_service loads it only for a re-decision -- see
+# runtime_facts.build_approval_facts). Absent `approval` key -> every clause is
+# `None == True` -> False, so this reads as "no valid approval" on a first
+# decision without raising.
+_APPROVAL_IS_VALID = (
+    "approval.present == True and "
+    "approval.approver_authorized == True and "
+    "approval.expired == False"
+)
 
 
 def build_harborstone_package(
@@ -137,9 +174,7 @@ def build_harborstone_package(
             {
                 "condition_id": "DC-HARBORSTONE-AUTHORITY-DENIED",
                 "expression": (
-                    "authority.reason in ['permission_missing', "
-                    "'delegation_revoked', 'principal_not_active', "
-                    "'resource_scope_unmatched', 'limit_exceeded']"
+                    f"authority.reason in {_AUTHORITY_DENY_REASONS!r}"
                 ),
                 "resulting_decision": "DENIED",
                 "priority": 10,
@@ -147,12 +182,30 @@ def build_harborstone_package(
                 "terminal": True,
             },
             {
+                # Re-decision path: a valid, authority-verified human approval
+                # upgrades the escalation. Priority 15 -> checked before
+                # DC-HARBORSTONE-HUMAN-APPROVAL (20) but after the hard-denial
+                # condition (10). The `not in` guard is belt-and-suspenders:
+                # priority 10 being terminal already means a hard denial never
+                # reaches here.
+                "condition_id": "DC-HARBORSTONE-APPROVED-VIA-HUMAN",
+                "expression": (
+                    f"{_APPROVAL_IS_VALID} and "
+                    f"authority.reason not in {_AUTHORITY_DENY_REASONS!r}"
+                ),
+                "resulting_decision": "APPROVED",
+                "priority": 15,
+                "reason_code": "HARBORSTONE_APPROVED_VIA_HUMAN",
+                "terminal": True,
+            },
+            {
                 "condition_id": "DC-HARBORSTONE-HUMAN-APPROVAL",
                 "expression": (
-                    "authority.reason == 'approval_required' or "
+                    "(authority.reason == 'approval_required' or "
                     "authority.approval_required == True or "
                     "(intent.amount_currency == 'USD' and "
-                    f"intent.amount_minor >= {AMOUNT_THRESHOLD_MINOR})"
+                    f"intent.amount_minor >= {AMOUNT_THRESHOLD_MINOR})) "
+                    f"and not ({_APPROVAL_IS_VALID})"
                 ),
                 "resulting_decision": "ESCALATED",
                 "priority": 20,

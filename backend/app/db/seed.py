@@ -188,7 +188,8 @@ def seed_harborstone_package(db: Session) -> None:
 
     Runs ``build_harborstone_package()`` through the real lifecycle
     (create -> validate -> approve -> publish). Skips entirely when a
-    PUBLISHED package with the same (name, version) already exists.
+    PUBLISHED package with the same (name, version) already exists; when an
+    *older* version is published it is superseded atomically on publish.
 
     **This package carries a placeholder sanctions-screening control**
     (``CTL-PLACEHOLDER-SANCTIONS-SCREENING``, ``evaluation_expression:
@@ -211,7 +212,11 @@ def seed_harborstone_package(db: Session) -> None:
         PACKAGE_VERSION,
         build_harborstone_package,
     )
+    from app.repositories.canonical import (
+        ExecutableGovernancePackageRepository,
+    )
     from app.services.canonical import governance_package_service
+    from app.utils.canonical_enums import PackageStatus
 
     existing = governance_package_service.get_published_version(
         db, HARBORSTONE_ORG_ID, PACKAGE_NAME, PACKAGE_VERSION
@@ -219,9 +224,19 @@ def seed_harborstone_package(db: Session) -> None:
     if existing is not None:
         return
 
-    pkg = governance_package_service.create(
-        db, build_harborstone_package(HARBORSTONE_ORG_ID)
+    # If an earlier version of this package is already PUBLISHED for the org,
+    # supersede it on publish so there is exactly one active version. (Fresh
+    # demo / test DBs have none, so this is a no-op there.)
+    prior_published = ExecutableGovernancePackageRepository(db).list_filtered(
+        HARBORSTONE_ORG_ID,
+        package_name=PACKAGE_NAME,
+        status=PackageStatus.PUBLISHED.value,
     )
+    create_payload = build_harborstone_package(HARBORSTONE_ORG_ID)
+    if prior_published:
+        create_payload.supersedes_package_id = prior_published[-1].id
+
+    pkg = governance_package_service.create(db, create_payload)
     result = governance_package_service.validate(db, HARBORSTONE_ORG_ID, pkg.id)
     if not result.valid:
         raise RuntimeError(
