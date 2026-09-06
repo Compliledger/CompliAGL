@@ -32,6 +32,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.models.decision import Decision
 from app.models.escalation_approval import EscalationApproval
 from app.repositories.canonical import (
     DecisionRepository,
@@ -197,6 +198,41 @@ def submit(
     approval.approval_hash = _approval_hash(approval)
     approval.escalation_approval_id = "EAP-" + approval.approval_hash[:16]
     return EscalationApprovalRepository(db).add(approval)
+
+
+def apply(
+    db: Session,
+    organization_id: str,
+    *,
+    escalation_approval_id: str,
+) -> Decision:
+    """Step 2: consume an ACTIVE approval by re-deciding its escalated decision.
+
+    Thin orchestration -- looks up the approval, requires it ``ACTIVE``, and
+    runs ``decision_service.decide_for_resolution(prior_decision_id=<the
+    escalated decision>)``. The engine reads the approval as the ``approval``
+    runtime fact; whether that upgrades the escalation is package-authored, and
+    marking the approval ``CONSUMED`` (only on an APPROVED outcome) happens
+    inside ``decide_for_resolution``.
+    """
+    org = organization_id
+    approval = EscalationApprovalRepository(db).get(org, escalation_approval_id)
+    if approval is None:
+        raise NotFoundError(
+            f"EscalationApproval not found: {escalation_approval_id}"
+        )
+    if approval.status != EscalationApprovalStatus.ACTIVE.value:
+        raise ConflictError(
+            f"EscalationApproval {approval.escalation_approval_id} is "
+            f"{approval.status}, not ACTIVE -- it cannot be applied."
+        )
+    decision = DecisionRepository(db).get(org, approval.decision_id)
+    if decision is None:
+        raise NotFoundError(f"Decision not found: {approval.decision_id}")
+    resolution_id = decision.policy_resolution_id or decision.evaluation_id
+    return decision_service.decide_for_resolution(
+        db, org, resolution_id, prior_decision_id=approval.decision_id
+    )
 
 
 def get(
