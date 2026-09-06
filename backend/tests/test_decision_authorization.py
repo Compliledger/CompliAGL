@@ -986,7 +986,7 @@ def test_authority_context_approval_required_reason_drives_package_condition(
             reason="approval_required",
             sufficient=False,
             active=True,
-            current_trust_state="present",
+            current_trust_state={"present": True, "fail_closed": False},
             authority_revision="rev-1",
         ),
     )
@@ -1036,7 +1036,10 @@ def test_authority_context_ok_allows_approval_when_package_requires_it(
     _patch_authority_client(
         monkeypatch,
         AuthorityContext(
-            status="OK", sufficient=True, active=True, current_trust_state="present"
+            status="OK",
+            sufficient=True,
+            active=True,
+            current_trust_state={"present": True, "fail_closed": False},
         ),
     )
     resolution, actor, target, assessment = _run_pipeline(
@@ -1047,6 +1050,54 @@ def test_authority_context_ok_allows_approval_when_package_requires_it(
     decision = decision_service.decide_for_resolution(db_session, ORG, resolution.id)
     assert decision.outcome == DecisionOutcome.APPROVED.value
     assert decision.authority_status == "OK"
+
+
+_AUTHORITY_BOOLEAN_FACT_CONDITIONS = [
+    {
+        "condition_id": "DC-APPROVAL-REQUIRED-BOOL",
+        # keys off CompliIdentity's own boolean, not the derived reason
+        "expression": "authority.approval_required == True",
+        "resulting_decision": "ESCALATED",
+        "priority": 10,
+        "reason_code": "HUMAN_APPROVAL_REQUIRED",
+        "terminal": True,
+    },
+    {
+        "condition_id": "DC-APPROVE",
+        "expression": "True",
+        "resulting_decision": "APPROVED",
+        "priority": 100,
+        "reason_code": "APPROVED_OK",
+        "terminal": True,
+    },
+]
+
+
+def test_authority_structured_booleans_exposed_as_facts(db_session, monkeypatch):
+    """The raw authority_for_request booleans (approval_required here) reach
+    package conditions as facts independently of the derived `authority.reason`
+    -- proves runtime_facts.build_authority_facts wiring, not just parsing."""
+    _patch_authority_client(
+        monkeypatch,
+        AuthorityContext(
+            status="OK",
+            reason=None,  # deliberately not set -- the boolean must stand alone
+            sufficient=False,
+            active=True,
+            approval_required=True,
+            findings=("permission_present", "approval_required"),
+        ),
+    )
+    resolution, actor, target, assessment = _run_pipeline(
+        db_session,
+        _AUTHORITY_BOOLEAN_FACT_CONDITIONS,
+        requires_authority_context=True,
+    )
+    decision = decision_service.decide_for_resolution(db_session, ORG, resolution.id)
+    explanation = decision_service.explain(db_session, ORG, decision.id)
+
+    assert decision.outcome == DecisionOutcome.ESCALATED.value
+    assert "HUMAN_APPROVAL_REQUIRED" in explanation["reason_codes"]
 
 
 def test_api_issue_rejected_for_denied_decision(api_env):

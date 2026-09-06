@@ -97,13 +97,28 @@ def build_context_facts(context: OperationalContext) -> dict[str, Any]:
 
 
 def build_authority_facts(authority: AuthorityContext) -> dict[str, Any]:
+    """Flatten one authority-context probe into package-authorable facts.
+
+    ``reason`` is the derived single code (see
+    ``authority_context_service._derive_reason``); ``findings`` is the raw
+    ``authority_for_request.findings`` list for conditions that need the full
+    picture. ``permission_present`` / ``approval_required`` / ``limit_exceeded``
+    are CompliIdentity's own booleans, exposed so a package can key off them
+    directly instead of the derived ``reason``. ``current_trust_state`` is the
+    trust-loop state object, informational only.
+    """
     return {
         "status": authority.status,
         "reason": authority.reason,
         "sufficient": authority.sufficient,
         "active": authority.active,
+        "permission_present": authority.permission_present,
+        "approval_required": authority.approval_required,
+        "limit_exceeded": authority.limit_exceeded,
+        "findings": list(authority.findings),
         "current_trust_state": authority.current_trust_state,
         "authority_revision": authority.authority_revision,
+        "integrity_content_hash": authority.integrity_content_hash,
     }
 
 

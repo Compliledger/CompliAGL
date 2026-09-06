@@ -8,12 +8,26 @@ repo). Only governance packages that declare
 ``decision_service.py``); packages that don't declare it are unaffected by
 this module's existence.
 
-**No caching.** The contract's own ``cache.max_age_seconds: "0"`` /
+**No caching.** The contract's own ``cache.max_age_seconds: 0`` /
 no-store, must-revalidate directives are explicit: CompliAGL must call fresh
 on every decision, never cache or compare against a local TTL. Staleness is
-instead reported *in* the response itself (``current_trust_state`` /
-``trust_stale`` / ``trust_absent``) and handled as ordinary
-package-authorable facts, same as any other ``authority_for_request.reason``.
+instead reported *in* the response itself (``current_trust_state`` plus the
+``trust_absent`` / ``trust_refresh_required`` findings) and handled as
+ordinary package-authorable facts, same as any other
+``authority_for_request`` signal.
+
+**``authority_for_request`` real shape** (confirmed against 13 live
+authority-context responses captured in CompliIdentity's demo3 acceptance
+run -- see ``docs/COMPLIIDENTITY_CONTRACT_VOCABULARY_CONFIRMED.md``):
+CompliIdentity emits ``sufficient`` / ``permission_present`` /
+``limit_exceeded`` / ``approval_required`` booleans plus ``findings`` -- a
+mixed list of positive (``permission_present``), informational
+(``trust_absent``, ``trust_refresh_required`` -- present on *every*
+response) and negative (``permission_missing``, ``delegation_revoked``,
+``principal_not_active``, ``resource_scope_unmatched``) codes. There is **no
+singular ``reason`` key**. :func:`_derive_reason` collapses these into the
+one code a package condition authored against ``authority.reason`` needs;
+the raw list is preserved on ``AuthorityContext.findings``.
 
 Modeled on the one other real external-HTTP-call precedent in this codebase,
 ``services/evidence/connectors/securerob.py``: explicit constructor
@@ -53,10 +67,11 @@ class AuthorityContext:
     ``status`` is CompliAGL's own three-state classification, not a field
     CompliIdentity returns:
 
-    * ``OK`` -- the call succeeded; ``reason`` / ``sufficient`` / ``active`` /
-      ``current_trust_state`` reflect CompliIdentity's own
-      ``authority_for_request`` (plus top-level fields) as ordinary
-      package-authorable facts -- no interpretation happens here.
+    * ``OK`` -- the call succeeded; the fact fields below reflect
+      CompliIdentity's own ``authority_for_request`` (plus top-level fields)
+      as ordinary package-authorable facts. The only interpretation applied
+      is :func:`_derive_reason` collapsing ``findings`` + the explicit
+      booleans into ``reason`` -- ``findings`` itself is passed through raw.
     * ``KNOWN_DENIED`` -- CompliIdentity affirmatively reported a real,
       known-bad fact via an HTTP error (currently just 404
       ``principal_not_found``). Also purely package-authorable, same as
@@ -65,14 +80,40 @@ class AuthorityContext:
       could not evaluate (503 ``context_unevaluable``, the contract's own
       explicit "fail closed" case). Never eligible to support an APPROVED
       decision -- see ``decision_service._resolve_outcome``.
+
+    Fact fields:
+
+    * ``reason`` -- derived single code (see :func:`_derive_reason`); ``None``
+      when nothing actionable was reported.
+    * ``sufficient`` / ``permission_present`` / ``approval_required`` /
+      ``limit_exceeded`` -- CompliIdentity's ``authority_for_request``
+      booleans, verbatim.
+    * ``findings`` -- the raw ``authority_for_request.findings`` list, for
+      conditions that need the full (positive + informational + negative)
+      picture rather than the derived ``reason``.
+    * ``active`` -- top-level principal-active flag.
+    * ``current_trust_state`` -- the continuous-trust-loop state object
+      (``{present, fail_closed, stale, refresh_required, reason_codes, ...}``);
+      informational only, the decision engine does not gate on it.
+    * ``authority_revision`` -- CompliIdentity's content-revision fingerprint.
+    * ``integrity_content_hash`` -- CompliIdentity's own ed25519-signed
+      content hash of the response (``integrity.content_hash``); a stronger
+      audit anchor than ``authority_revision`` alone. (``proof_ref`` is
+      ``null`` on every real response -- ``integrity`` is the real proof
+      block.)
     """
 
     status: AuthorityStatus
     reason: Optional[str] = None
     sufficient: Optional[bool] = None
     active: Optional[bool] = None
-    current_trust_state: Optional[str] = None
+    permission_present: Optional[bool] = None
+    approval_required: Optional[bool] = None
+    limit_exceeded: Optional[bool] = None
+    findings: tuple[str, ...] = ()
+    current_trust_state: Optional[dict[str, Any]] = None
     authority_revision: Optional[str] = None
+    integrity_content_hash: Optional[str] = None
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -80,15 +121,70 @@ def _unavailable(reason: str, raw: Optional[dict[str, Any]] = None) -> Authority
     return AuthorityContext(status="UNAVAILABLE", reason=reason, raw=raw or {})
 
 
+# Findings in ``authority_for_request.findings`` that represent a positively
+# reported "the answer is no" -- as opposed to the informational findings
+# CompliIdentity emits on every response regardless of outcome
+# (``permission_present``, ``trust_absent``, ``trust_refresh_required``).
+# Ordered most-specific-first: when several are present at once (e.g.
+# ``["permission_missing", "delegation_revoked"]`` after an explicit
+# delegation revoke) the earlier entry is the reported ``reason``. Every
+# entry here is DENIED-worthy; ``approval_required`` (ESCALATED-worthy) is
+# deliberately checked only *after* none of these match, so a hard denial can
+# never be masked into an escalation. Vocabulary confirmed against 13 live
+# responses -- see docs/COMPLIIDENTITY_CONTRACT_VOCABULARY_CONFIRMED.md.
+_DENIAL_FINDINGS: tuple[str, ...] = (
+    "principal_not_active",
+    "delegation_revoked",
+    "resource_scope_unmatched",
+    "permission_missing",
+)
+
+
+def _derive_reason(authority_for_request: dict[str, Any]) -> Optional[str]:
+    """Collapse CompliIdentity's ``authority_for_request`` signals into the
+    single ``reason`` code package conditions authored against
+    ``authority.reason`` expect.
+
+    CompliIdentity emits no singular ``reason`` key -- it emits ``findings``
+    (a mixed list) plus the ``limit_exceeded`` / ``approval_required``
+    booleans. Returns ``None`` when nothing actionable was reported (the
+    happy path, whose ``findings`` still contains ``permission_present`` /
+    ``trust_absent`` / ``trust_refresh_required``). The raw list stays on
+    ``AuthorityContext.findings`` for conditions that need it.
+    """
+    findings = authority_for_request.get("findings") or []
+    for code in _DENIAL_FINDINGS:
+        if code in findings:
+            return code
+    if authority_for_request.get("limit_exceeded") is True:
+        return "limit_exceeded"
+    if (
+        authority_for_request.get("approval_required") is True
+        or "approval_required" in findings
+    ):
+        return "approval_required"
+    return None
+
+
 def _parse_ok(data: dict[str, Any]) -> AuthorityContext:
     authority_for_request = data.get("authority_for_request") or {}
+    findings = authority_for_request.get("findings") or []
+    trust_state = data.get("current_trust_state")
+    integrity = data.get("integrity")
     return AuthorityContext(
         status="OK",
-        reason=authority_for_request.get("reason"),
+        reason=_derive_reason(authority_for_request),
         sufficient=authority_for_request.get("sufficient"),
         active=data.get("active"),
-        current_trust_state=data.get("current_trust_state"),
+        permission_present=authority_for_request.get("permission_present"),
+        approval_required=authority_for_request.get("approval_required"),
+        limit_exceeded=authority_for_request.get("limit_exceeded"),
+        findings=tuple(f for f in findings if isinstance(f, str)),
+        current_trust_state=trust_state if isinstance(trust_state, dict) else None,
         authority_revision=data.get("authority_revision"),
+        integrity_content_hash=(
+            integrity.get("content_hash") if isinstance(integrity, dict) else None
+        ),
         raw=data,
     )
 
