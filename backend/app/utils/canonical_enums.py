@@ -487,6 +487,14 @@ class FindingType(str, Enum):
     MANUAL_REVIEW = "MANUAL_REVIEW"
     OPERATIONAL_STATE_CONFLICT = "OPERATIONAL_STATE_CONFLICT"
     AUTHORITY_FAILURE = "AUTHORITY_FAILURE"
+    # A governance policy *condition* escalated an otherwise-clean decision
+    # (assessment SATISFIED, no failing control). The only resolution is an
+    # authority-verified human approval — never remediation evidence, a plain
+    # review record, or re-assessment. Given its own type so the
+    # remediation/re-assessment path can structurally refuse it (see
+    # finding_service._escalation_approval_required, resolution_validation_service,
+    # reassessment_service).
+    ESCALATION_APPROVAL_REQUIRED = "ESCALATION_APPROVAL_REQUIRED"
     OTHER = "OTHER"
 
 

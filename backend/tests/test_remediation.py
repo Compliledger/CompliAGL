@@ -759,3 +759,132 @@ def test_api_finding_and_remediation_flow(api_client, db_session):
         f"/api/v1/decision-history?intent_id={decision.intent_id}", headers=headers
     )
     assert len(resp.json()["decisions"]) == 2
+
+
+# --------------------------------------------------------------------------- #
+# Escalation-approval findings must never reach the re-assessment rubber-stamp
+# --------------------------------------------------------------------------- #
+# reassessment_service.trigger() hardcodes a SATISFIED assessment + APPROVED
+# decision with NO authority check. A decision that escalated for human approval
+# (assessment SATISFIED, a policy condition selected ESCALATED -> mapping code
+# ESCALATED_BY_POLICY) gets its own finding type so three independent barriers
+# keep it out of that path: (1) always remediation-INELIGIBLE, (2) never
+# VALIDATED by resolution_validation_service, (3) trigger() refuses it outright.
+def _escalated_by_policy(db, *, condition_reason_code="HUMAN_APPROVAL_REQUIRED"):
+    """An ESCALATED decision whose escalation came purely from a policy condition."""
+    intent = _mk_intent(db)
+    resolution_id = "res-" + uuid.uuid4().hex[:8]
+    assessment = _mk_assessment(
+        db, resolution_id, overall_result=AssessmentOutcome.SATISFIED.value
+    )
+    decision = _mk_decision(
+        db,
+        intent.id,
+        resolution_id,
+        assessment.id,
+        outcome=DecisionOutcome.ESCALATED.value,
+        reason_codes=[
+            "DECISION_ESCALATED",
+            "ESCALATED_BY_POLICY",
+            condition_reason_code,
+        ],
+        triggered=[
+            {
+                "condition_id": "DC-HUMAN-APPROVAL",
+                "resulting_decision": "ESCALATED",
+                "reason_code": condition_reason_code,
+                "priority": 20,
+                "terminal": True,
+            }
+        ],
+    )
+    return intent, resolution_id, assessment, decision
+
+
+def test_policy_escalation_produces_escalation_approval_required_finding(db_session):
+    _, _, _, decision = _escalated_by_policy(db_session)
+    findings = finding_service.generate_for_decision(db_session, ORG, decision.id)
+    assert len(findings) == 1
+    finding = findings[0]
+    assert finding.finding_type == FindingType.ESCALATION_APPROVAL_REQUIRED.value
+    # Barrier 1: never remediable, regardless of package config.
+    assert finding.remediation_eligibility == RemediationEligibility.INELIGIBLE.value
+    # Not terminal — the intent is recoverable via an authorized approval.
+    assert finding.terminal is False
+    codes = json.loads(finding.reason_codes)
+    assert "FINDING_ESCALATION_APPROVAL_REQUIRED" in codes
+    assert "ESCALATED_BY_POLICY" in codes
+    assert "HUMAN_APPROVAL_REQUIRED" in codes  # the triggering condition's code
+
+
+def test_escalation_approval_finding_cannot_get_remediation_plan(db_session):
+    _, _, _, decision = _escalated_by_policy(db_session)
+    finding = finding_service.generate_for_decision(db_session, ORG, decision.id)[0]
+    with pytest.raises(ConflictError):
+        remediation_service.create_plan(
+            db_session,
+            RemediationPlanCreate(
+                organization_id=ORG,
+                finding_id=finding.id,
+                required_corrective_state="n/a",
+                required_resolution_evidence=[
+                    RequiredResolutionEvidenceModel(
+                        evidence_type="code_fix_attestation",
+                        mandatory=True,
+                        allowed_issuers=["ci-system"],
+                    )
+                ],
+                owner="dev-team",
+            ),
+        )
+
+
+def test_escalation_approval_finding_never_validates(db_session):
+    _, _, _, decision = _escalated_by_policy(db_session)
+    finding = finding_service.generate_for_decision(db_session, ORG, decision.id)[0]
+
+    result = resolution_validation_service.validate(db_session, ORG, finding.id)
+    assert result["outcome"] == ResolutionValidationOutcome.REJECTED.value
+    assert result["reason_codes"] == ["RESOLUTION_ESCALATION_APPROVAL_PATH_REQUIRED"]
+
+    # Barrier 2 + the evidence trail: the rejection reason is PERSISTED on the
+    # finding, not just returned from the call.
+    refreshed = finding_service.get(db_session, ORG, finding.id)
+    assert refreshed.resolution_validation_outcome == (
+        ResolutionValidationOutcome.REJECTED.value
+    )
+    assert json.loads(refreshed.resolution_reason_codes) == [
+        "RESOLUTION_ESCALATION_APPROVAL_PATH_REQUIRED"
+    ]
+    assert refreshed.status == FindingStatus.VALIDATION_FAILED.value
+
+
+def test_escalation_approval_finding_blocks_reassessment(db_session):
+    _, _, _, decision = _escalated_by_policy(db_session)
+    finding = finding_service.generate_for_decision(db_session, ORG, decision.id)[0]
+
+    reassessed = reassessment_service.trigger(db_session, ORG, finding.id)
+    assert reassessed["reassessed"] is False
+    assert reassessed["reason_codes"] == ["REASSESS_BLOCKED_APPROVAL_PATH_REQUIRED"]
+    assert reassessed["new_decision_id"] is None
+    assert reassessed["decision_outcome"] is None
+
+    # Barrier 3 + the evidence trail: the block reason is PERSISTED.
+    refreshed = finding_service.get(db_session, ORG, finding.id)
+    assert json.loads(refreshed.resolution_reason_codes) == [
+        "REASSESS_BLOCKED_APPROVAL_PATH_REQUIRED"
+    ]
+    # No new decision was created for the intent.
+    history = reassessment_service.decision_history(db_session, ORG, decision.intent_id)
+    assert len(history["decisions"]) == 1
+    assert history["decisions"][0]["outcome"] == DecisionOutcome.ESCALATED.value
+
+
+def test_control_remediation_escalation_is_not_reclassified(db_session):
+    """Regression: an assessment-driven (NOT_SATISFIED) escalation keeps its
+    CONTROL_FAILURE finding and normal remediable path — only the pure
+    policy-condition escalation (ESCALATED_BY_POLICY) gets the new type."""
+    _, _, _, decision = _escalated_control_failure(db_session)
+    finding = finding_service.generate_for_decision(db_session, ORG, decision.id)[0]
+    assert finding.finding_type == FindingType.CONTROL_FAILURE.value
+    assert finding.remediation_eligibility == RemediationEligibility.ELIGIBLE.value

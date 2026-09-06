@@ -59,6 +59,14 @@ def _load(raw: Optional[str], default: Any = None) -> Any:
 # --------------------------------------------------------------------------- #
 _DEFAULT_TERMINAL_TYPES = frozenset({FindingType.POLICY_PROHIBITION.value})
 
+# Finding types that are NEVER eligible for remediation, regardless of a
+# package's ``remediation`` config. ``ESCALATION_APPROVAL_REQUIRED`` is resolved
+# only by an authority-verified human approval + an explicit re-decision, so it
+# must never acquire a remediation plan (which would route it into
+# resolution_validation_service / reassessment_service — the rubber-stamp path
+# this type exists to keep it out of).
+_ALWAYS_INELIGIBLE = frozenset({FindingType.ESCALATION_APPROVAL_REQUIRED.value})
+
 
 def _remediation_config(db: Session, org: str, decision: Decision) -> dict[str, Any]:
     """Aggregate the remediation configuration from the governing packages.
@@ -92,7 +100,11 @@ def _remediation_config(db: Session, org: str, decision: Decision) -> dict[str, 
 def _eligibility(
     finding_type: str, terminal: bool, config: dict[str, Any]
 ) -> str:
-    if terminal or finding_type in config["ineligible_finding_types"]:
+    if (
+        terminal
+        or finding_type in _ALWAYS_INELIGIBLE
+        or finding_type in config["ineligible_finding_types"]
+    ):
         return RemediationEligibility.INELIGIBLE.value
     return RemediationEligibility.ELIGIBLE.value
 
@@ -195,6 +207,37 @@ def _policy_prohibition(decision: Decision) -> Optional[dict[str, Any]]:
     if "POLICY_PROHIBITION" in reasons or prohibition:
         return {"reason_codes": [str(r) for r in reasons]}
     return None
+
+
+def _escalation_approval_required(decision: Decision) -> Optional[dict[str, Any]]:
+    """Detail if this decision escalated purely via a governance policy condition.
+
+    ``ESCALATED_BY_POLICY`` is emitted only by
+    ``decision_service._resolve_outcome`` and only for a ``SATISFIED``
+    assessment whose decision conditions selected ``ESCALATED`` — i.e. no
+    failing control, no manual-review assessment, no evidence gap. A package
+    cannot forge that mapping code (its condition ``reason_code`` is appended
+    separately). Such an escalation is resolvable only by an authority-verified
+    human approval, so it gets a dedicated finding type.
+    """
+    if decision.outcome != DecisionOutcome.ESCALATED.value:
+        return None
+    reasons = _load(decision.reason_codes, []) or []
+    if "ESCALATED_BY_POLICY" not in reasons:
+        return None
+    triggered = _load(decision.decision_conditions_triggered, []) or []
+    escalating = [
+        c
+        for c in triggered
+        if isinstance(c, dict)
+        and c.get("resulting_decision") == DecisionOutcome.ESCALATED.value
+    ]
+    return {
+        "reason_codes": [str(r) for r in reasons],
+        "condition_reason_codes": [
+            str(c["reason_code"]) for c in escalating if c.get("reason_code")
+        ],
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -394,6 +437,40 @@ def generate_for_decision(
                     control_ids=[],
                     evidence_gap_ids=[ev_req_id] if ev_req_id else [],
                     reason_codes=[code, f"EVIDENCE_{state}"],
+                    config=config,
+                )
+            )
+
+    # --- Rule 4: policy-condition escalation of an otherwise-clean decision - #
+    # Resolvable ONLY by an authority-verified human approval. Its dedicated
+    # finding type (always remediation-ineligible) keeps it out of the
+    # remediation / re-assessment rubber-stamp path.
+    if not findings:
+        approval = _escalation_approval_required(decision)
+        if approval is not None:
+            findings.append(
+                _build_finding(
+                    org=org,
+                    decision=decision,
+                    assessment=assessment,
+                    finding_type=FindingType.ESCALATION_APPROVAL_REQUIRED.value,
+                    title="Human approval required for escalated decision",
+                    description=(
+                        "A governance policy condition escalated this decision. "
+                        "It can be resolved only by an authority-verified "
+                        "approval from a principal holding approve authority for "
+                        "this action — not by remediation evidence, a plain "
+                        "review record, or re-assessment."
+                    ),
+                    severity=GovernanceSeverity.HIGH.value,
+                    requirement_ids=[],
+                    control_ids=[],
+                    evidence_gap_ids=[],
+                    reason_codes=[
+                        "FINDING_ESCALATION_APPROVAL_REQUIRED",
+                        *approval["reason_codes"],
+                        *approval["condition_reason_codes"],
+                    ],
                     config=config,
                 )
             )

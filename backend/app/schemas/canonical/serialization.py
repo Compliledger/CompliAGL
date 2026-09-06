@@ -110,6 +110,7 @@ _JSON_FIELDS: dict[str, tuple[str, ...]] = {
         "control_ids",
         "evidence_gap_ids",
         "reason_codes",
+        "resolution_reason_codes",
     ),
     "RemediationPlan": (
         "remediation_actions",

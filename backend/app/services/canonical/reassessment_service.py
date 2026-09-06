@@ -87,6 +87,30 @@ def trigger(
             "finding_status": finding.status,
         }
 
+    # --- An escalation-approval finding must NEVER reach the re-assessment
+    #     rubber-stamp. trigger() hardcodes a SATISFIED assessment + APPROVED
+    #     decision with no authority check whatsoever; for a decision that
+    #     escalated for human approval that would be the exact bypass this
+    #     finding type exists to close. Refuse outright and persist the reason.
+    #     (Barriers 1 and 2 — INELIGIBLE for remediation, and never VALIDATED
+    #     by resolution_validation_service — already make this state
+    #     unreachable; this is the explicit third barrier.) ---
+    if finding.finding_type == FindingType.ESCALATION_APPROVAL_REQUIRED.value:
+        finding.resolution_reason_codes = json.dumps(
+            ["REASSESS_BLOCKED_APPROVAL_PATH_REQUIRED"]
+        )
+        FindingRepository(db).save(finding)
+        return {
+            "finding_id": finding.finding_id,
+            "reassessed": False,
+            "reason_codes": ["REASSESS_BLOCKED_APPROVAL_PATH_REQUIRED"],
+            "prior_decision_id": finding.decision_id,
+            "new_decision_id": None,
+            "new_assessment_id": None,
+            "decision_outcome": None,
+            "finding_status": finding.status,
+        }
+
     # --- Rule 7: only a validated resolution may proceed ------------------- #
     if (
         finding.resolution_validation_outcome

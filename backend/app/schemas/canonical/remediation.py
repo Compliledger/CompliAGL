@@ -64,6 +64,9 @@ class FindingResponse(CanonicalResponseBase):
     resolution_validation_outcome: Optional[str] = None
     resolved_by_decision_id: Optional[str] = None
     reason_codes: list[Any] = Field(default_factory=list)
+    # Resolution-phase reason codes (why a resolution attempt was rejected /
+    # a re-assessment blocked). ``None`` until the resolution phase runs.
+    resolution_reason_codes: Optional[list[Any]] = None
     finding_hash: Optional[str] = None
 
 
