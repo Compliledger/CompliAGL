@@ -1,17 +1,34 @@
 # Ask: Bootstrap a CompliAGL service principal in CompliIdentity
 
-> **RESOLVED (2026-09-06).** The CompliAGL service principal was created in
-> CompliIdentity during the demo3 acceptance run:
-> `compliagl_service`, principal ID
-> `0812c9a2-f1c2-4cd2-81a8-8384502ad77e`, tenant `harborstone-demo`, with
-> role `compliagl-authority-reader`. Confirmed working: acceptance check
-> AC6 issued an authority-context call with this principal as
-> `X-Actor-Principal-Id` and got a `200` identical to the platform-admin
-> caller. Auth mechanism confirmed: `X-Actor-Principal-Id` header, no
-> bearer token required in the demo environment. Set
-> `COMPLIIDENTITY_SERVICE_PRINCIPAL_ID=0812c9a2-f1c2-4cd2-81a8-8384502ad77e`
-> for integration testing. The rest of this file is kept for historical
-> context.
+> **RESOLVED (2026-09-06).** A CompliAGL service principal
+> (`compliagl_service`, type `SERVICE`, tenant `harborstone-demo`, role
+> `compliagl-authority-reader`) is created as part of the demo setup.
+> Confirmed working: acceptance check AC6 issues an authority-context call
+> with this principal as `X-Actor-Principal-Id` and gets a `200` identical
+> to the platform-admin caller. Auth mechanism confirmed:
+> `X-Actor-Principal-Id` header, no bearer token required in the demo
+> environment.
+>
+> **Current principal ID: `ae24b758-edb6-4ffa-895e-78990ca8293c`** — export
+> it (with `COMPLIIDENTITY_BASE_URL`) as an environment variable in the
+> process that runs the CompliAGL decision engine:
+> `COMPLIIDENTITY_SERVICE_PRINCIPAL_ID=ae24b758-edb6-4ffa-895e-78990ca8293c`.
+> `authority_context_service.default_client()` reads it via `os.environ`,
+> the same way the SecureRob connector reads `SECUREROB_GATEWAY_BASE_URL` —
+> it is deliberately **not** a `backend/.env` / pydantic-`Settings` key
+> (that model is `extra="forbid"` and does not populate `os.environ`).
+>
+> This ID is tied to the local **`compliidentity_demo3_step2.db`** working
+> instance specifically (created by
+> `demo3_step2/compliidentity_setup_phases_1_7.py`). If that instance is
+> ever regenerated, CompliIdentity re-issues every principal id and this
+> value must be updated again — in the exported environment variable, and in
+> `backend/app/db/seed.py` (`_HARBORSTONE_*_PRINCIPAL_ID`, alongside the
+> three actor principal ids). The original demo3 acceptance-evidence run
+> (CompliIdentity branch `demo3-identity-acceptance-evidence`) issued a
+> different id, `0812c9a2-f1c2-4cd2-81a8-8384502ad77e`, now stale.
+>
+> The rest of this file is kept for historical context.
 
 **Status:** ~~Open item~~ RESOLVED — see note above. Was: non-blocking for
 code, blocking for live (non-mock) end-to-end testing of the

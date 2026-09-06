@@ -15,16 +15,42 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.models.actor_identity import ActorIdentity
 from app.models.organization import Organization
 from app.models.policy import Policy
 from app.mvp2.schemas.actor import ActorType
 from app.services import actor_registry
+from app.utils.canonical_enums import (
+    CanonicalActorType,
+    CredentialType,
+    RevocationStatus,
+    VerificationStatus,
+)
 
 # Canonical, stable demo identifiers (kept identical to the historical demo
 # ids so existing clients and docs continue to work).
 DEMO_TRAVEL_AGENT_ID = UUID("00000000-0000-0000-0000-000000000001")
 DEMO_OPS_MANAGER_ID = UUID("00000000-0000-0000-0000-000000000002")
 DEMO_TRAVEL_POLICY_ID = UUID("00000000-0000-0000-0000-000000000101")
+
+# --- HarborStone Demo #3 (CompliIdentity integration) --------------------- #
+# Stable CompliAGL-side ActorIdentity ids for the three HarborStone actors.
+# These never change; the CompliIdentity ``principal_id`` each one carries
+# (below) is instance-specific and refreshed *in place* on the same three
+# rows whenever the local CompliIdentity working DB is regenerated.
+HARBORSTONE_ORG_ID = "harborstone-demo"
+HARBORSTONE_AIRA_ACTOR_ID = "harborstone-demo-actor-aira"
+HARBORSTONE_SENTRY_ACTOR_ID = "harborstone-demo-actor-sentry"
+HARBORSTONE_JORDAN_ACTOR_ID = "harborstone-demo-actor-jordan"
+
+# CompliIdentity principal ids — issued by the local ``compliidentity_demo3_
+# step2.db`` instance (see ``demo3_step2/compliidentity_setup_phases_1_7.py``
+# and its ``compliidentity_setup_results.json``). Regenerating that instance
+# re-issues these; update the three values here when that happens.
+_COMPLIIDENTITY_INSTANCE = "compliidentity_demo3_step2.db"
+_HARBORSTONE_AIRA_PRINCIPAL_ID = "e35ac15a-b8f4-4a7d-9003-5a0d15750ade"
+_HARBORSTONE_SENTRY_PRINCIPAL_ID = "302415c0-00ab-49b0-8a65-01175c0deb68"
+_HARBORSTONE_JORDAN_PRINCIPAL_ID = "e35d7b95-1a10-4654-9b02-2181df052f96"
 
 
 def seed_demo_actors(db: Session) -> None:
@@ -94,8 +120,72 @@ def seed_organizations(db: Session) -> None:
     db.commit()
 
 
+def seed_harborstone_actors(db: Session) -> None:
+    """Idempotently persist the HarborStone Demo #3 actor identities.
+
+    AIRA and SENTRY are ``AI_AGENT`` actors whose CompliIdentity
+    ``principal_id`` is carried in ``wallet_or_agent_account_id``; Jordan Lee
+    is ``HUMAN`` and carries it in ``human_principal_id``. That is the field
+    ``decision_service._authority_principal_id`` reads to build the
+    CompliIdentity authority-context probe. The same id is mirrored into
+    ``identity_metadata['compliidentity_principal_id']`` (with tenant and
+    source instance) so the linkage is explicit and greppable, not implied
+    by an awkwardly-named column.
+
+    The ``principal_id`` values are re-issued whenever the local
+    CompliIdentity instance is regenerated, so this refreshes them on the
+    existing rows rather than only inserting — the CompliAGL-side ``id`` is
+    the stable key.
+    """
+    rows = (
+        (
+            HARBORSTONE_AIRA_ACTOR_ID,
+            CanonicalActorType.AI_AGENT,
+            "AIRA",
+            _HARBORSTONE_AIRA_PRINCIPAL_ID,
+        ),
+        (
+            HARBORSTONE_SENTRY_ACTOR_ID,
+            CanonicalActorType.AI_AGENT,
+            "SENTRY",
+            _HARBORSTONE_SENTRY_PRINCIPAL_ID,
+        ),
+        (
+            HARBORSTONE_JORDAN_ACTOR_ID,
+            CanonicalActorType.HUMAN,
+            "Jordan Lee",
+            _HARBORSTONE_JORDAN_PRINCIPAL_ID,
+        ),
+    )
+    for actor_id, actor_type, display_name, principal_id in rows:
+        is_human = actor_type == CanonicalActorType.HUMAN
+        metadata = {
+            "display_name": display_name,
+            "demo": "harborstone",
+            "compliidentity_principal_id": principal_id,
+            "compliidentity_tenant_id": HARBORSTONE_ORG_ID,
+            "compliidentity_instance": _COMPLIIDENTITY_INSTANCE,
+        }
+        actor = db.get(ActorIdentity, actor_id)
+        if actor is None:
+            actor = ActorIdentity(
+                id=actor_id,
+                organization_id=HARBORSTONE_ORG_ID,
+                actor_type=actor_type.value,
+                credential_type=CredentialType.NONE.value,
+                verification_status=VerificationStatus.UNVERIFIED.value,
+                revocation_status=RevocationStatus.ACTIVE.value,
+            )
+            db.add(actor)
+        actor.human_principal_id = principal_id if is_human else None
+        actor.wallet_or_agent_account_id = None if is_human else principal_id
+        actor.identity_metadata = json.dumps(metadata)
+    db.commit()
+
+
 def seed_demo_data(db: Session) -> None:
     """Seed all canonical demo data (organizations + actors + policies)."""
     seed_organizations(db)
     seed_demo_actors(db)
     seed_demo_policies(db)
+    seed_harborstone_actors(db)
