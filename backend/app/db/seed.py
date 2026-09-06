@@ -183,9 +183,60 @@ def seed_harborstone_actors(db: Session) -> None:
     db.commit()
 
 
+def seed_harborstone_package(db: Session) -> None:
+    """Idempotently publish the HarborStone Demo #3 governance package.
+
+    Runs ``build_harborstone_package()`` through the real lifecycle
+    (create -> validate -> approve -> publish). Skips entirely when a
+    PUBLISHED package with the same (name, version) already exists.
+
+    **This package carries a placeholder sanctions-screening control**
+    (``CTL-PLACEHOLDER-SANCTIONS-SCREENING``, ``evaluation_expression:
+    "True"`` -- see
+    ``PENDING_REVIEW_harborstone_screening_control_placeholder.md``). It is
+    scoped to the ``harborstone-demo`` org only and named unambiguously; it
+    exists so the decision-engine + CompliIdentity authority-context wiring
+    can be exercised end-to-end, and must be replaced with real screening
+    content before any actual HarborStone demo run.
+
+    The approve step records ``approved_by="demo3-step2-seed"`` -- a marker
+    string. ``governance_package_service.approve()`` does not validate that
+    value against any principal, role or authority; the package-approval
+    action has no identity check behind it. See
+    ``docs/HUMAN_APPROVAL_ORCHESTRATION_GAP.md`` ("Related: package-approval
+    layer").
+    """
+    from app.db.harborstone_package import (
+        PACKAGE_NAME,
+        PACKAGE_VERSION,
+        build_harborstone_package,
+    )
+    from app.services.canonical import governance_package_service
+
+    existing = governance_package_service.get_published_version(
+        db, HARBORSTONE_ORG_ID, PACKAGE_NAME, PACKAGE_VERSION
+    )
+    if existing is not None:
+        return
+
+    pkg = governance_package_service.create(
+        db, build_harborstone_package(HARBORSTONE_ORG_ID)
+    )
+    result = governance_package_service.validate(db, HARBORSTONE_ORG_ID, pkg.id)
+    if not result.valid:
+        raise RuntimeError(
+            f"HarborStone governance package failed validation: {result.errors}"
+        )
+    governance_package_service.approve(
+        db, HARBORSTONE_ORG_ID, pkg.id, approved_by="demo3-step2-seed"
+    )
+    governance_package_service.publish(db, HARBORSTONE_ORG_ID, pkg.id)
+
+
 def seed_demo_data(db: Session) -> None:
     """Seed all canonical demo data (organizations + actors + policies)."""
     seed_organizations(db)
     seed_demo_actors(db)
     seed_demo_policies(db)
     seed_harborstone_actors(db)
+    seed_harborstone_package(db)
