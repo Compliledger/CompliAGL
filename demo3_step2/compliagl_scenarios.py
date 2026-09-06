@@ -60,10 +60,11 @@ if _BACKEND not in sys.path:
 _DEMO_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "compliagl_demo3.db")
 os.environ["DATABASE_URL"] = f"sqlite:///{_DEMO_DB}"
 os.environ["DEBUG"] = "false"
-os.environ.setdefault("COMPLIIDENTITY_BASE_URL", "http://127.0.0.1:8137")
-os.environ.setdefault(
-    "COMPLIIDENTITY_SERVICE_PRINCIPAL_ID", "ae24b758-edb6-4ffa-895e-78990ca8293c"
-)
+
+# COMPLIIDENTITY_BASE_URL / COMPLIIDENTITY_SERVICE_PRINCIPAL_ID -- the live
+# authority-context wiring default_client() reads from os.environ. Single source
+# of truth for these values; importing it applies them (setdefault).
+import _live_env  # noqa: E402,F401
 
 # a fresh db per run keeps the captured evidence reproducible
 if os.path.exists(_DEMO_DB):
