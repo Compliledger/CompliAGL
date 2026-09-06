@@ -615,6 +615,27 @@ class ReviewOutcome(str, Enum):
     NEEDS_MORE_INFO = "NEEDS_MORE_INFO"
 
 
+class EscalationApprovalStatus(str, Enum):
+    """Lifecycle of an :class:`EscalationApproval`.
+
+    An escalation approval authorises re-evaluation of an ``ESCALATED`` decision
+    that escalated for human approval. It is time-bounded (``valid_until``) and
+    consumed by exactly one re-decision.
+
+    * ``ACTIVE`` — granted and not yet consumed. Whether it is still *within* its
+      validity window is evaluated at decision time against ``valid_until`` (see
+      ``runtime_facts.build_approval_facts``), not stored here.
+    * ``CONSUMED`` — a re-decision used this approval to upgrade the escalation;
+      ``consumed_by_decision_id`` points at the new decision.
+    * ``EXPIRED`` — explicitly retired after its window passed without being
+      consumed (a terminal, non-reusable state).
+    """
+
+    ACTIVE = "ACTIVE"
+    CONSUMED = "CONSUMED"
+    EXPIRED = "EXPIRED"
+
+
 # --------------------------------------------------------------------------- #
 # Integration / event-feed vocabulary (ProofSync / AuditSync / RegSync)
 # --------------------------------------------------------------------------- #

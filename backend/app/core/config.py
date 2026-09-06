@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     # authorizations should be short-lived.
     AUTHORIZATION_DEFAULT_TTL_SECONDS: int = 900
 
+    # ── Escalation-approval orchestration ────────────────────────────
+    # Default lifetime (seconds) of a human ``EscalationApproval`` when the
+    # submitter does not supply an explicit ``valid_until``. Mirrors
+    # ``AUTHORIZATION_DEFAULT_TTL_SECONDS`` — a human approval of an escalated
+    # decision is a narrow, replay-resistant window, not a standing grant.
+    ESCALATION_APPROVAL_TTL_SECONDS: int = 900
+
     # ── Integration event signing (ProofSync / AuditSync / RegSync) ──────
     # Registry of signing keys used to sign and independently verify outbound
     # integration events, as a mapping of ``signer_key_id`` to a private signing

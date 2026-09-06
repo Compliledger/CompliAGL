@@ -18,11 +18,13 @@ import pytest
 from app.models.assessment import Assessment
 from app.models.control_evaluation import ControlEvaluation
 from app.models.decision import Decision
+from app.models.escalation_approval import EscalationApproval
 from app.models.intent import Intent
 from app.repositories.canonical import (
     AssessmentRepository,
     ControlEvaluationRepository,
     DecisionRepository,
+    EscalationApprovalRepository,
     IntentRepository,
 )
 from app.schemas.canonical.remediation import (
@@ -51,6 +53,7 @@ from app.utils.canonical_enums import (
     DecisionOutcome,
     DecisionSupersessionStatus,
     DevSyncCallbackStatus,
+    EscalationApprovalStatus,
     FindingStatus,
     FindingType,
     RemediationEligibility,
@@ -888,3 +891,60 @@ def test_control_remediation_escalation_is_not_reclassified(db_session):
     finding = finding_service.generate_for_decision(db_session, ORG, decision.id)[0]
     assert finding.finding_type == FindingType.CONTROL_FAILURE.value
     assert finding.remediation_eligibility == RemediationEligibility.ELIGIBLE.value
+
+
+# --------------------------------------------------------------------------- #
+# EscalationApproval model + repository (commit 2 — persistence wiring only;
+# the authority-checked submit path and fact-driven re-decision come next)
+# --------------------------------------------------------------------------- #
+def _mk_escalation_approval(db, *, decision_id, status=None, **overrides):
+    now = utc_now()
+    fields = dict(
+        organization_id=ORG,
+        escalation_approval_id="EAP-" + uuid.uuid4().hex[:16],
+        decision_id=decision_id,
+        approver_principal_id="principal-jordan",
+        approver_principal_type="HUMAN",
+        approver_authority_hash="ah-" + uuid.uuid4().hex[:8],
+        rationale="Verified approve authority for this action; within policy.",
+        granted_at=now,
+        valid_until=now + timedelta(seconds=900),
+    )
+    fields.update(overrides)
+    if status is not None:
+        fields["status"] = status
+    return EscalationApprovalRepository(db).add(EscalationApproval(**fields))
+
+
+def test_escalation_approval_round_trips_and_defaults_active(db_session):
+    intent = _mk_intent(db_session)
+    approval = _mk_escalation_approval(
+        db_session, decision_id="dec-esc-1", intent_id=intent.id
+    )
+    assert approval.status == EscalationApprovalStatus.ACTIVE.value
+    assert approval.consumed_by_decision_id is None
+    fetched = EscalationApprovalRepository(db_session).get(ORG, approval.id)
+    assert fetched.approver_principal_type == "HUMAN"
+    assert fetched.valid_until > fetched.granted_at
+
+
+def test_escalation_approval_current_for_decision_only_returns_active(db_session):
+    _mk_intent(db_session)
+    repo = EscalationApprovalRepository(db_session)
+    active = _mk_escalation_approval(db_session, decision_id="dec-esc-2")
+    _mk_escalation_approval(
+        db_session,
+        decision_id="dec-esc-2",
+        status=EscalationApprovalStatus.CONSUMED.value,
+        consumed_by_decision_id="dec-esc-2-new",
+    )
+    assert len(repo.list_for_decision(ORG, "dec-esc-2")) == 2
+    current = repo.current_for_decision(ORG, "dec-esc-2")
+    assert current is not None and current.id == active.id
+    assert repo.current_for_decision(ORG, "dec-esc-nonexistent") is None
+
+
+def test_escalation_approval_ttl_default_is_configured():
+    from app.core.config import settings
+
+    assert settings.ESCALATION_APPROVAL_TTL_SECONDS == 900
