@@ -290,22 +290,38 @@ def _authority_principal_id(actor) -> Optional[str]:
 
 
 def _authority_request_params(intent) -> dict[str, Any]:
-    """Map an Intent to CompliIdentity's ``resource`` / ``action`` probe
-    fields.
+    """Map an Intent to CompliIdentity's ``resource`` / ``action`` /
+    ``resource_instance`` probe fields.
 
-    ASSUMPTION: the contract's own example pairs a fixed probe verb
-    (``action: "request"``) with a business-object noun (``resource``), not
-    literally ``intent.action``. ``resource`` is read from
-    ``intent.parameters["compliidentity_resource"]`` when the governance
-    package author supplied one, falling back to ``intent.intent_type``.
-    When the intent carries an amount, it's passed as the
-    ``attribute``/``value`` probe pair so CompliIdentity's
-    ``authority_for_request`` is scoped to the actual proposed action
-    (per the contract owner's guidance), not just a generic liveness check.
+    All three come from ``intent.parameters`` when the governance package
+    author supplied them, following the existing ``compliidentity_resource``
+    pattern:
+
+    * ``compliidentity_resource`` -> ``resource`` (falls back to
+      ``intent.intent_type``).
+    * ``compliidentity_action`` -> ``action`` (falls back to ``"request"``).
+      CompliIdentity's real permission model keys on the semantic verb --
+      ``read`` / ``propose`` / ``approve`` -- not a generic probe verb;
+      confirmed against the demo3 acceptance run, where every acceptance
+      check used the real action. The ``"request"`` fallback keeps every
+      package that predates this (and every non-opt-in package) unchanged.
+    * ``compliidentity_resource_instance`` -> ``resource_instance``, sent
+      only when supplied. This is what makes CompliIdentity's resource-scope
+      narrowing meaningful -- e.g. a grant scoped to one case, inherited by a
+      delegate: without the instance the probe can't see the scope bound.
+
+    When the intent carries an amount it's passed as the ``attribute`` /
+    ``value`` pair so CompliIdentity's ``authority_for_request`` is scoped to
+    the actual proposed action (and its ``approval_required`` /
+    ``limit_exceeded`` reflect the real threshold), not just a liveness check.
     """
     params = _load(intent.parameters) or {}
     resource = params.get("compliidentity_resource") or intent.intent_type
-    result: dict[str, Any] = {"resource": resource, "action": "request"}
+    action = params.get("compliidentity_action") or "request"
+    result: dict[str, Any] = {"resource": resource, "action": action}
+    resource_instance = params.get("compliidentity_resource_instance")
+    if resource_instance is not None:
+        result["resource_instance"] = resource_instance
     if intent.amount_minor is not None:
         result["attribute"] = "amount"
         result["value"] = str(intent.amount_minor)

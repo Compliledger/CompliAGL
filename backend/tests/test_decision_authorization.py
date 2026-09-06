@@ -1073,6 +1073,52 @@ _AUTHORITY_BOOLEAN_FACT_CONDITIONS = [
 ]
 
 
+def _fake_intent(parameters=None, *, intent_type="transfer", amount_minor=None):
+    import json as _json
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        parameters=_json.dumps(parameters) if parameters is not None else None,
+        intent_type=intent_type,
+        amount_minor=amount_minor,
+    )
+
+
+def test_authority_request_params_defaults_unchanged():
+    """A package that supplies none of the compliidentity_* params probes
+    exactly as before: generic 'request' verb, intent_type as resource, no
+    resource_instance."""
+    params = decision_service._authority_request_params(_fake_intent())
+    assert params == {"resource": "transfer", "action": "request"}
+
+
+def test_authority_request_params_semantic_action_and_instance():
+    intent = _fake_intent(
+        {
+            "compliidentity_resource": "aml.action",
+            "compliidentity_action": "propose",
+            "compliidentity_resource_instance": "HARBORSTONE-2024-0042",
+        },
+        amount_minor=25000000,
+    )
+    params = decision_service._authority_request_params(intent)
+    assert params == {
+        "resource": "aml.action",
+        "action": "propose",
+        "resource_instance": "HARBORSTONE-2024-0042",
+        "attribute": "amount",
+        "value": "25000000",
+    }
+
+
+def test_authority_request_params_partial_opt_in():
+    """Supplying only the action still leaves resource_instance unsent."""
+    intent = _fake_intent({"compliidentity_action": "approve"})
+    params = decision_service._authority_request_params(intent)
+    assert params == {"resource": "transfer", "action": "approve"}
+    assert "resource_instance" not in params
+
+
 def test_authority_structured_booleans_exposed_as_facts(db_session, monkeypatch):
     """The raw authority_for_request booleans (approval_required here) reach
     package conditions as facts independently of the derived `authority.reason`
