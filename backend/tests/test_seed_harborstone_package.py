@@ -32,7 +32,10 @@ def test_seed_publishes_the_package(db_session):
     assert published is not None
     assert published.status == PackageStatus.PUBLISHED.value
     assert published.requires_authority_context is True
-    assert published.approved_by == "demo3-step2-seed"
+    assert published.approved_by == "seed-bootstrap"
+    assert published.approval_rationale
+    # Authority check disabled by default -> no verified authority snapshot.
+    assert published.approver_authority_hash is None
 
 
 def test_seed_is_idempotent(db_session):

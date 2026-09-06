@@ -24,6 +24,7 @@ from app.schemas.canonical.governance_package import (
 from app.schemas.canonical.serialization import orm_to_dict
 from app.services.canonical import governance_package_service as svc
 from app.services.canonical.errors import (
+    AuthorityVerificationError,
     ConflictError,
     InvalidTransitionError,
     NotFoundError,
@@ -125,12 +126,27 @@ def approve_package(
 ):
     try:
         return orm_to_dict(
-            svc.approve(db, organization_id, package_id, payload.approved_by)
+            svc.approve(
+                db,
+                organization_id,
+                package_id,
+                approver_principal_id=payload.approver_principal_id,
+                rationale=payload.rationale,
+            )
         )
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
-    except InvalidTransitionError as exc:
+    except (InvalidTransitionError, ConflictError) as exc:
         raise HTTPException(status_code=409, detail=str(exc))
+    except AuthorityVerificationError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "authority_verification_failed",
+                "reason": exc.reason,
+                "message": str(exc),
+            },
+        )
 
 
 @router.post(

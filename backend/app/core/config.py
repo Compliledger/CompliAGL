@@ -34,6 +34,15 @@ class Settings(BaseSettings):
     # signer_key_id/signature must present a valid signature or be rejected.
     GOVERNANCE_SIGNING_KEYS: dict[str, str] = {}
 
+    # ── Executable governance package approval authority ─────────────
+    # When true, ``governance_package_service.approve()`` verifies the
+    # approver's authority to approve (CompliIdentity ``governance.package`` /
+    # ``approve``) and rejects the approval fail-closed if it cannot. When
+    # false (default), the approver principal id + rationale are still required
+    # and recorded but not verified -- mirrors ``GOVERNANCE_SIGNING_KEYS``
+    # (empty means "not enforced").
+    GOVERNANCE_APPROVAL_AUTHORITY_REQUIRED: bool = False
+
     # ── Execution authorization signing ──────────────────────────────
     # Registry of signing keys used to sign and independently verify issued
     # ExecutionAuthorizations, as a mapping of ``signer_key_id`` to a private

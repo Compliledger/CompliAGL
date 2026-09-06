@@ -201,7 +201,7 @@ def test_full_package_lifecycle_via_api(api_client):
     # Approve
     appr = api_client.post(
         f"/api/v1/governance-packages/{pid}/approve",
-        json={"approved_by": "admin@corp"},
+        json={"approver_principal_id": "admin@corp", "rationale": "test approval"},
         headers=AUTHOR_HDR,
     )
     assert appr.status_code == 200, appr.text
@@ -290,7 +290,7 @@ def _publish(api_client, body=None):
     )
     api_client.post(
         f"/api/v1/governance-packages/{pid}/approve",
-        json={"approved_by": "admin@corp"},
+        json={"approver_principal_id": "admin@corp", "rationale": "test approval"},
         headers=AUTHOR_HDR,
     )
     pub = api_client.post(
@@ -372,7 +372,10 @@ def test_publish_rejects_invalid_signature_when_signing_configured(
     body["signature"] = "deadbeef"  # wrong signature
     pkg = svc.create(db_session, ExecutableGovernancePackageCreate(**body))
     svc.validate(db_session, ORG, pkg.id)
-    svc.approve(db_session, ORG, pkg.id, "admin@corp")
+    svc.approve(
+        db_session, ORG, pkg.id, approver_principal_id="admin@corp",
+        rationale="approved for test",
+    )
     with pytest.raises(PackageSignatureError):
         svc.publish(db_session, ORG, pkg.id)
 
@@ -393,7 +396,10 @@ def test_publish_accepts_valid_signature(db_session, monkeypatch):
     body["signer_key_id"] = "key-1"
     pkg = svc.create(db_session, ExecutableGovernancePackageCreate(**body))
     svc.validate(db_session, ORG, pkg.id)
-    svc.approve(db_session, ORG, pkg.id, "admin@corp")
+    svc.approve(
+        db_session, ORG, pkg.id, approver_principal_id="admin@corp",
+        rationale="approved for test",
+    )
     # Sign the (now-bound) package hash and attach it.
     pkg.signature = compute_signature("key-1", pkg.package_hash)
     db_session.commit()
@@ -411,7 +417,10 @@ def test_published_content_hash_is_stable(db_session):
     pkg = svc.create(db_session, ExecutableGovernancePackageCreate(**_fixture()))
     svc.validate(db_session, ORG, pkg.id)
     hash_before = pkg.package_hash
-    svc.approve(db_session, ORG, pkg.id, "admin@corp")
+    svc.approve(
+        db_session, ORG, pkg.id, approver_principal_id="admin@corp",
+        rationale="approved for test",
+    )
     published = svc.publish(db_session, ORG, pkg.id)
     # Publishing recomputes and verifies the hash; content unchanged -> stable.
     assert published.package_hash == hash_before
@@ -432,10 +441,148 @@ def test_runtime_retrieves_only_published_version(db_session):
         is None
     )
     svc.validate(db_session, ORG, pkg.id)
-    svc.approve(db_session, ORG, pkg.id, "admin@corp")
+    svc.approve(
+        db_session, ORG, pkg.id, approver_principal_id="admin@corp",
+        rationale="approved for test",
+    )
     svc.publish(db_session, ORG, pkg.id)
     found = svc.get_published_version(
         db_session, ORG, "corporate-travel-policy", "1.0.0"
     )
     assert found is not None
     assert found.id == pkg.id
+
+
+# --------------------------------------------------------------------------- #
+# approve() -- identified act; CompliIdentity verification when required
+# --------------------------------------------------------------------------- #
+class _FakeApproveClient:
+    def __init__(self, ctx):
+        self._ctx = ctx
+        self.calls = []
+
+    def fetch(self, **kw):
+        self.calls.append(kw)
+        return self._ctx
+
+
+def _validated_pkg(db_session):
+    from app.schemas.canonical.governance_package import (
+        ExecutableGovernancePackageCreate,
+    )
+    from app.services.canonical import governance_package_service as svc
+
+    pkg = svc.create(db_session, ExecutableGovernancePackageCreate(**_fixture()))
+    svc.validate(db_session, ORG, pkg.id)
+    return svc, pkg
+
+
+def test_approve_requires_an_approver_and_a_rationale(db_session):
+    from app.services.canonical.errors import ConflictError
+
+    svc, pkg = _validated_pkg(db_session)
+    with pytest.raises(ConflictError):
+        svc.approve(db_session, ORG, pkg.id, approver_principal_id="", rationale="x")
+    with pytest.raises(ConflictError):
+        svc.approve(db_session, ORG, pkg.id, approver_principal_id="p", rationale=" ")
+
+
+def test_approve_records_identity_without_verification_by_default(db_session):
+    svc, pkg = _validated_pkg(db_session)
+    approved = svc.approve(
+        db_session,
+        ORG,
+        pkg.id,
+        approver_principal_id="governance-admin-1",
+        rationale="policy reviewed and signed off",
+    )
+    assert approved.approved_by == "governance-admin-1"
+    assert approved.approval_rationale == "policy reviewed and signed off"
+    assert approved.approver_authority_hash is None
+
+
+def test_approve_verifies_authority_when_required(db_session, monkeypatch):
+    from app.core.config import settings
+    from app.services.canonical import authority_context_service
+    from app.services.canonical.authority_context_service import AuthorityContext
+
+    svc, pkg = _validated_pkg(db_session)
+    monkeypatch.setattr(
+        settings, "GOVERNANCE_APPROVAL_AUTHORITY_REQUIRED", True, raising=False
+    )
+    client = _FakeApproveClient(
+        AuthorityContext(
+            status="OK", sufficient=True, raw={"principal_type": "HUMAN"}
+        )
+    )
+    monkeypatch.setattr(
+        authority_context_service, "default_client", lambda **kw: client
+    )
+
+    approved = svc.approve(
+        db_session,
+        ORG,
+        pkg.id,
+        approver_principal_id="governance-admin-1",
+        rationale="verified approval",
+    )
+    assert approved.approver_authority_hash is not None
+    (probe,) = client.calls
+    assert probe["resource"] == "governance.package"
+    assert probe["action"] == "approve"
+
+
+def test_approve_fails_closed_when_required_but_unconfigured(db_session, monkeypatch):
+    from app.core.config import settings
+    from app.services.canonical import authority_context_service
+    from app.services.canonical.errors import AuthorityVerificationError
+
+    svc, pkg = _validated_pkg(db_session)
+    monkeypatch.setattr(
+        settings, "GOVERNANCE_APPROVAL_AUTHORITY_REQUIRED", True, raising=False
+    )
+    monkeypatch.setattr(
+        authority_context_service, "default_client", lambda **kw: None
+    )
+    with pytest.raises(AuthorityVerificationError) as exc:
+        svc.approve(
+            db_session,
+            ORG,
+            pkg.id,
+            approver_principal_id="governance-admin-1",
+            rationale="no CompliIdentity configured",
+        )
+    assert exc.value.reason == "client_unconfigured"
+    # The package was not approved.
+    refreshed = svc.get(db_session, ORG, pkg.id)
+    assert refreshed.status == "VALIDATED"
+
+
+def test_approve_fails_closed_when_approver_not_sufficient(db_session, monkeypatch):
+    from app.core.config import settings
+    from app.services.canonical import authority_context_service
+    from app.services.canonical.authority_context_service import AuthorityContext
+    from app.services.canonical.errors import AuthorityVerificationError
+
+    svc, pkg = _validated_pkg(db_session)
+    monkeypatch.setattr(
+        settings, "GOVERNANCE_APPROVAL_AUTHORITY_REQUIRED", True, raising=False
+    )
+    monkeypatch.setattr(
+        authority_context_service,
+        "default_client",
+        lambda **kw: _FakeApproveClient(
+            AuthorityContext(
+                status="OK", sufficient=False, raw={"principal_type": "HUMAN"}
+            )
+        ),
+    )
+    with pytest.raises(AuthorityVerificationError) as exc:
+        svc.approve(
+            db_session,
+            ORG,
+            pkg.id,
+            approver_principal_id="governance-admin-1",
+            rationale="approver holds no governance.package/approve grant",
+        )
+    assert exc.value.reason == "not_sufficient"

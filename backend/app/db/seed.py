@@ -200,12 +200,11 @@ def seed_harborstone_package(db: Session) -> None:
     can be exercised end-to-end, and must be replaced with real screening
     content before any actual HarborStone demo run.
 
-    The approve step records ``approved_by="demo3-step2-seed"`` -- a marker
-    string. ``governance_package_service.approve()`` does not validate that
-    value against any principal, role or authority; the package-approval
-    action has no identity check behind it. See
-    ``docs/HUMAN_APPROVAL_ORCHESTRATION_GAP.md`` ("Related: package-approval
-    layer").
+    The approve step records a seed-bootstrap approver id + rationale. When
+    ``GOVERNANCE_APPROVAL_AUTHORITY_REQUIRED`` is set, this seed would fail
+    closed (a bootstrap marker is not a CompliIdentity principal with
+    governance.package/approve authority) -- which is correct: a locked-down
+    deployment should not auto-approve governance from seed data.
     """
     from app.db.harborstone_package import (
         PACKAGE_NAME,
@@ -243,7 +242,11 @@ def seed_harborstone_package(db: Session) -> None:
             f"HarborStone governance package failed validation: {result.errors}"
         )
     governance_package_service.approve(
-        db, HARBORSTONE_ORG_ID, pkg.id, approved_by="demo3-step2-seed"
+        db,
+        HARBORSTONE_ORG_ID,
+        pkg.id,
+        approver_principal_id="seed-bootstrap",
+        rationale="Seeded on boot for the Demo #3 HarborStone scenario.",
     )
     governance_package_service.publish(db, HARBORSTONE_ORG_ID, pkg.id)
 

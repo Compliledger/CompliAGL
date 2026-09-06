@@ -1,10 +1,28 @@
 # Gap: human-approval orchestration for ESCALATED decisions
 
-**Status:** Open. Blocks Fix Order step 2 acceptance criterion **4c** only.
-4a, 4b, 4d and 4e run and are evidenced in
-`demo3_step2/compliagl_scenarios_results.json`. The Fix Order itself lists
+**Status: RESOLVED (2026-09-06).** 4c now runs and is evidenced in
+`demo3_step2/compliagl_scenarios_results.json` (+ `4c-neg-wrong-approver`,
+`4c-neg-expired-approval`). The design below was built as it was sketched:
+
+| gap-doc item | built as |
+|---|---|
+| #1 no authority check on the approver | `authority_context_service.verify_approver_authority` + `escalation_approval_service.submit` — live `approve` probe, `sufficient == true` + approver `principal_type == HUMAN` + a cross-check against `Decision.required_approver_types` (distilled from CompliIdentity's own `applicable_approvals`) |
+| #2 escalation-approval finding didn't require a review | new `FindingType.ESCALATION_APPROVAL_REQUIRED` — always remediation-INELIGIBLE, never `VALIDATED`, and `reassessment_service.trigger()` refuses it (three barriers) |
+| #3 no approval expiry | `EscalationApproval.valid_until` (default `ESCALATION_APPROVAL_TTL_SECONDS`); `approval.expired` runtime fact; an expired approval does not upgrade |
+| #4 no wrong-actor / wrong-action rejection at the approval layer | `submit()` requires a CURRENT `ESCALATED_BY_POLICY` decision and rejects self-approval; wrong action is forced (`action="approve"`); type mismatch is `approver_type_mismatch` |
+| `ReviewType.ESCALATION_APPROVAL` wired to nothing | superseded — the dedicated `EscalationApproval` model is the first-class record |
+| package-approval layer (below) | `GOVERNANCE_APPROVAL_AUTHORITY_REQUIRED` + `governance_package_service.approve(*, approver_principal_id, rationale)` — no more free-form string; verified against CompliIdentity (`governance.package` / `approve`) when the flag is set, fail-closed |
+
+The re-decision is package-authored (`_resolve_outcome` unchanged): HarborStone
+package **v1.1.0** adds `DC-HARBORSTONE-APPROVED-VIA-HUMAN`. The rest of this
+document is the original analysis, kept for context.
+
+---
+
+**Original status:** Open. Blocked Fix Order step 2 acceptance criterion **4c**
+only. 4a, 4b, 4d and 4e ran and were evidenced. The Fix Order itself lists
 "complete human-approval orchestration" as incomplete; this document
-records exactly what is missing, so it is not rediscovered from scratch
+records exactly what was missing, so it is not rediscovered from scratch
 next time.
 
 ## What 4c asks for
@@ -75,19 +93,23 @@ different control point.)
 
 ## Related: the same class of gap at the package-approval layer
 
-`governance_package_service.approve(db, org, package_id, approved_by: str)`
-takes a **free-form string** and records it verbatim. It performs no check
-that `approved_by` is a real principal, that it holds any package-approval
-authority, or that it differs from whoever authored the package. The
-`seed_harborstone_package()` seed passes the marker string
-`"demo3-step2-seed"` and the package publishes.
+**Addressed (2026-09-06).** `governance_package_service.approve()` no longer
+takes a free-form string: it requires `approver_principal_id` **and**
+`rationale` and records both. When `GOVERNANCE_APPROVAL_AUTHORITY_REQUIRED` is
+set, the approver's authority is verified against CompliIdentity
+(`governance.package` / `approve`) via the shared
+`verify_approver_authority` helper and the approval is rejected fail-closed
+otherwise (`approver_authority_hash` binds the verified snapshot). The flag
+defaults **off**, mirroring `GOVERNANCE_SIGNING_KEYS` (empty = not enforced) —
+so `seed_harborstone_package()` still publishes in dev, but a locked-down
+deployment with the flag on would (correctly) reject a seed-bootstrap
+approver. Not done: an anti-self-approval check — the package model records
+no author identity to compare against.
 
-This is structurally the same defect as gaps 1 and 4 above — an approval
-action with no identity or authority behind it — just at the
-governance-package lifecycle instead of the decision lifecycle. A real
-design for either should probably cover both: an "approve" action is only
-meaningful if the approver's authority to approve is verified against
-CompliIdentity at approval time.
+*Original text:* `approve(db, org, package_id, approved_by: str)` took a
+free-form string and recorded it verbatim, with no check that it was a real
+principal, held any authority, or differed from the author. This was
+structurally the same defect as gaps 1 and 4 above.
 
 ## What a real design needs (sketch — not a specification)
 
@@ -110,8 +132,8 @@ CompliIdentity at approval time.
   rest of the engine works.
 - Apply the same authority check to `governance_package_service.approve()`.
 
-## Evidence that everything else works
+## Evidence
 
-`demo3_step2/compliagl_scenarios_results.json` — 4a, 4b, 4d (three combos)
-and 4e all pass against the live CompliIdentity instance, with real
-request/response captured. 4c is the only criterion this gap blocks.
+`demo3_step2/compliagl_scenarios_results.json` — **all 9 scenarios** (4a, 4b,
+4c, `4c-neg-wrong-approver`, `4c-neg-expired-approval`, 4d ×3, 4e) pass against
+the live CompliIdentity instance, with real request/response captured.

@@ -21,6 +21,7 @@ from typing import Any, Optional, Sequence
 
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models.governance_package import ExecutableGovernancePackage
 from app.repositories.canonical import ExecutableGovernancePackageRepository
 from app.schemas.canonical.governance_package import (
@@ -28,7 +29,9 @@ from app.schemas.canonical.governance_package import (
     PackageValidationResult,
 )
 from app.schemas.canonical.package_json_schema import validate_package_document
+from app.services.canonical import authority_context_service
 from app.services.canonical.errors import (
+    AuthorityVerificationError,
     ConflictError,
     NotFoundError,
     PackageImmutableError,
@@ -38,6 +41,7 @@ from app.services.canonical.package_signing import (
     signing_configured,
     verify_signature,
 )
+from app.services.canonical.runtime_facts import build_authority_facts
 from app.services.canonical.transitions import (
     PACKAGE_TRANSITIONS,
     validate_transition,
@@ -241,9 +245,27 @@ def validate(
 
 
 def approve(
-    db: Session, organization_id: str, resource_id: str, approved_by: str
+    db: Session,
+    organization_id: str,
+    resource_id: str,
+    *,
+    approver_principal_id: str,
+    rationale: str,
 ) -> ExecutableGovernancePackage:
-    """Approve a VALIDATED package. Only approved packages may be published."""
+    """Approve a VALIDATED package. Only approved packages may be published.
+
+    An approval is an identified act: ``approver_principal_id`` (recorded as
+    ``approved_by``) and ``rationale`` are both required -- no more anonymous
+    free-form string. When ``GOVERNANCE_APPROVAL_AUTHORITY_REQUIRED`` is set,
+    the approver's authority to approve is additionally verified against
+    CompliIdentity (``governance.package`` / ``approve``) and the approval is
+    rejected fail-closed (``AuthorityVerificationError``) if it cannot be.
+    """
+    if not (approver_principal_id or "").strip():
+        raise ConflictError("approver_principal_id is required to approve a package.")
+    if not (rationale or "").strip():
+        raise ConflictError("An approval rationale is required.")
+
     repo = ExecutableGovernancePackageRepository(db)
     obj = _get_or_404(db, organization_id, resource_id)
     validate_transition(
@@ -252,8 +274,30 @@ def approve(
         obj.status,
         PackageStatus.APPROVED.value,
     )
+
+    authority_hash = None
+    if settings.GOVERNANCE_APPROVAL_AUTHORITY_REQUIRED:
+        verification = authority_context_service.verify_approver_authority(
+            authority_context_service.default_client(),
+            organization_id=organization_id,
+            approver_principal_id=approver_principal_id,
+            resource="governance.package",
+            action="approve",
+            resource_instance=obj.package_name,
+        )
+        if not verification.authorized:
+            raise AuthorityVerificationError(
+                verification.reason,
+                "Authority to approve governance package "
+                f"{obj.package_name!r} could not be verified against "
+                f"CompliIdentity ({verification.reason}); package not approved.",
+            )
+        authority_hash = hash_dict(build_authority_facts(verification.context))
+
     obj.status = PackageStatus.APPROVED.value
-    obj.approved_by = approved_by
+    obj.approved_by = approver_principal_id
+    obj.approval_rationale = rationale
+    obj.approver_authority_hash = authority_hash
     obj.approved_at = utc_now()
     return repo.save(obj)
 
