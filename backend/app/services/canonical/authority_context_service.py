@@ -111,6 +111,13 @@ class AuthorityContext:
     approval_required: Optional[bool] = None
     limit_exceeded: Optional[bool] = None
     findings: tuple[str, ...] = ()
+    # ``authority_for_request.applicable_approvals`` verbatim: the approval
+    # requirement(s) CompliIdentity says apply to this request, each an object
+    # like ``{"resource", "action", "attribute", "threshold",
+    # "approver_principal_type", ...}``. Populated on the *escalating actor's*
+    # probe (e.g. a propose over threshold) -- names which principal type must
+    # approve. See docs/COMPLIIDENTITY_CONTRACT_VOCABULARY_CONFIRMED.md.
+    applicable_approvals: tuple[dict[str, Any], ...] = ()
     current_trust_state: Optional[dict[str, Any]] = None
     authority_revision: Optional[str] = None
     integrity_content_hash: Optional[str] = None
@@ -180,6 +187,11 @@ def _parse_ok(data: dict[str, Any]) -> AuthorityContext:
         approval_required=authority_for_request.get("approval_required"),
         limit_exceeded=authority_for_request.get("limit_exceeded"),
         findings=tuple(f for f in findings if isinstance(f, str)),
+        applicable_approvals=tuple(
+            a
+            for a in (authority_for_request.get("applicable_approvals") or [])
+            if isinstance(a, dict)
+        ),
         current_trust_state=trust_state if isinstance(trust_state, dict) else None,
         authority_revision=data.get("authority_revision"),
         integrity_content_hash=(

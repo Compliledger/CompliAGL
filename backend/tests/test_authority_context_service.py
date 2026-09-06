@@ -9,6 +9,10 @@ shape -- the three mismatches it now covers (``findings`` vs a nonexistent
 ``integrity`` proof block) all shipped undetected because the only other
 authority tests construct ``AuthorityContext`` directly via a fake client.
 
+``PROPOSE_AT_THRESHOLD.applicable_approvals`` is likewise verbatim, from the
+demo3 step-2 capture (``demo3_step2/compliagl_scenarios_results.json``,
+scenario 4b).
+
 See ``docs/COMPLIIDENTITY_CONTRACT_VOCABULARY_CONFIRMED.md`` for the full
 confirmed finding vocabulary.
 """
@@ -20,6 +24,7 @@ import json
 import httpx
 import pytest
 
+from app.services.canonical import decision_service
 from app.services.canonical.authority_context_service import (
     AuthorityContextClient,
     _derive_reason,
@@ -81,6 +86,9 @@ AC1_IN_SCOPE_READ = _body(
 )
 
 # AIRA propose amount == $250,000.00: approval_required both as bool and finding.
+# applicable_approvals is verbatim from the demo3 step-2 capture (scenario 4b,
+# demo3_step2/compliagl_scenarios_results.json) -- CompliIdentity's own
+# declaration that a propose over the threshold must be approved by a HUMAN.
 PROPOSE_AT_THRESHOLD = _body(
     afr={
         "sufficient": False,
@@ -93,6 +101,18 @@ PROPOSE_AT_THRESHOLD = _body(
             "trust_absent",
             "trust_refresh_required",
         ],
+        "applicable_approvals": [
+            {
+                "resource": "aml.action",
+                "action": "propose",
+                "attribute": "amount",
+                "threshold": "24999999",
+                "approver_principal_type": "HUMAN",
+                "unit": None,
+                "source": "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1",
+            }
+        ],
+        "applicable_limits": [],
     }
 )
 
@@ -200,6 +220,26 @@ def test_approval_required_derives_escalation_reason():
     assert ctx.reason == "approval_required"
     assert ctx.approval_required is True
     assert ctx.sufficient is False
+
+
+def test_applicable_approvals_parsed_from_real_body():
+    ctx = _parse_ok(PROPOSE_AT_THRESHOLD)
+    assert len(ctx.applicable_approvals) == 1
+    entry = ctx.applicable_approvals[0]
+    assert entry["action"] == "propose"
+    assert entry["approver_principal_type"] == "HUMAN"
+    assert entry["threshold"] == "24999999"
+
+
+def test_required_approver_types_distilled_from_real_body():
+    """decision_service persists Decision.required_approver_types straight from
+    this parsed value -- the persisted field traces to CompliIdentity's real
+    applicable_approvals[].approver_principal_type, not a synthetic constant."""
+    ctx = _parse_ok(PROPOSE_AT_THRESHOLD)
+    assert decision_service._required_approver_types(ctx, "propose") == ["HUMAN"]
+    # Scoped to the probed action: nothing is claimed for a different action.
+    assert decision_service._required_approver_types(ctx, "approve") == []
+    assert decision_service._required_approver_types(None, "propose") == []
 
 
 def test_permission_missing_derives_denial_reason():

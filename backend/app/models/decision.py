@@ -66,6 +66,18 @@ class Decision(CanonicalMixin, Base):
     authority_status = Column(String, nullable=True)
     authority_reason = Column(String, nullable=True)
     authority_hash = Column(String, nullable=True)
+    # The approver principal type(s) CompliIdentity declared were required to
+    # approve this action, distilled from the authority context's
+    # ``applicable_approvals`` (JSON string list). Null when no authority call
+    # was made or CompliIdentity named no approval requirement. Read back by
+    # ``escalation_approval_service`` to check a submitted approver is the
+    # required type -- not just any human.
+    required_approver_types = Column(Text, nullable=True)
+    # Content hash of the ``approval`` runtime fact (see runtime_facts.
+    # build_approval_facts). Null unless this decision is a re-decision that
+    # consumed a current escalation approval. Folded into ``input_hash`` the
+    # same way ``authority_hash`` is.
+    approval_hash = Column(String, nullable=True)
 
     # --- Determinism / provenance ---
     engine_version = Column(String, nullable=True)

@@ -74,3 +74,31 @@ field yet, verification could silently start failing (or silently start
 succeeding on a wrong basis, which is worse) the next time someone touches
 that code — and it might not surface until an actual audit/proof-check
 happens, at a much less convenient time than now.
+
+---
+
+## Update (2026-09-06): human-approval orchestration adds more to the same payload
+
+**Same question, same category, no new mitigation needed on our side beyond
+this note.** The human-approval orchestration work changes `input_hash`
+shape two more times:
+
+1. **New `approval_hash` key** (migration 0017). `null` on every decision
+   that isn't a re-decision consuming an escalation approval — but, like
+   `authority_hash`, it is part of the hashed payload for *all* decisions
+   from this point on.
+2. **`authority_hash` now hashes over more.**
+   `runtime_facts.build_authority_facts` gained an `applicable_approvals`
+   entry (CompliIdentity's declaration of which approver type an escalated
+   action requires). So `authority_hash` — and therefore `input_hash` /
+   `decision_hash` — differs for authority-gated decisions from here on
+   *even at byte-identical inputs* relative to decisions computed before
+   this change.
+
+We re-checked the same things: no in-repo recompute of a persisted
+`Decision.input_hash`, and `IntegrationEventType.DECISION_CREATED` still has
+zero live publishers. The open questions above (does CompliLedger recompute
+`input_hash` from the public API? does any proof-bundle / evidence-export /
+audit-report generator treat its shape as fixed?) now apply to
+`approval_hash` and the widened `authority_hash` as well as the original
+`authority_hash` addition.

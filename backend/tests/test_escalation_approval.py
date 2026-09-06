@@ -155,7 +155,14 @@ def test_verify_rejects_non_human_approver_even_when_sufficient():
 # --------------------------------------------------------------------------- #
 # escalation_approval_service.submit
 # --------------------------------------------------------------------------- #
-def _escalated_decision(db, *, outcome=None, reason_codes=None, supersession=None):
+def _escalated_decision(
+    db,
+    *,
+    outcome=None,
+    reason_codes=None,
+    supersession=None,
+    required_approver_types=None,
+):
     actor = actor_identity_service.create(
         db,
         ActorIdentityCreate(
@@ -207,6 +214,11 @@ def _escalated_decision(db, *, outcome=None, reason_codes=None, supersession=Non
             ),
             decision_conditions_triggered="[]",
             decision_hash="dh-esc-approval",
+            required_approver_types=(
+                json.dumps(required_approver_types)
+                if required_approver_types
+                else None
+            ),
             supersession_status=(
                 supersession or DecisionSupersessionStatus.CURRENT.value
             ),
@@ -364,3 +376,64 @@ def test_submit_unknown_decision_raises_not_found(db_session, monkeypatch):
             approver_principal_id="principal-jordan",
             rationale="no such decision",
         )
+
+
+# --- Decision.required_approver_types cross-check (commit 4 part b) --------- #
+def test_submit_accepts_matching_required_approver_type(db_session, monkeypatch):
+    _, _, decision = _escalated_decision(
+        db_session, required_approver_types=["HUMAN"]
+    )
+    _patch_client(monkeypatch, _FakeAuthorityClient(_human_sufficient_ctx()))
+
+    approval = escalation_approval_service.submit(
+        db_session,
+        ORG,
+        decision_id=decision.id,
+        approver_principal_id="principal-jordan",
+        rationale="human approver matches the required type",
+    )
+    assert approval.approver_principal_type == "HUMAN"
+
+
+def test_submit_rejects_when_approver_type_not_the_required_type(
+    db_session, monkeypatch
+):
+    # CompliIdentity declared the escalation needs a SERVICE approver; a
+    # sufficient + human approver still fails the cross-check.
+    _, _, decision = _escalated_decision(
+        db_session, required_approver_types=["SERVICE"]
+    )
+    _patch_client(monkeypatch, _FakeAuthorityClient(_human_sufficient_ctx()))
+
+    with pytest.raises(AuthorityVerificationError) as exc:
+        escalation_approval_service.submit(
+            db_session,
+            ORG,
+            decision_id=decision.id,
+            approver_principal_id="principal-jordan",
+            rationale="human, but not the required approver type",
+        )
+    assert exc.value.reason == "approver_type_mismatch"
+    assert (
+        escalation_approval_service.list_for_decision(db_session, ORG, decision.id)
+        == []
+    )
+
+
+def test_submit_falls_back_to_layer1_when_no_required_type_declared(
+    db_session, monkeypatch
+):
+    # required_approver_types empty (CompliIdentity named no approval
+    # requirement for the action) -> the verify_approver_authority checks
+    # stand on their own and a sufficient human approver is accepted.
+    _, _, decision = _escalated_decision(db_session, required_approver_types=None)
+    _patch_client(monkeypatch, _FakeAuthorityClient(_human_sufficient_ctx()))
+
+    approval = escalation_approval_service.submit(
+        db_session,
+        ORG,
+        decision_id=decision.id,
+        approver_principal_id="principal-jordan",
+        rationale="no required type declared; layer-1 checks suffice",
+    )
+    assert approval.status == EscalationApprovalStatus.ACTIVE.value

@@ -13,14 +13,14 @@ Every rejection is fail-closed and typed (``AuthorityVerificationError`` /
 the approver's authority to approve *this* action is confirmed against
 CompliIdentity at submit time.
 
-**Known limitation (to be closed in the re-decision commit):** the check here
-is ``sufficient == true`` on the approver's ``approve`` probe plus "the
-approver is a HUMAN principal". It does **not** yet cross-check that the
-approver is the *required* approver type CompliIdentity declared for the
-escalated action — that declaration
-(``applicable_approvals[].approver_principal_type``) lives on the escalating
-actor's decision-time probe and must be persisted on the Decision first. See
-``authority_context_service.verify_approver_authority``.
+The approver check is two-layered: (1)
+``authority_context_service.verify_approver_authority`` — ``sufficient == true``
+on a live ``approve`` probe plus the approver's own ``principal_type == HUMAN``;
+(2) here — the approver's principal type must match
+``Decision.required_approver_types``, CompliIdentity's own decision-time
+declaration of which approver type the escalated action requires (empty, so
+layer 1 stands alone, when CompliIdentity named no approval requirement — e.g.
+a package amount-threshold escalation).
 """
 
 from __future__ import annotations
@@ -58,12 +58,16 @@ def _ttl_seconds() -> int:
     return int(getattr(settings, "ESCALATION_APPROVAL_TTL_SECONDS", 900) or 900)
 
 
-def _reason_codes(decision) -> list[str]:
+def _str_list(raw: Optional[str]) -> list[str]:
     try:
-        codes = json.loads(decision.reason_codes or "[]")
+        parsed = json.loads(raw or "[]")
     except (ValueError, TypeError):
         return []
-    return [str(c) for c in codes] if isinstance(codes, list) else []
+    return [str(c) for c in parsed] if isinstance(parsed, list) else []
+
+
+def _reason_codes(decision) -> list[str]:
+    return _str_list(decision.reason_codes)
 
 
 def _approval_hash(approval: EscalationApproval) -> str:
@@ -159,6 +163,20 @@ def submit(
             verification.reason,
             "Approver authority could not be verified against CompliIdentity "
             f"({verification.reason}); no approval recorded.",
+        )
+
+    # Cross-check against CompliIdentity's own declaration (captured on the
+    # Decision at decision time) of which approver type the escalated action
+    # requires -- not just "any human". Empty when CompliIdentity named no
+    # approval requirement for the action (e.g. a package amount-threshold
+    # escalation), in which case the verify_approver_authority checks stand.
+    required_types = _str_list(decision.required_approver_types)
+    if required_types and verification.approver_principal_type not in required_types:
+        raise AuthorityVerificationError(
+            "approver_type_mismatch",
+            "CompliIdentity requires an approver of type "
+            f"{required_types} for this escalation; the submitted approver is "
+            f"{verification.approver_principal_type!r}.",
         )
 
     now = utc_now()
