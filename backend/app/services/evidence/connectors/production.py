@@ -18,6 +18,10 @@ from __future__ import annotations
 import os
 
 from app.services.evidence.connectors import ConnectorRegistry, simulators
+from app.services.evidence.connectors.harborstone_screening_placeholder import (
+    HARBORSTONE_SCREENING_PLACEHOLDER_ACK,
+    harborstone_screening_placeholder_connector,
+)
 from app.services.evidence.connectors.securerob import securerob_perception_connector
 
 
@@ -49,5 +53,22 @@ def default_production_registry() -> ConnectorRegistry:
     # EVIDENCE_COLLECTION_FAILED / HAS_UNRESOLVED rather than silently using
     # a mock in production, since is_mock connectors are already rejected in
     # production mode by the orchestrator (see connectors/base.py).
+
+    # PLACEHOLDER -- not a real evidence source. Registers a hardcoded stand-in
+    # connector for the HarborStone package's placeholder sanctions-screening
+    # requirement (REQ/CTL/EV-PLACEHOLDER-SANCTIONS-SCREENING, the control
+    # itself being evaluation_expression "True") so the decision-engine +
+    # CompliIdentity authority-context chain can be exercised end to end over
+    # HTTP -- the analog of demo3_step2/compliagl_scenarios.py's in-process
+    # mock. Gated on an explicit acknowledgement string, not a truthy flag. A
+    # real deployment NEVER sets this: the evidence type then has no connector
+    # and the mandatory control fails closed, exactly as it does today. Delete
+    # this together with the placeholder package content and the connector.
+    # See PENDING_REVIEW_harborstone_screening_control_placeholder.md.
+    if (
+        os.environ.get("COMPLIAGL_HARBORSTONE_SCREENING_PLACEHOLDER")
+        == HARBORSTONE_SCREENING_PLACEHOLDER_ACK
+    ):
+        connectors.append(harborstone_screening_placeholder_connector())
 
     return ConnectorRegistry(connectors)
