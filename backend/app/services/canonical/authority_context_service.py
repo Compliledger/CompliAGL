@@ -337,3 +337,97 @@ def default_client(
         timeout_seconds=timeout_seconds,
         http_client=http_client,
     )
+
+
+# --------------------------------------------------------------------------- #
+# Approver verification (shared by escalation-approval + package approval)
+# --------------------------------------------------------------------------- #
+_APPROVER_TYPE_HUMAN = "HUMAN"
+
+
+@dataclass(frozen=True)
+class ApproverVerification:
+    """Verdict on whether a principal may *approve* a given action right now.
+
+    ``authorized`` is the only field a caller must gate on; the rest is the
+    evidence trail. ``reason`` is ``"authorized"`` on success, else a machine
+    code: ``client_unconfigured`` / ``authority_unavailable`` /
+    ``authority_known_denied`` / ``not_sufficient`` / ``approver_not_human``.
+    """
+
+    authorized: bool
+    reason: str
+    approver_principal_type: Optional[str]
+    context: AuthorityContext
+
+
+def verify_approver_authority(
+    client: Optional[AuthorityContextClient],
+    *,
+    organization_id: str,
+    approver_principal_id: str,
+    resource: str,
+    action: str = "approve",
+    resource_instance: Optional[str] = None,
+    attribute: Optional[str] = None,
+    value: Optional[str] = None,
+) -> ApproverVerification:
+    """Verify -- against CompliIdentity, at call time -- that
+    ``approver_principal_id`` may ``action`` (default ``"approve"``)
+    ``resource`` (optionally scoped to ``resource_instance`` / an amount).
+
+    Fail closed on every uncertain path: a ``None`` client, an ``UNAVAILABLE``
+    or ``KNOWN_DENIED`` authority context, ``sufficient`` not ``True``, or an
+    approver whose own principal type is not ``HUMAN``.
+
+    **Not yet checked here:** that this principal is the approver type
+    CompliIdentity itself *requires* for the escalated action. That
+    declaration (``authority_for_request.applicable_approvals[].
+    approver_principal_type``) lives on the escalating *actor's* decision-time
+    probe, not on the approver's ``approve`` probe (confirmed against the
+    captured demo3 responses -- an ``approve`` probe returns
+    ``applicable_approvals: []``). The real cross-check is done in
+    ``escalation_approval_service`` against a required-approver-type persisted
+    on the Decision at decision time; ``sufficient == true`` here is still
+    CompliIdentity's authoritative "this principal may perform this action".
+    """
+    if client is None:
+        return ApproverVerification(
+            False,
+            "client_unconfigured",
+            None,
+            AuthorityContext(status="UNAVAILABLE", reason="not_configured"),
+        )
+
+    ctx = client.fetch(
+        organization_id=organization_id,
+        principal_id=approver_principal_id,
+        resource=resource,
+        action=action,
+        resource_instance=resource_instance,
+        attribute=attribute,
+        value=value,
+    )
+    if ctx.status == "UNAVAILABLE":
+        return ApproverVerification(False, "authority_unavailable", None, ctx)
+    if ctx.status == "KNOWN_DENIED":
+        return ApproverVerification(False, "authority_known_denied", None, ctx)
+
+    raw = ctx.raw or {}
+    approver_type = raw.get("principal_type") or (
+        raw.get("principal") or {}
+    ).get("principal_type")
+
+    if ctx.sufficient is not True:
+        return ApproverVerification(False, "not_sufficient", approver_type, ctx)
+
+    # Defense in depth beyond `sufficient`: the approver must actually be a
+    # HUMAN principal, not an agent or service that merely holds an approve
+    # grant. (This confirms the *kind* of principal, not that CompliIdentity's
+    # approval-threshold logic named this principal -- see docstring.)
+    if approver_type != _APPROVER_TYPE_HUMAN:
+        return ApproverVerification(
+            False, "approver_not_human", approver_type, ctx
+        )
+
+    return ApproverVerification(True, "authorized", approver_type, ctx)

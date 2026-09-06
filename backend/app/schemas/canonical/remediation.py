@@ -239,6 +239,33 @@ class ReviewRecordResponse(CanonicalResponseBase):
 
 
 # --------------------------------------------------------------------------- #
+# Escalation approval (human approval of a policy-escalated decision)
+# --------------------------------------------------------------------------- #
+class EscalationApprovalSubmit(BaseModel):
+    organization_id: str = Field(..., min_length=1)
+    decision_id: str = Field(..., min_length=1)
+    approver_principal_id: str = Field(..., min_length=1)
+    rationale: str = Field(..., min_length=1)
+    # Optional explicit expiry; defaults to now + ESCALATION_APPROVAL_TTL_SECONDS.
+    valid_until: Optional[datetime] = None
+
+
+class EscalationApprovalResponse(CanonicalResponseBase):
+    escalation_approval_id: str
+    decision_id: str
+    intent_id: Optional[str] = None
+    approver_principal_id: str
+    approver_principal_type: Optional[str] = None
+    approver_authority_hash: Optional[str] = None
+    rationale: str
+    granted_at: Optional[datetime] = None
+    valid_until: Optional[datetime] = None
+    status: str
+    consumed_by_decision_id: Optional[str] = None
+    approval_hash: Optional[str] = None
+
+
+# --------------------------------------------------------------------------- #
 # Resolution validation + re-assessment
 # --------------------------------------------------------------------------- #
 class ResolutionValidationResponse(BaseModel):

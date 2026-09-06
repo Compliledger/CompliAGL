@@ -23,6 +23,21 @@ class ConflictError(CanonicalError):
     """A uniqueness/idempotency constraint was violated."""
 
 
+class AuthorityVerificationError(CanonicalError):
+    """An approver's authority could not be verified against CompliIdentity.
+
+    Fail-closed: raised whenever an approval action cannot be tied to a
+    principal whose authority to approve *this* action is confirmed right now
+    (unconfigured client, unavailable/known-denied authority context, not
+    ``sufficient``, a non-human approver, or self-approval). ``reason`` carries
+    the specific machine code.
+    """
+
+    def __init__(self, reason: str, detail: str = "") -> None:
+        self.reason = reason
+        super().__init__(detail or reason)
+
+
 class InvalidTransitionError(CanonicalError):
     """An illegal lifecycle status transition was attempted."""
 
