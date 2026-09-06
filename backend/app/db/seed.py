@@ -80,6 +80,7 @@ def seed_organizations(db: Session) -> None:
     for organization_id, organization_name in (
         ("default-org", "Default Organization"),
         ("securerob-pilot", "SecureRob Pilot"),
+        ("harborstone-demo", "HarborStone Demo"),
     ):
         org = db.get(Organization, organization_id)
         if org is None:
