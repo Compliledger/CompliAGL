@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { HeroWaves } from "@/components/hero-waves";
 import { CutButton } from "@/components/cut-button";
 import { executeIntent } from "@/lib/api";
