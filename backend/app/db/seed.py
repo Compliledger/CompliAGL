@@ -93,8 +93,67 @@ def seed_organizations(db: Session) -> None:
     db.commit()
 
 
+def seed_hedera_demo_package(db: Session) -> None:
+    """Idempotently publish the Hedera Agent Kit demo governance package.
+
+    Backs demo.compliagl.compliledger.com and the local
+    CompliAGL-Hedera-Agent-Kit-Adapter e2e demo. Runs
+    build_hedera_demo_package() through the real lifecycle
+    (create -> validate -> approve -> publish). Skips entirely when a
+    PUBLISHED package with the same (name, version) already exists.
+
+    Without this, the package silently disappears on every restart
+    (this backend's SQLite persistence is recreated on redeploy) and
+    both demos start returning DENY with reason code NO_APPLICABLE_POLICY
+    until someone notices and manually republishes it.
+    """
+    from app.db.hedera_demo_package import (
+        PACKAGE_NAME,
+        PACKAGE_VERSION,
+        build_hedera_demo_package,
+    )
+    from app.repositories.canonical import (
+        ExecutableGovernancePackageRepository,
+    )
+    from app.services.canonical import governance_package_service
+    from app.utils.canonical_enums import PackageStatus
+
+    organization_id = "default-org"
+
+    existing = governance_package_service.get_published_version(
+        db, organization_id, PACKAGE_NAME, PACKAGE_VERSION
+    )
+    if existing is not None:
+        return
+
+    prior_published = ExecutableGovernancePackageRepository(db).list_filtered(
+        organization_id,
+        package_name=PACKAGE_NAME,
+        status=PackageStatus.PUBLISHED.value,
+    )
+    create_payload = build_hedera_demo_package(organization_id)
+    if prior_published:
+        create_payload.supersedes_package_id = prior_published[-1].id
+
+    pkg = governance_package_service.create(db, create_payload)
+    result = governance_package_service.validate(db, organization_id, pkg.id)
+    if not result.valid:
+        raise RuntimeError(
+            f"Hedera demo governance package failed validation: {result.errors}"
+        )
+    governance_package_service.approve(
+        db,
+        organization_id,
+        pkg.id,
+        approver_principal_id="seed-bootstrap",
+        rationale="Seeded on boot for the Hedera Agent Kit demo.",
+    )
+    governance_package_service.publish(db, organization_id, pkg.id)
+
+
 def seed_demo_data(db: Session) -> None:
     """Seed all canonical demo data (organizations + actors + policies)."""
     seed_organizations(db)
     seed_demo_actors(db)
     seed_demo_policies(db)
+    seed_hedera_demo_package(db)
