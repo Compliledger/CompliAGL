@@ -24,6 +24,14 @@ export type ApiResponse<T = unknown> = {
 };
 
 async function request<T = unknown>(path: string, options: RequestOptions = {}): Promise<ApiResponse<T>> {
+  console.log('🚀 OUTBOUND REQUEST:', {
+    url: `${API_BASE_URL}${path}`,
+    method: options.method || 'GET',
+    headers: { "Content-Type": "application/json", ...options.headers },
+    body: options.body ? JSON.parse(options.body) : undefined,
+    timestamp: new Date().toISOString()
+  });
+
   const res = await fetch(`${API_BASE_URL}${path}`, {
     headers: { "Content-Type": "application/json", ...options.headers },
     ...options,
@@ -35,6 +43,14 @@ async function request<T = unknown>(path: string, options: RequestOptions = {}):
   } catch (_e) {
     data = null;
   }
+
+  console.log('📥 BACKEND RESPONSE:', {
+    url: `${API_BASE_URL}${path}`,
+    status: res.status,
+    ok: res.ok,
+    data: data,
+    timestamp: new Date().toISOString()
+  });
 
   return { ok: res.ok, status: res.status, data };
 }
