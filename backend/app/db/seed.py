@@ -145,8 +145,7 @@ def seed_hedera_demo_package(db: Session) -> None:
         db,
         organization_id,
         pkg.id,
-        approver_principal_id="seed-bootstrap",
-        rationale="Seeded on boot for the Hedera Agent Kit demo.",
+        approved_by="seed-bootstrap",
     )
     governance_package_service.publish(db, organization_id, pkg.id)
 
