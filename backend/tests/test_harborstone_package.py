@@ -13,6 +13,9 @@ import pytest
 
 from app.db.harborstone_package import (
     AMOUNT_THRESHOLD_MINOR,
+    CTL_SCREENING,
+    EV_SCREENING,
+    PACKAGE_VERSION,
     build_harborstone_package,
 )
 from app.services.canonical.package_interpreter import (
@@ -59,6 +62,104 @@ _ESCALATED_250K = {
 def test_package_opts_into_authority_context():
     package = build_harborstone_package("harborstone-demo")
     assert package.requires_authority_context is True
+
+
+def test_package_version_is_current():
+    assert PACKAGE_VERSION == "1.2.1"
+    assert build_harborstone_package("harborstone-demo").package_version == "1.2.1"
+
+
+# --------------------------------------------------------------------------- #
+# Real sanctions-screening control + routing (package v1.2.1)
+# --------------------------------------------------------------------------- #
+def _control_expr():
+    package = build_harborstone_package("harborstone-demo")
+    ctl = next(
+        c.model_dump() if hasattr(c, "model_dump") else dict(c)
+        for c in package.control_definitions
+        if (c.model_dump() if hasattr(c, "model_dump") else dict(c))["control_id"]
+        == CTL_SCREENING
+    )
+    return ctl["evaluation_expression"]
+
+
+def _control_facts(result):
+    return {"evidence": {EV_SCREENING: {"claims": {"result": result}}}}
+
+
+@pytest.mark.parametrize(
+    "result,satisfied",
+    [
+        ("NO_MATCH", True),
+        ("POTENTIAL_MATCH", False),
+        ("CONFIRMED_MATCH", False),
+        ("NOT_EVALUABLE", False),
+    ],
+)
+def test_screening_control_satisfied_only_on_no_match(result, satisfied):
+    assert bool(evaluate_expression(_control_expr(), _control_facts(result))) is satisfied
+
+
+def _screening_ctx(result, *, requires_human_review, sufficient=True, amount=100):
+    return {
+        "authority": {
+            "reason": None,
+            "approval_required": False,
+            "sufficient": sufficient,
+        },
+        "intent": {"amount_currency": "USD", "amount_minor": amount},
+        "evidence_claims": {
+            EV_SCREENING: {
+                "result": result,
+                "requires_human_review": requires_human_review,
+            }
+        },
+    }
+
+
+def test_confirmed_match_is_a_hard_denial(conditions):
+    ctx = _screening_ctx("CONFIRMED_MATCH", requires_human_review=True)
+    assert _decide(conditions, ctx) == (
+        "DENIED",
+        "DC-HARBORSTONE-SANCTIONS-CONFIRMED",
+    )
+
+
+def test_potential_match_escalates_for_human_review(conditions):
+    ctx = _screening_ctx("POTENTIAL_MATCH", requires_human_review=True)
+    assert _decide(conditions, ctx) == (
+        "ESCALATED",
+        "DC-HARBORSTONE-SANCTIONS-REVIEW",
+    )
+
+
+def test_clean_screen_does_not_trigger_a_screening_condition(conditions):
+    ctx = _screening_ctx("NO_MATCH", requires_human_review=False)
+    fired = _fire(conditions, ctx)
+    assert "DC-HARBORSTONE-SANCTIONS-CONFIRMED" not in fired
+    assert "DC-HARBORSTONE-SANCTIONS-REVIEW" not in fired
+    assert _decide(conditions, ctx) == ("APPROVED", "DC-HARBORSTONE-APPROVE")
+
+
+def test_authority_hard_denial_outranks_a_screening_confirmed_match(conditions):
+    ctx = _screening_ctx("CONFIRMED_MATCH", requires_human_review=True)
+    ctx["authority"]["reason"] = "permission_missing"
+    assert _decide(conditions, ctx) == (
+        "DENIED",
+        "DC-HARBORSTONE-AUTHORITY-DENIED",
+    )
+
+
+def test_missing_screening_claims_fail_closed(conditions):
+    # No evidence_claims key at all -> screening conditions are non-matching,
+    # never raise.
+    ctx = {
+        "authority": {"reason": None, "approval_required": False, "sufficient": True},
+        "intent": {"amount_currency": "USD", "amount_minor": 100},
+    }
+    fired = _fire(conditions, ctx)
+    assert "DC-HARBORSTONE-SANCTIONS-CONFIRMED" not in fired
+    assert "DC-HARBORSTONE-SANCTIONS-REVIEW" not in fired
 
 
 def test_denied_list_matches_confirmed_vocabulary(conditions):
@@ -202,3 +303,14 @@ def test_approved_via_human_is_checked_before_the_escalation_condition(condition
     assert ids.index("DC-HARBORSTONE-AUTHORITY-DENIED") < ids.index(
         "DC-HARBORSTONE-APPROVED-VIA-HUMAN"
     )
+
+
+def test_screening_conditions_sit_between_authority_denial_and_approval(conditions):
+    ordered = sorted(conditions, key=lambda c: c["priority"])
+    ids = [c["condition_id"] for c in ordered]
+    for screening_id in (
+        "DC-HARBORSTONE-SANCTIONS-CONFIRMED",
+        "DC-HARBORSTONE-SANCTIONS-REVIEW",
+    ):
+        assert ids.index("DC-HARBORSTONE-AUTHORITY-DENIED") < ids.index(screening_id)
+        assert ids.index(screening_id) < ids.index("DC-HARBORSTONE-APPROVED-VIA-HUMAN")

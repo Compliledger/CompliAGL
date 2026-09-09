@@ -39,6 +39,7 @@ from app.repositories.canonical import (
     EscalationApprovalRepository,
     ExecutableGovernancePackageRepository,
     IntentRepository,
+    NormalizedEvidenceRepository,
     OperationalContextRepository,
     PolicyResolutionRepository,
     TargetRepository,
@@ -370,6 +371,38 @@ def _required_approver_types(
     return sorted(types)
 
 
+def _evidence_claims_facts(
+    db: Session, org: str, evidence_pkg
+) -> dict[str, dict[str, Any]]:
+    """The normalized (validated) evidence claims, keyed by evidence
+    requirement id, for the decision context.
+
+    This is the same fact vocabulary ``control_evaluation_service`` already
+    exposes to control expressions -- surfaced here so a package's *decision*
+    conditions can key off a concrete evidence signal (e.g. a sanctions
+    screening ``result``) rather than only the coarse assessment verdict.
+
+    Only the first normalized item per requirement is exposed (requirements
+    used this way are single-cardinality); an absent requirement is simply an
+    absent key, so a condition that references it fails closed.
+    """
+    claims_by_req: dict[str, dict[str, Any]] = {}
+    if evidence_pkg is None or not getattr(
+        evidence_pkg, "collection_job_id", None
+    ):
+        return claims_by_req
+    normalized = NormalizedEvidenceRepository(db).list_for_job(
+        org, evidence_pkg.collection_job_id
+    )
+    for norm in normalized:
+        req_id = norm.evidence_requirement_id
+        if req_id in claims_by_req:
+            continue
+        claims = _load(norm.normalized_claims)
+        claims_by_req[req_id] = claims if isinstance(claims, dict) else {}
+    return claims_by_req
+
+
 def _build_context(
     actor,
     intent,
@@ -379,6 +412,7 @@ def _build_context(
     evidence_pkg,
     authority=None,
     approval_facts=None,
+    evidence_claims=None,
 ):
     facts = runtime_facts.build_facts(
         actor=actor,
@@ -405,6 +439,10 @@ def _build_context(
         if evidence_pkg is not None
         else None,
     }
+    # Normalized evidence claims by requirement id. Bound into the decision's
+    # identity already via ``evidence_package_hash`` in input_hash -- exposed
+    # here only so decision conditions can read the content.
+    decision_context["evidence_claims"] = dict(evidence_claims or {})
     return facts, decision_context
 
 
@@ -496,6 +534,8 @@ def decide_for_resolution(
                 approval_obj, now=decided_at
             )
 
+    evidence_claims = _evidence_claims_facts(db, org, evidence_pkg)
+
     facts, decision_context = _build_context(
         actor,
         intent,
@@ -505,6 +545,7 @@ def decide_for_resolution(
         evidence_pkg,
         authority,
         approval_facts,
+        evidence_claims,
     )
 
     condition_outcome, triggered = (

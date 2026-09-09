@@ -189,16 +189,16 @@ def seed_harborstone_package(db: Session) -> None:
     Runs ``build_harborstone_package()`` through the real lifecycle
     (create -> validate -> approve -> publish). Skips entirely when a
     PUBLISHED package with the same (name, version) already exists; when an
-    *older* version is published it is superseded atomically on publish.
+    *older* version is published it is superseded atomically on publish
+    (so a boot after the v1.2.x bump supersedes any published v1.1.0).
 
-    **This package carries a placeholder sanctions-screening control**
-    (``CTL-PLACEHOLDER-SANCTIONS-SCREENING``, ``evaluation_expression:
-    "True"`` -- see
-    ``PENDING_REVIEW_harborstone_screening_control_placeholder.md``). It is
-    scoped to the ``harborstone-demo`` org only and named unambiguously; it
-    exists so the decision-engine + CompliIdentity authority-context wiring
-    can be exercised end-to-end, and must be replaced with real screening
-    content before any actual HarborStone demo run.
+    The package's sanctions-screening requirement/control
+    (``REQ`` / ``CTL-HARBORSTONE-SANCTIONS-SCREENING``) is real, keyed to
+    SENTRY's structured screening evidence
+    (``harborstone.sanctions_screening.v1``). The screening *lookup* is a
+    deterministic in-repo demo dataset (project-owner-approved for the MVP,
+    labelled as simulation on every evidence item) -- see
+    ``docs/harborstone-sanctions-screening.md``.
 
     The approve step records a seed-bootstrap approver id + rationale. When
     ``GOVERNANCE_APPROVAL_AUTHORITY_REQUIRED`` is set, this seed would fail

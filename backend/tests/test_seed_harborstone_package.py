@@ -4,9 +4,9 @@
 through the real create -> validate -> approve -> publish lifecycle, scoped
 to the ``harborstone-demo`` org, and is idempotent on re-run.
 
-These tests exercise the *seed wiring* only. The package still carries a
-placeholder screening control -- see
-``PENDING_REVIEW_harborstone_screening_control_placeholder.md`` and
+These tests exercise the *seed wiring* only. Package v1.2.1 carries a real
+sanctions-screening requirement/control keyed to SENTRY's structured
+evidence -- see ``docs/harborstone-sanctions-screening.md`` and
 ``tests/test_harborstone_package.py``.
 """
 
@@ -66,3 +66,27 @@ def test_published_package_has_the_corrected_decision_conditions(db_session):
     )
     assert "resource_scope_unmatched" in denied["expression"]
     assert "credential_expired" not in denied["expression"]
+
+
+def test_published_package_has_the_real_screening_requirement(db_session):
+    """The retired placeholder pair must be gone; the real screening
+    requirement/control/evidence must be published."""
+    seed_organizations(db_session)
+    seed_harborstone_package(db_session)
+    published = governance_package_service.get_published_version(
+        db_session, HARBORSTONE_ORG_ID, PACKAGE_NAME, PACKAGE_VERSION
+    )
+    document = governance_package_service.build_package_document(published)
+
+    req_ids = {r["requirement_id"] for r in document["requirements"]}
+    ctl_ids = {c["control_id"] for c in document["control_definitions"]}
+    ev_types = {e["evidence_type"] for e in document["evidence_requirements"]}
+    cond_ids = {c["condition_id"] for c in document["decision_conditions"]}
+
+    assert "REQ-HARBORSTONE-SANCTIONS-SCREENING" in req_ids
+    assert "CTL-HARBORSTONE-SANCTIONS-SCREENING" in ctl_ids
+    assert "harborstone.sanctions_screening.v1" in ev_types
+    assert {"DC-HARBORSTONE-SANCTIONS-CONFIRMED", "DC-HARBORSTONE-SANCTIONS-REVIEW"} <= cond_ids
+
+    assert not any("PLACEHOLDER" in rid for rid in req_ids | ctl_ids)
+    assert not any("placeholder" in t for t in ev_types)

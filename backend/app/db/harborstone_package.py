@@ -5,17 +5,37 @@ authority-context integration for the HarborStone $250K AML/sanctions demo
 scenario (``requires_authority_context: true``), per
 ``HARBORSTONE_GOVERNANCE_PACKAGE_DESIGN.md`` at the repo root.
 
-**Contains a placeholder screening control.** The requirement/control pair
-named ``REQ-PLACEHOLDER-SANCTIONS-SCREENING`` /
-``CTL-PLACEHOLDER-SANCTIONS-SCREENING`` does not evaluate any real
-sanctions-screening signal -- its ``evaluation_expression`` is trivially
-``"True"``. It exists only so this package is structurally valid (a package
-cannot publish without at least one requirement and one mandatory control)
-and so the decision-engine wiring below it can be exercised end-to-end. It
-must be replaced with real screening-control content before any actual
-HarborStone demo run. See ``PENDING_REVIEW_harborstone_screening_control_
-placeholder.md`` at the repo root for what replaces it and why it isn't
-designed yet.
+Sanctions-screening control (package v1.2.1)
+-------------------------------------------
+The requirement/control pair ``REQ-HARBORSTONE-SANCTIONS-SCREENING`` /
+``CTL-HARBORSTONE-SANCTIONS-SCREENING`` is real, keyed to SENTRY's structured
+screening evidence (``EV-HARBORSTONE-SANCTIONS-SCREENING`` ->
+``harborstone.sanctions_screening.v1``, served by
+``connectors/harborstone_sentry_screening.py``). The screening *lookup* is a
+deterministic in-repo demo dataset (project-owner-approved for the MVP, and
+labelled as simulation on every evidence item) -- the control, the evidence
+retrieval, its evaluation and the enforcement around it are real. This
+replaces the retired ``*-PLACEHOLDER-SANCTIONS-SCREENING`` pair and its
+env-gated placeholder connector -- see
+``docs/harborstone-sanctions-screening.md``.
+
+Screening routing:
+
+* ``CTL-HARBORSTONE-SANCTIONS-SCREENING`` (mandatory) is SATISFIED only on a
+  clean screen (``result == "NO_MATCH"``); anything else makes the assessment
+  ``NOT_SATISFIED``.
+* ``DC-HARBORSTONE-SANCTIONS-CONFIRMED`` (priority 11) turns a
+  ``CONFIRMED_MATCH`` into a terminal ``DENIED``.
+* ``DC-HARBORSTONE-SANCTIONS-REVIEW`` (priority 12) turns any screening result
+  flagged ``requires_human_review`` (i.e. ``POTENTIAL_MATCH``) into
+  ``ESCALATED`` -- with a ``NOT_SATISFIED`` assessment the engine's
+  ``_resolve_outcome`` maps ``NOT_SATISFIED + ESCALATED condition`` to
+  ``ESCALATED`` (``CONTROL_REMEDIATION_REQUIRED``) rather than a hard deny.
+
+Both screening conditions read ``evidence_claims[<EV id>]`` -- the normalized
+screening claims, surfaced into the decision context by
+``decision_service`` (generic mechanism; mirrors
+``control_evaluation_service``'s evidence-fact vocabulary).
 
 The decision conditions below are the real, reviewed design from
 ``HARBORSTONE_GOVERNANCE_PACKAGE_DESIGN.md`` (amount-units bug already
@@ -25,7 +45,7 @@ caught and fixed there -- see that doc's "Resolved" item 3): they reference
 ``authority_context_service._authority_request_params()`` already sends to
 CompliIdentity, so the probe and the threshold never disagree.
 
-Package v1.1.0 adds the human-approval re-decision path
+Package v1.1.0 added the human-approval re-decision path
 (``DC-HARBORSTONE-APPROVED-VIA-HUMAN`` + a guard on
 ``DC-HARBORSTONE-HUMAN-APPROVAL``): once ``escalation_approval_service``
 records an authority-verified approval and a re-decision runs, the engine
@@ -67,17 +87,22 @@ from app.schemas.canonical.governance_package import (
 )
 
 PACKAGE_NAME = "harborstone-aml-sanctions-screening"
-# 1.1.0 adds the human-approval re-decision path: DC-HARBORSTONE-APPROVED-VIA-
-# HUMAN upgrades an escalation once an authority-verified EscalationApproval is
-# present (as the `approval` runtime fact), and DC-HARBORSTONE-HUMAN-APPROVAL
-# gains a guard so it stops escalating once that approval exists. Additive --
-# the DENIED / plain-ESCALATED / clean-APPROVE paths are unchanged for every
-# case that has no approval fact.
-PACKAGE_VERSION = "1.1.0"
+# 1.2.1 replaces the placeholder screening requirement/control with a real
+# pair keyed to SENTRY's structured screening evidence
+# (harborstone.sanctions_screening.v1), and adds two screening decision
+# conditions (DC-HARBORSTONE-SANCTIONS-CONFIRMED / -REVIEW). The
+# DENIED / plain-ESCALATED / clean-APPROVE / human-approval paths are
+# unchanged for every case whose screen comes back NO_MATCH.
+PACKAGE_VERSION = "1.2.1"
 
-REQ_PLACEHOLDER_SCREENING = "REQ-PLACEHOLDER-SANCTIONS-SCREENING"
-CTL_PLACEHOLDER_SCREENING = "CTL-PLACEHOLDER-SANCTIONS-SCREENING"
-EV_PLACEHOLDER_SCREENING = "EV-PLACEHOLDER-SANCTIONS-SCREENING"
+REQ_SCREENING = "REQ-HARBORSTONE-SANCTIONS-SCREENING"
+CTL_SCREENING = "CTL-HARBORSTONE-SANCTIONS-SCREENING"
+EV_SCREENING = "EV-HARBORSTONE-SANCTIONS-SCREENING"
+
+# The evidence_type the screening connector serves (must match
+# connectors/harborstone_sentry_screening.py).
+SCREENING_EVIDENCE_TYPE = "harborstone.sanctions_screening.v1"
+SCREENING_ISSUER = "sentry.harborstone.compliagl"
 
 # USD $250,000.00 in integer minor units (cents). USD uses a 2-decimal-place
 # minor unit (major * 100) -- not universal across currencies, which is why
@@ -107,6 +132,10 @@ _APPROVAL_IS_VALID = (
     "approval.expired == False"
 )
 
+# The normalized screening claims, as surfaced into the decision context by
+# decision_service (decision_context["evidence_claims"][<EV id>]).
+_SCREENING_CLAIMS = f"evidence_claims['{EV_SCREENING}']"
+
 
 def build_harborstone_package(
     organization_id: str,
@@ -124,48 +153,60 @@ def build_harborstone_package(
         requires_authority_context=True,
         requirements=[
             {
-                "requirement_id": REQ_PLACEHOLDER_SCREENING,
+                "requirement_id": REQ_SCREENING,
                 "source_reference": (
-                    "PLACEHOLDER -- no real source yet; see "
-                    "PENDING_REVIEW_harborstone_screening_control_placeholder.md"
+                    "HarborStone AML program: mandatory sanctions screening of "
+                    "the counterparty before any value transfer is authorised. "
+                    "Evidence contract: docs/harborstone-sanctions-screening.md "
+                    "(demo3.sanctions-screening.v1)."
                 ),
                 "normalized_text": (
-                    "PLACEHOLDER stand-in for HarborStone's real AML/"
-                    "sanctions-screening requirement. Not real compliance "
-                    "content -- must not be used in a real demo run."
+                    "Before an AML-case value transfer is authorised, the "
+                    "counterparty must be screened against sanctions lists by "
+                    "the SENTRY screening agent. A confirmed match blocks the "
+                    "transfer; a potential match requires human review; only a "
+                    "clean screen (NO_MATCH) may proceed automatically."
                 ),
-                "requirement_type": "aml_sanctions_screening_placeholder",
+                "requirement_type": "aml_sanctions_screening",
                 "classification": "OBLIGATION",
-                "mapped_control_ids": [CTL_PLACEHOLDER_SCREENING],
+                "mapped_control_ids": [CTL_SCREENING],
             }
         ],
         control_definitions=[
             {
-                "control_id": CTL_PLACEHOLDER_SCREENING,
-                "requirement_ids": [REQ_PLACEHOLDER_SCREENING],
+                "control_id": CTL_SCREENING,
+                "requirement_ids": [REQ_SCREENING],
                 "control_objective": (
-                    "PLACEHOLDER -- stands in for real sanctions-screening "
-                    "pass/fail logic pending SENTRY integration design. "
-                    "evaluation_expression is trivially True; it does not "
-                    "evaluate any real screening signal."
+                    "The counterparty's sanctions screening came back clean "
+                    "(result == NO_MATCH). A POTENTIAL_MATCH or CONFIRMED_MATCH "
+                    "makes this control NOT_SATISFIED; the screening decision "
+                    "conditions then route the outcome to ESCALATED (human "
+                    "review) or DENIED (confirmed match)."
                 ),
-                "evaluation_expression": "True",
+                "evaluation_expression": (
+                    f"evidence['{EV_SCREENING}']['claims']['result'] "
+                    "== 'NO_MATCH'"
+                ),
                 "mandatory": True,
                 "severity": "HIGH",
                 "failure_disposition": "DENY",
-                "evidence_requirement_ids": [EV_PLACEHOLDER_SCREENING],
+                "evidence_requirement_ids": [EV_SCREENING],
             }
         ],
         evidence_requirements=[
             {
-                "evidence_requirement_id": EV_PLACEHOLDER_SCREENING,
-                "control_ids": [CTL_PLACEHOLDER_SCREENING],
-                "evidence_type": "harborstone.sanctions_screening_placeholder",
+                "evidence_requirement_id": EV_SCREENING,
+                "control_ids": [CTL_SCREENING],
+                "evidence_type": SCREENING_EVIDENCE_TYPE,
                 "authoritative_source_type": "EXTERNAL_APPLICATION",
-                "subject_binding": "actor",
-                "freshness_requirement": "P36500D",
+                # The screened party is the transaction counterparty, so the
+                # evidence subject binds to the Target's external identifier
+                # (the account/wallet actually being screened), not the
+                # requesting agent.
+                "subject_binding": "target",
+                "freshness_requirement": "P7D",
                 "validation_method": "signature_verification",
-                "allowed_issuers": ["harborstone-screening-placeholder.example"],
+                "allowed_issuers": [SCREENING_ISSUER],
                 "minimum_cardinality": 1,
                 "mandatory": True,
             }
@@ -182,12 +223,39 @@ def build_harborstone_package(
                 "terminal": True,
             },
             {
+                # A confirmed sanctions hit is a hard block, checked right
+                # after the authority hard-denials and before anything that
+                # could approve or escalate.
+                "condition_id": "DC-HARBORSTONE-SANCTIONS-CONFIRMED",
+                "expression": (
+                    f"{_SCREENING_CLAIMS}['result'] == 'CONFIRMED_MATCH'"
+                ),
+                "resulting_decision": "DENIED",
+                "priority": 11,
+                "reason_code": "SANCTIONS_CONFIRMED_MATCH",
+                "terminal": True,
+            },
+            {
+                # A screening result flagged for human review (POTENTIAL_MATCH)
+                # escalates. The mandatory control is already NOT_SATISFIED for
+                # this case, so _resolve_outcome maps NOT_SATISFIED + this
+                # ESCALATED condition to ESCALATED (not a hard deny).
+                "condition_id": "DC-HARBORSTONE-SANCTIONS-REVIEW",
+                "expression": (
+                    f"{_SCREENING_CLAIMS}['requires_human_review'] == True"
+                ),
+                "resulting_decision": "ESCALATED",
+                "priority": 12,
+                "reason_code": "SANCTIONS_HUMAN_REVIEW_REQUIRED",
+                "terminal": True,
+            },
+            {
                 # Re-decision path: a valid, authority-verified human approval
                 # upgrades the escalation. Priority 15 -> checked before
                 # DC-HARBORSTONE-HUMAN-APPROVAL (20) but after the hard-denial
-                # condition (10). The `not in` guard is belt-and-suspenders:
-                # priority 10 being terminal already means a hard denial never
-                # reaches here.
+                # and screening conditions (10-12). The `not in` guard is
+                # belt-and-suspenders: priority 10 being terminal already means
+                # a hard denial never reaches here.
                 "condition_id": "DC-HARBORSTONE-APPROVED-VIA-HUMAN",
                 "expression": (
                     f"{_APPROVAL_IS_VALID} and "
@@ -227,6 +295,6 @@ def build_harborstone_package(
         ],
         metadata={
             "demo": "harborstone",
-            "placeholder_screening_control": True,
+            "sanctions_screening": "simulated-demo-dataset",
         },
     )
