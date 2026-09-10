@@ -70,5 +70,13 @@ class Finding(CanonicalMixin, Base):
 
     reason_codes = Column(Text, nullable=False, default="[]")
 
+    # Reason codes from the *resolution phase* (resolution validation /
+    # re-assessment) — e.g. why a resolution attempt was rejected or a
+    # re-assessment was blocked. Kept separate from ``reason_codes`` (the
+    # generation-time codes) and deliberately NOT part of ``finding_hash``:
+    # this is a post-generation mutation, like ``resolution_validation_outcome``.
+    # ``None`` until the resolution phase writes to it.
+    resolution_reason_codes = Column(Text, nullable=True)
+
     # --- Determinism / provenance ---
     finding_hash = Column(String, nullable=True, index=True)

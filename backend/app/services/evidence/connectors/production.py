@@ -3,8 +3,7 @@ non-mock connectors where they exist.
 
 This is deliberately additive: evidence types that don't yet have a real
 connector still fall back to their simulator (so nothing else regresses),
-but evidence types that DO have a real connector -- currently just
-SecureRob perception facts -- get the real one instead.
+but evidence types that DO have a real connector get the real one instead.
 
 Configuration is read from environment variables, matching the pattern the
 codebase already uses elsewhere for config (adjust if this project uses a
@@ -18,6 +17,9 @@ from __future__ import annotations
 import os
 
 from app.services.evidence.connectors import ConnectorRegistry, simulators
+from app.services.evidence.connectors.harborstone_sentry_screening import (
+    harborstone_sentry_screening_connector,
+)
 from app.services.evidence.connectors.securerob import securerob_perception_connector
 
 
@@ -33,6 +35,14 @@ def default_production_registry() -> ConnectorRegistry:
         simulators.account_allowance_connector(),
         simulators.approval_connector(),
         simulators.execution_result_connector(),
+        # Real connector for HarborStone's SENTRY sanctions-screening evidence
+        # (harborstone.sanctions_screening.v1). The screening *lookup* is a
+        # deterministic in-repo demo dataset (project-owner-approved for the
+        # MVP, labelled as simulation on every item) -- the connector, the
+        # evidence, its validation and the enforcement around it are real.
+        # is_mock=False, so it runs under the Gateway's production_mode=True.
+        # See connectors/harborstone_sentry_screening.py.
+        harborstone_sentry_screening_connector(),
     ]
 
     gateway_base_url = os.environ.get("SECUREROB_GATEWAY_BASE_URL")

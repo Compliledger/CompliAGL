@@ -91,7 +91,7 @@ def _publish_package(client):
     assert (
         client.post(
             f"/api/v1/governance-packages/{pkg_id}/approve",
-            json={"approved_by": "tester"},
+            json={"approver_principal_id": "tester", "rationale": "test approval"},
             headers=author,
         ).status_code
         == 200
@@ -201,10 +201,14 @@ def test_evidence_api_full_flow(api_client):
     missing_reqs = {m["evidence_requirement_id"] for m in p["missing_evidence"]}
     assert "EV-IDENTITY" in missing_reqs
 
-    # Bonus: the source registry is inspectable and lists the mock simulators.
+    # Bonus: the source registry is inspectable -- the six mock simulators plus
+    # the real HarborStone SENTRY sanctions-screening connector (registered by
+    # default in default_production_registry()).
     sources = api_client.get("/api/v1/evidence-sources", headers=HEADERS)
     assert sources.status_code == 200
-    assert len(sources.json()) == 6
+    source_ids = {s.get("source_id") or s.get("connector_id") for s in sources.json()}
+    assert len(sources.json()) == 7
+    assert "harborstone-sentry-sanctions-screening" in source_ids
 
 
 def test_evidence_api_unknown_job_returns_404(api_client):

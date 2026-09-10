@@ -42,7 +42,14 @@ class ExecutableGovernancePackage(CanonicalMixin, Base):
     expires_at = Column(DateTime(timezone=True), nullable=True)
 
     # --- Approval / publication provenance ---
+    # ``approved_by`` holds the approving principal's id (a plain identifier for
+    # older rows). ``approval_rationale`` is the required free-text reason.
+    # ``approver_authority_hash`` binds the CompliIdentity authority snapshot of
+    # the approver -- null unless GOVERNANCE_APPROVAL_AUTHORITY_REQUIRED was set
+    # at approval time (same binding pattern as Decision.authority_hash).
     approved_by = Column(String, nullable=True)
+    approval_rationale = Column(Text, nullable=True)
+    approver_authority_hash = Column(String, nullable=True)
     approved_at = Column(DateTime(timezone=True), nullable=True)
     published_at = Column(DateTime(timezone=True), nullable=True)
     supersedes_package_id = Column(String, nullable=True, index=True)

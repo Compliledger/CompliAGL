@@ -64,6 +64,9 @@ class FindingResponse(CanonicalResponseBase):
     resolution_validation_outcome: Optional[str] = None
     resolved_by_decision_id: Optional[str] = None
     reason_codes: list[Any] = Field(default_factory=list)
+    # Resolution-phase reason codes (why a resolution attempt was rejected /
+    # a re-assessment blocked). ``None`` until the resolution phase runs.
+    resolution_reason_codes: Optional[list[Any]] = None
     finding_hash: Optional[str] = None
 
 
@@ -233,6 +236,33 @@ class ReviewRecordResponse(CanonicalResponseBase):
     rationale: Optional[str] = None
     reviewed_at: Optional[datetime] = None
     review_hash: Optional[str] = None
+
+
+# --------------------------------------------------------------------------- #
+# Escalation approval (human approval of a policy-escalated decision)
+# --------------------------------------------------------------------------- #
+class EscalationApprovalSubmit(BaseModel):
+    organization_id: str = Field(..., min_length=1)
+    decision_id: str = Field(..., min_length=1)
+    approver_principal_id: str = Field(..., min_length=1)
+    rationale: str = Field(..., min_length=1)
+    # Optional explicit expiry; defaults to now + ESCALATION_APPROVAL_TTL_SECONDS.
+    valid_until: Optional[datetime] = None
+
+
+class EscalationApprovalResponse(CanonicalResponseBase):
+    escalation_approval_id: str
+    decision_id: str
+    intent_id: Optional[str] = None
+    approver_principal_id: str
+    approver_principal_type: Optional[str] = None
+    approver_authority_hash: Optional[str] = None
+    rationale: str
+    granted_at: Optional[datetime] = None
+    valid_until: Optional[datetime] = None
+    status: str
+    consumed_by_decision_id: Optional[str] = None
+    approval_hash: Optional[str] = None
 
 
 # --------------------------------------------------------------------------- #

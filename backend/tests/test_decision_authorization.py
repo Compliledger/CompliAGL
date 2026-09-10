@@ -155,7 +155,9 @@ def _publish(
     )
     result = governance_package_service.validate(db, ORG, pkg.id)
     assert result.valid, result.errors
-    governance_package_service.approve(db, ORG, pkg.id, approved_by="tester")
+    governance_package_service.approve(
+        db, ORG, pkg.id, approver_principal_id="tester", rationale="approved for test"
+    )
     return governance_package_service.publish(db, ORG, pkg.id)
 
 
@@ -986,7 +988,7 @@ def test_authority_context_approval_required_reason_drives_package_condition(
             reason="approval_required",
             sufficient=False,
             active=True,
-            current_trust_state="present",
+            current_trust_state={"present": True, "fail_closed": False},
             authority_revision="rev-1",
         ),
     )
@@ -1036,7 +1038,10 @@ def test_authority_context_ok_allows_approval_when_package_requires_it(
     _patch_authority_client(
         monkeypatch,
         AuthorityContext(
-            status="OK", sufficient=True, active=True, current_trust_state="present"
+            status="OK",
+            sufficient=True,
+            active=True,
+            current_trust_state={"present": True, "fail_closed": False},
         ),
     )
     resolution, actor, target, assessment = _run_pipeline(
@@ -1047,6 +1052,100 @@ def test_authority_context_ok_allows_approval_when_package_requires_it(
     decision = decision_service.decide_for_resolution(db_session, ORG, resolution.id)
     assert decision.outcome == DecisionOutcome.APPROVED.value
     assert decision.authority_status == "OK"
+
+
+_AUTHORITY_BOOLEAN_FACT_CONDITIONS = [
+    {
+        "condition_id": "DC-APPROVAL-REQUIRED-BOOL",
+        # keys off CompliIdentity's own boolean, not the derived reason
+        "expression": "authority.approval_required == True",
+        "resulting_decision": "ESCALATED",
+        "priority": 10,
+        "reason_code": "HUMAN_APPROVAL_REQUIRED",
+        "terminal": True,
+    },
+    {
+        "condition_id": "DC-APPROVE",
+        "expression": "True",
+        "resulting_decision": "APPROVED",
+        "priority": 100,
+        "reason_code": "APPROVED_OK",
+        "terminal": True,
+    },
+]
+
+
+def _fake_intent(parameters=None, *, intent_type="transfer", amount_minor=None):
+    import json as _json
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        parameters=_json.dumps(parameters) if parameters is not None else None,
+        intent_type=intent_type,
+        amount_minor=amount_minor,
+    )
+
+
+def test_authority_request_params_defaults_unchanged():
+    """A package that supplies none of the compliidentity_* params probes
+    exactly as before: generic 'request' verb, intent_type as resource, no
+    resource_instance."""
+    params = decision_service._authority_request_params(_fake_intent())
+    assert params == {"resource": "transfer", "action": "request"}
+
+
+def test_authority_request_params_semantic_action_and_instance():
+    intent = _fake_intent(
+        {
+            "compliidentity_resource": "aml.action",
+            "compliidentity_action": "propose",
+            "compliidentity_resource_instance": "HARBORSTONE-2024-0042",
+        },
+        amount_minor=25000000,
+    )
+    params = decision_service._authority_request_params(intent)
+    assert params == {
+        "resource": "aml.action",
+        "action": "propose",
+        "resource_instance": "HARBORSTONE-2024-0042",
+        "attribute": "amount",
+        "value": "25000000",
+    }
+
+
+def test_authority_request_params_partial_opt_in():
+    """Supplying only the action still leaves resource_instance unsent."""
+    intent = _fake_intent({"compliidentity_action": "approve"})
+    params = decision_service._authority_request_params(intent)
+    assert params == {"resource": "transfer", "action": "approve"}
+    assert "resource_instance" not in params
+
+
+def test_authority_structured_booleans_exposed_as_facts(db_session, monkeypatch):
+    """The raw authority_for_request booleans (approval_required here) reach
+    package conditions as facts independently of the derived `authority.reason`
+    -- proves runtime_facts.build_authority_facts wiring, not just parsing."""
+    _patch_authority_client(
+        monkeypatch,
+        AuthorityContext(
+            status="OK",
+            reason=None,  # deliberately not set -- the boolean must stand alone
+            sufficient=False,
+            active=True,
+            approval_required=True,
+            findings=("permission_present", "approval_required"),
+        ),
+    )
+    resolution, actor, target, assessment = _run_pipeline(
+        db_session,
+        _AUTHORITY_BOOLEAN_FACT_CONDITIONS,
+        requires_authority_context=True,
+    )
+    decision = decision_service.decide_for_resolution(db_session, ORG, resolution.id)
+    explanation = decision_service.explain(db_session, ORG, decision.id)
+
+    assert decision.outcome == DecisionOutcome.ESCALATED.value
+    assert "HUMAN_APPROVAL_REQUIRED" in explanation["reason_codes"]
 
 
 def test_api_issue_rejected_for_denied_decision(api_env):

@@ -34,6 +34,7 @@ from app.models.devsync_dispatch import DevSyncDispatch
 from app.models.event_delivery import EventDelivery
 from app.models.integration_event import IntegrationEvent
 from app.models.review_record import ReviewRecord
+from app.models.escalation_approval import EscalationApproval
 from app.models.execution_authorization import ExecutionAuthorization
 from app.models.external_execution_result import ExternalExecutionResult
 from app.models.governance_evaluation import GovernanceEvaluation
@@ -776,6 +777,41 @@ class ReviewRecordRepository(TenantRepository[ReviewRecord]):
             .filter(self.model.finding_id == finding_id)
             .order_by(self.model.created_at.asc())
             .all()
+        )
+
+
+class EscalationApprovalRepository(TenantRepository[EscalationApproval]):
+    model = EscalationApproval
+
+    def list_for_decision(
+        self, organization_id: str, decision_id: str
+    ) -> Sequence[EscalationApproval]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.decision_id == decision_id)
+            .order_by(self.model.created_at.asc())
+            .all()
+        )
+
+    def current_for_decision(
+        self, organization_id: str, decision_id: str
+    ) -> Optional[EscalationApproval]:
+        """Most recent ``ACTIVE`` approval for a decision, if any.
+
+        Returns ``ACTIVE`` rows regardless of the wall clock: whether the
+        approval is still within its validity window is a fact the re-decision
+        evaluates against ``valid_until`` (see
+        ``runtime_facts.build_approval_facts``), so it can record an explicit
+        ``approval.expired`` rather than silently finding nothing.
+        """
+        from app.utils.canonical_enums import EscalationApprovalStatus
+
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.decision_id == decision_id)
+            .filter(self.model.status == EscalationApprovalStatus.ACTIVE.value)
+            .order_by(self.model.created_at.desc())
+            .first()
         )
 
 

@@ -1,5 +1,7 @@
 """Application settings loaded from environment variables."""
 
+from typing import Optional
+
 from pydantic_settings import BaseSettings
 
 
@@ -34,6 +36,15 @@ class Settings(BaseSettings):
     # signer_key_id/signature must present a valid signature or be rejected.
     GOVERNANCE_SIGNING_KEYS: dict[str, str] = {}
 
+    # ── Executable governance package approval authority ─────────────
+    # When true, ``governance_package_service.approve()`` verifies the
+    # approver's authority to approve (CompliIdentity ``governance.package`` /
+    # ``approve``) and rejects the approval fail-closed if it cannot. When
+    # false (default), the approver principal id + rationale are still required
+    # and recorded but not verified -- mirrors ``GOVERNANCE_SIGNING_KEYS``
+    # (empty means "not enforced").
+    GOVERNANCE_APPROVAL_AUTHORITY_REQUIRED: bool = False
+
     # ── Execution authorization signing ──────────────────────────────
     # Registry of signing keys used to sign and independently verify issued
     # ExecutionAuthorizations, as a mapping of ``signer_key_id`` to a private
@@ -57,6 +68,13 @@ class Settings(BaseSettings):
     # does not specify an explicit ``expires_at``. Narrow, replay-resistant
     # authorizations should be short-lived.
     AUTHORIZATION_DEFAULT_TTL_SECONDS: int = 900
+
+    # ── Escalation-approval orchestration ────────────────────────────
+    # Default lifetime (seconds) of a human ``EscalationApproval`` when the
+    # submitter does not supply an explicit ``valid_until``. Mirrors
+    # ``AUTHORIZATION_DEFAULT_TTL_SECONDS`` — a human approval of an escalated
+    # decision is a narrow, replay-resistant window, not a standing grant.
+    ESCALATION_APPROVAL_TTL_SECONDS: int = 900
 
     # ── Integration event signing (ProofSync / AuditSync / RegSync) ──────
     # Registry of signing keys used to sign and independently verify outbound
@@ -91,6 +109,17 @@ class Settings(BaseSettings):
     # Logical issuer identity stamped into every AIProof (the CompliAGL instance
     # that generated and signed it).
     AIPROOF_ISSUER: str = "CompliAGL"
+
+    # ── Astra (AIRA / SENTRY) tool-calling layer ─────────────────────
+    # ``gpt-6-astra`` via OpenAI's Responses API powers both agent personas.
+    # Only the Responses API transport (``app/astra/responses/client.py``)
+    # needs the key -- tool schemas and dispatch work without it. ``ASTRA_ENABLED``
+    # gates the agent loop specifically (fail-closed: false = loop refuses to
+    # run), independent of whether a key is present.
+    OPENAI_API_KEY: Optional[str] = None
+    ASTRA_MODEL: str = "gpt-6-astra"
+    ASTRA_ENABLED: bool = False
+    ASTRA_MAX_TOOL_ITERATIONS: int = 8
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

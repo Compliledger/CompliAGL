@@ -217,7 +217,9 @@ def _publish(db, control_overrides, evidence_overrides):
     )
     result = governance_package_service.validate(db, ORG, pkg.id)
     assert result.valid, result.errors
-    governance_package_service.approve(db, ORG, pkg.id, approved_by="tester")
+    governance_package_service.approve(
+        db, ORG, pkg.id, approver_principal_id="tester", rationale="approved for test"
+    )
     return governance_package_service.publish(db, ORG, pkg.id)
 
 

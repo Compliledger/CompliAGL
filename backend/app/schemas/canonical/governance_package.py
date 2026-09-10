@@ -156,6 +156,8 @@ class ExecutableGovernancePackageResponse(CanonicalResponseBase):
     effective_at: Optional[datetime] = None
     expires_at: Optional[datetime] = None
     approved_by: Optional[str] = None
+    approval_rationale: Optional[str] = None
+    approver_authority_hash: Optional[str] = None
     approved_at: Optional[datetime] = None
     published_at: Optional[datetime] = None
     supersedes_package_id: Optional[str] = None
@@ -176,9 +178,15 @@ class ExecutableGovernancePackageResponse(CanonicalResponseBase):
 
 
 class PackageApproveRequest(BaseModel):
-    """Approve a validated package."""
+    """Approve a validated package.
 
-    approved_by: str = Field(..., min_length=1)
+    ``approver_principal_id`` identifies the approving principal (verified
+    against CompliIdentity when ``GOVERNANCE_APPROVAL_AUTHORITY_REQUIRED`` is
+    set). ``rationale`` is the required reason for the approval.
+    """
+
+    approver_principal_id: str = Field(..., min_length=1)
+    rationale: str = Field(..., min_length=1)
 
 
 class PackagePublishRequest(BaseModel):

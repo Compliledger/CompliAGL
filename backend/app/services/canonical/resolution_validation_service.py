@@ -96,6 +96,29 @@ def validate(
             "finding_status": finding.status,
         }
 
+    # An escalation-approval finding is never resolved through this path:
+    # resolution evidence / a review record cannot substitute for an
+    # authority-verified approval + an explicit re-decision. Fail closed and
+    # persist the reason so the rejection leaves a trace (not just a returned
+    # value). This finding type is also always remediation-INELIGIBLE, so a
+    # plan can't exist for it either — this is the second of three barriers.
+    if finding.finding_type == FindingType.ESCALATION_APPROVAL_REQUIRED.value:
+        codes = ["RESOLUTION_ESCALATION_APPROVAL_PATH_REQUIRED"]
+        finding.resolution_validation_outcome = (
+            ResolutionValidationOutcome.REJECTED.value
+        )
+        finding.resolution_reason_codes = json.dumps(codes)
+        finding.status = FindingStatus.VALIDATION_FAILED.value
+        FindingRepository(db).save(finding)
+        return {
+            "finding_id": finding.finding_id,
+            "outcome": ResolutionValidationOutcome.REJECTED.value,
+            "sufficiency": EvidenceSufficiencyOutcome.NOT_EVALUABLE.value,
+            "reason_codes": codes,
+            "evidence_results": [],
+            "finding_status": finding.status,
+        }
+
     plan = RemediationPlanRepository(db).latest_for_finding(org, finding.id)
     evidences = ResolutionEvidenceRepository(db).list_for_finding(org, finding.id)
     reviews = ReviewRecordRepository(db).list_for_finding(org, finding.id)

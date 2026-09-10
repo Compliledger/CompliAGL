@@ -14,6 +14,7 @@ missing context can never silently produce approval.
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from typing import Any, Optional
 
 from app.models.actor_identity import ActorIdentity
@@ -21,6 +22,7 @@ from app.models.intent import Intent
 from app.models.operational_context import OperationalContext
 from app.models.target import Target
 from app.services.canonical.authority_context_service import AuthorityContext
+from app.utils.timestamps import ensure_aware
 
 
 def _load(raw: Optional[str]) -> Any:
@@ -97,13 +99,60 @@ def build_context_facts(context: OperationalContext) -> dict[str, Any]:
 
 
 def build_authority_facts(authority: AuthorityContext) -> dict[str, Any]:
+    """Flatten one authority-context probe into package-authorable facts.
+
+    ``reason`` is the derived single code (see
+    ``authority_context_service._derive_reason``); ``findings`` is the raw
+    ``authority_for_request.findings`` list for conditions that need the full
+    picture. ``permission_present`` / ``approval_required`` / ``limit_exceeded``
+    are CompliIdentity's own booleans, exposed so a package can key off them
+    directly instead of the derived ``reason``. ``current_trust_state`` is the
+    trust-loop state object, informational only.
+    """
     return {
         "status": authority.status,
         "reason": authority.reason,
         "sufficient": authority.sufficient,
         "active": authority.active,
+        "permission_present": authority.permission_present,
+        "approval_required": authority.approval_required,
+        "limit_exceeded": authority.limit_exceeded,
+        "findings": list(authority.findings),
+        # Adding this key changes authority_hash (and therefore input_hash /
+        # decision_hash) for every authority-gated decision from here on --
+        # same class of change, and same conclusion, as the note in
+        # decision_service.decide_for_resolution about authority_hash itself.
+        "applicable_approvals": [dict(a) for a in authority.applicable_approvals],
         "current_trust_state": authority.current_trust_state,
         "authority_revision": authority.authority_revision,
+        "integrity_content_hash": authority.integrity_content_hash,
+    }
+
+
+def build_approval_facts(approval, *, now: datetime) -> dict[str, Any]:
+    """Flatten one :class:`EscalationApproval` into package-authorable facts.
+
+    Only an ``ACTIVE``, authority-verified approval is ever looked up (see
+    ``EscalationApprovalRepository.current_for_decision``), so ``present`` and
+    ``approver_authorized`` are ``True`` whenever this is called at all;
+    ``expired`` is evaluated here against ``valid_until`` and the supplied
+    ``now`` -- a package condition that upgrades an escalation must test
+    ``approval.present and approval.approver_authorized and not
+    approval.expired``.
+    """
+    valid_until = ensure_aware(approval.valid_until)
+    reference = ensure_aware(now)
+    expired = valid_until is not None and reference is not None and (
+        reference >= valid_until
+    )
+    return {
+        "present": True,
+        "approver_authorized": True,
+        "approver_principal_id": approval.approver_principal_id,
+        "approver_principal_type": approval.approver_principal_type,
+        "valid_until": valid_until.isoformat() if valid_until else None,
+        "expired": expired,
+        "escalation_approval_id": approval.escalation_approval_id,
     }
 
 
@@ -114,6 +163,7 @@ def build_facts(
     target: Optional[Target],
     context: Optional[OperationalContext],
     authority: Optional[AuthorityContext] = None,
+    approval_facts: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     """Build the nested runtime-facts mapping for the governed tuple.
 
@@ -131,6 +181,10 @@ def build_facts(
     package-authored conditions can inspect it if they choose to, though the
     engine-level fail-closed guard in ``decision_service._resolve_outcome``
     does not depend on them doing so.
+
+    ``approval_facts`` (pre-built via :func:`build_approval_facts`) is folded in
+    as the ``approval`` key only on a re-decision that found a current
+    escalation approval for the prior decision; omit-when-absent, same rule.
     """
     facts: dict[str, Any] = {
         "actor": build_actor_facts(actor),
@@ -142,6 +196,8 @@ def build_facts(
         facts["context"] = build_context_facts(context)
     if authority is not None:
         facts["authority"] = build_authority_facts(authority)
+    if approval_facts is not None:
+        facts["approval"] = approval_facts
     return facts
 
 

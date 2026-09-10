@@ -34,6 +34,7 @@ _JSON_FIELDS: dict[str, tuple[str, ...]] = {
         "applicable_package_ids",
         "applicable_requirement_ids",
         "control_evaluation_ids",
+        "required_approver_types",
     ),
     "ExecutionAuthorization": (
         "constraints",
@@ -110,6 +111,7 @@ _JSON_FIELDS: dict[str, tuple[str, ...]] = {
         "control_ids",
         "evidence_gap_ids",
         "reason_codes",
+        "resolution_reason_codes",
     ),
     "RemediationPlan": (
         "remediation_actions",

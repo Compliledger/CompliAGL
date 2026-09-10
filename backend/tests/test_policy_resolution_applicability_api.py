@@ -78,7 +78,7 @@ def _publish_package(client) -> str:
     assert client.post(f"/api/v1/governance-packages/{pkg_id}/validate", headers=AUTHOR_HDR).status_code == 200
     assert client.post(
         f"/api/v1/governance-packages/{pkg_id}/approve",
-        json={"approved_by": "tester"},
+        json={"approver_principal_id": "tester", "rationale": "test approval"},
         headers=AUTHOR_HDR,
     ).status_code == 200
     assert client.post(

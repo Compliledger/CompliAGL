@@ -36,8 +36,10 @@ from app.repositories.canonical import (
     AssessmentRepository,
     CanonicalEvidencePackageRepository,
     DecisionRepository,
+    EscalationApprovalRepository,
     ExecutableGovernancePackageRepository,
     IntentRepository,
+    NormalizedEvidenceRepository,
     OperationalContextRepository,
     PolicyResolutionRepository,
     TargetRepository,
@@ -58,6 +60,7 @@ from app.utils.canonical_enums import (
     CanonicalActorType,
     DecisionOutcome,
     DecisionSupersessionStatus,
+    EscalationApprovalStatus,
     PolicyResolutionStatus,
 )
 from app.utils.hashing import hash_dict
@@ -290,22 +293,38 @@ def _authority_principal_id(actor) -> Optional[str]:
 
 
 def _authority_request_params(intent) -> dict[str, Any]:
-    """Map an Intent to CompliIdentity's ``resource`` / ``action`` probe
-    fields.
+    """Map an Intent to CompliIdentity's ``resource`` / ``action`` /
+    ``resource_instance`` probe fields.
 
-    ASSUMPTION: the contract's own example pairs a fixed probe verb
-    (``action: "request"``) with a business-object noun (``resource``), not
-    literally ``intent.action``. ``resource`` is read from
-    ``intent.parameters["compliidentity_resource"]`` when the governance
-    package author supplied one, falling back to ``intent.intent_type``.
-    When the intent carries an amount, it's passed as the
-    ``attribute``/``value`` probe pair so CompliIdentity's
-    ``authority_for_request`` is scoped to the actual proposed action
-    (per the contract owner's guidance), not just a generic liveness check.
+    All three come from ``intent.parameters`` when the governance package
+    author supplied them, following the existing ``compliidentity_resource``
+    pattern:
+
+    * ``compliidentity_resource`` -> ``resource`` (falls back to
+      ``intent.intent_type``).
+    * ``compliidentity_action`` -> ``action`` (falls back to ``"request"``).
+      CompliIdentity's real permission model keys on the semantic verb --
+      ``read`` / ``propose`` / ``approve`` -- not a generic probe verb;
+      confirmed against the demo3 acceptance run, where every acceptance
+      check used the real action. The ``"request"`` fallback keeps every
+      package that predates this (and every non-opt-in package) unchanged.
+    * ``compliidentity_resource_instance`` -> ``resource_instance``, sent
+      only when supplied. This is what makes CompliIdentity's resource-scope
+      narrowing meaningful -- e.g. a grant scoped to one case, inherited by a
+      delegate: without the instance the probe can't see the scope bound.
+
+    When the intent carries an amount it's passed as the ``attribute`` /
+    ``value`` pair so CompliIdentity's ``authority_for_request`` is scoped to
+    the actual proposed action (and its ``approval_required`` /
+    ``limit_exceeded`` reflect the real threshold), not just a liveness check.
     """
     params = _load(intent.parameters) or {}
     resource = params.get("compliidentity_resource") or intent.intent_type
-    result: dict[str, Any] = {"resource": resource, "action": "request"}
+    action = params.get("compliidentity_action") or "request"
+    result: dict[str, Any] = {"resource": resource, "action": action}
+    resource_instance = params.get("compliidentity_resource_instance")
+    if resource_instance is not None:
+        result["resource_instance"] = resource_instance
     if intent.amount_minor is not None:
         result["attribute"] = "amount"
         result["value"] = str(intent.amount_minor)
@@ -330,11 +349,78 @@ def _fetch_authority_context(org: str, actor, intent) -> AuthorityContext:
     )
 
 
+def _required_approver_types(
+    authority: Optional[AuthorityContext], action: str
+) -> list[str]:
+    """The approver principal type(s) CompliIdentity declared were required to
+    approve ``action``, from the authority context's ``applicable_approvals``.
+
+    Empty when there is no authority context or CompliIdentity named no
+    approval requirement for this action (e.g. the escalation was driven by a
+    package's own amount threshold rather than ``authority.approval_required``).
+    """
+    if authority is None:
+        return []
+    types = {
+        str(entry["approver_principal_type"])
+        for entry in authority.applicable_approvals
+        if isinstance(entry, dict)
+        and entry.get("action") == action
+        and entry.get("approver_principal_type")
+    }
+    return sorted(types)
+
+
+def _evidence_claims_facts(
+    db: Session, org: str, evidence_pkg
+) -> dict[str, dict[str, Any]]:
+    """The normalized (validated) evidence claims, keyed by evidence
+    requirement id, for the decision context.
+
+    This is the same fact vocabulary ``control_evaluation_service`` already
+    exposes to control expressions -- surfaced here so a package's *decision*
+    conditions can key off a concrete evidence signal (e.g. a sanctions
+    screening ``result``) rather than only the coarse assessment verdict.
+
+    Only the first normalized item per requirement is exposed (requirements
+    used this way are single-cardinality); an absent requirement is simply an
+    absent key, so a condition that references it fails closed.
+    """
+    claims_by_req: dict[str, dict[str, Any]] = {}
+    if evidence_pkg is None or not getattr(
+        evidence_pkg, "collection_job_id", None
+    ):
+        return claims_by_req
+    normalized = NormalizedEvidenceRepository(db).list_for_job(
+        org, evidence_pkg.collection_job_id
+    )
+    for norm in normalized:
+        req_id = norm.evidence_requirement_id
+        if req_id in claims_by_req:
+            continue
+        claims = _load(norm.normalized_claims)
+        claims_by_req[req_id] = claims if isinstance(claims, dict) else {}
+    return claims_by_req
+
+
 def _build_context(
-    actor, intent, target, context, assessment, evidence_pkg, authority=None
+    actor,
+    intent,
+    target,
+    context,
+    assessment,
+    evidence_pkg,
+    authority=None,
+    approval_facts=None,
+    evidence_claims=None,
 ):
     facts = runtime_facts.build_facts(
-        actor=actor, intent=intent, target=target, context=context, authority=authority
+        actor=actor,
+        intent=intent,
+        target=target,
+        context=context,
+        authority=authority,
+        approval_facts=approval_facts,
     )
     intent_params = facts.get("intent", {}).get("parameters", {}) or {}
     decision_context: dict[str, Any] = dict(facts)
@@ -353,6 +439,10 @@ def _build_context(
         if evidence_pkg is not None
         else None,
     }
+    # Normalized evidence claims by requirement id. Bound into the decision's
+    # identity already via ``evidence_package_hash`` in input_hash -- exposed
+    # here only so decision conditions can read the content.
+    decision_context["evidence_claims"] = dict(evidence_claims or {})
     return facts, decision_context
 
 
@@ -427,8 +517,35 @@ def decide_for_resolution(
     if requires_authority_context and not no_policy:
         authority = _fetch_authority_context(org, actor, intent)
 
+    # A re-decision (prior_decision_id set) picks up a current escalation
+    # approval for that prior decision as the ``approval`` runtime fact -- a
+    # package condition upgrades the escalation off it; the engine's
+    # _resolve_outcome is unchanged. Only ACTIVE approvals are returned;
+    # whether the window has passed is exposed as ``approval.expired``.
+    decided_at = utc_now()
+    approval_obj = None
+    approval_facts = None
+    if prior_decision_id is not None:
+        approval_obj = EscalationApprovalRepository(db).current_for_decision(
+            org, prior_decision_id
+        )
+        if approval_obj is not None:
+            approval_facts = runtime_facts.build_approval_facts(
+                approval_obj, now=decided_at
+            )
+
+    evidence_claims = _evidence_claims_facts(db, org, evidence_pkg)
+
     facts, decision_context = _build_context(
-        actor, intent, target, context, assessment, evidence_pkg, authority
+        actor,
+        intent,
+        target,
+        context,
+        assessment,
+        evidence_pkg,
+        authority,
+        approval_facts,
+        evidence_claims,
     )
 
     condition_outcome, triggered = (
@@ -462,17 +579,30 @@ def decide_for_resolution(
     # the snapshot's identity rather than duplicating it as a second audit
     # record. None when the package didn't require an authority-context call.
     authority_hash = hash_dict(facts["authority"]) if "authority" in facts else None
+    # Content hash of the ``approval`` fact -- bound into input_hash exactly
+    # like authority_hash. None on a first decision (no prior_decision_id) or a
+    # re-decision that found no current approval. ``required_approver_types``
+    # is persisted (not hashed separately) -- it is already covered by
+    # authority_hash via authority.applicable_approvals.
+    approval_hash = hash_dict(facts["approval"]) if "approval" in facts else None
+    probe_action = _authority_request_params(intent).get("action")
+    required_approver_types = _required_approver_types(authority, probe_action)
 
-    # NOTE for a future cross-repo hash-mismatch debug: "authority_hash" was
-    # added to this payload by the CompliIdentity authority-context
-    # integration migration. Its presence (as a key, even when the value is
-    # None) changes input_hash/decision_hash for every decision computed
-    # from this point on relative to anything computed before it -- checked
-    # at the time: no in-repo code recomputes input_hash from a persisted
-    # Decision to compare against a prior value, and IntegrationEventType.
-    # DECISION_CREATED has no live publisher, so no outbox payload schema
-    # needed updating either. Not ruled out: an external system polling the
-    # public DecisionResponse.input_hash field and recomputing it itself.
+    # NOTE for a future cross-repo hash-mismatch debug -- input_hash shape has
+    # changed three times, all the same class of change (see
+    # CROSS_REPO_ASK_compliledger_input_hash_verification.md):
+    #   1. migration 0014 added the "authority_hash" key (null for packages
+    #      that don't opt into the CompliIdentity check).
+    #   2. this commit (migration 0017) adds the "approval_hash" key (null on
+    #      every decision that isn't a re-decision consuming an approval).
+    #   3. this commit also changes what "authority_hash" *hashes over*:
+    #      runtime_facts.build_authority_facts now includes
+    #      authority.applicable_approvals, so authority_hash differs for
+    #      authority-gated decisions from here on even at identical inputs.
+    # Checked at each point: no in-repo code recomputes input_hash from a
+    # persisted Decision, and IntegrationEventType.DECISION_CREATED has no live
+    # publisher. Not ruled out: an external system (CompliLedger) polling the
+    # public DecisionResponse.input_hash and recomputing it itself.
     input_hash = hash_dict(
         {
             "engine_version": DETERMINISTIC_ENGINE_VERSION,
@@ -495,9 +625,9 @@ def decide_for_resolution(
             "target_hash": target_hash,
             "context_hash": context_hash,
             "authority_hash": authority_hash,
+            "approval_hash": approval_hash,
         }
     )
-    decided_at = utc_now()
     decision_hash = hash_dict(
         {
             "input_hash": input_hash,
@@ -535,6 +665,12 @@ def decide_for_resolution(
         authority_status=authority.status if authority is not None else None,
         authority_reason=authority.reason if authority is not None else None,
         authority_hash=authority_hash,
+        required_approver_types=(
+            json.dumps(required_approver_types)
+            if required_approver_types
+            else None
+        ),
+        approval_hash=approval_hash,
         engine_version=DETERMINISTIC_ENGINE_VERSION,
         input_hash=input_hash,
         decision_hash=decision_hash,
@@ -561,6 +697,21 @@ def decide_for_resolution(
             obj.prior_decision_id = prior.id
         repo.save(prior)
         repo.save(obj)
+
+    # A current approval that actually drove an APPROVED re-decision is spent:
+    # one approval authorises exactly one re-decision. An unexpired approval
+    # that did NOT upgrade the escalation (e.g. the package condition still
+    # escalated for another reason) is left ACTIVE; an expired one is left for
+    # a later sweep to mark EXPIRED.
+    if (
+        approval_obj is not None
+        and outcome == DecisionOutcome.APPROVED.value
+        and approval_facts is not None
+        and not approval_facts.get("expired")
+    ):
+        approval_obj.status = EscalationApprovalStatus.CONSUMED.value
+        approval_obj.consumed_by_decision_id = obj.id
+        EscalationApprovalRepository(db).save(approval_obj)
     return obj
 
 
@@ -604,12 +755,14 @@ def explain(
         "policy_package_hash": decision.policy_package_hash,
         "authority_status": decision.authority_status,
         "authority_reason": decision.authority_reason,
+        "required_approver_types": _load(decision.required_approver_types) or [],
         "input_hashes": {
             "actor_hash": decision.actor_hash,
             "intent_hash": decision.intent_hash,
             "target_hash": decision.target_hash,
             "context_hash": decision.context_hash,
             "authority_hash": decision.authority_hash,
+            "approval_hash": decision.approval_hash,
         },
         "engine_version": decision.engine_version,
         "decision_hash": decision.decision_hash,

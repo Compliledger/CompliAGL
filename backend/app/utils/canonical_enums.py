@@ -487,6 +487,14 @@ class FindingType(str, Enum):
     MANUAL_REVIEW = "MANUAL_REVIEW"
     OPERATIONAL_STATE_CONFLICT = "OPERATIONAL_STATE_CONFLICT"
     AUTHORITY_FAILURE = "AUTHORITY_FAILURE"
+    # A governance policy *condition* escalated an otherwise-clean decision
+    # (assessment SATISFIED, no failing control). The only resolution is an
+    # authority-verified human approval — never remediation evidence, a plain
+    # review record, or re-assessment. Given its own type so the
+    # remediation/re-assessment path can structurally refuse it (see
+    # finding_service._escalation_approval_required, resolution_validation_service,
+    # reassessment_service).
+    ESCALATION_APPROVAL_REQUIRED = "ESCALATION_APPROVAL_REQUIRED"
     OTHER = "OTHER"
 
 
@@ -605,6 +613,27 @@ class ReviewOutcome(str, Enum):
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
     NEEDS_MORE_INFO = "NEEDS_MORE_INFO"
+
+
+class EscalationApprovalStatus(str, Enum):
+    """Lifecycle of an :class:`EscalationApproval`.
+
+    An escalation approval authorises re-evaluation of an ``ESCALATED`` decision
+    that escalated for human approval. It is time-bounded (``valid_until``) and
+    consumed by exactly one re-decision.
+
+    * ``ACTIVE`` — granted and not yet consumed. Whether it is still *within* its
+      validity window is evaluated at decision time against ``valid_until`` (see
+      ``runtime_facts.build_approval_facts``), not stored here.
+    * ``CONSUMED`` — a re-decision used this approval to upgrade the escalation;
+      ``consumed_by_decision_id`` points at the new decision.
+    * ``EXPIRED`` — explicitly retired after its window passed without being
+      consumed (a terminal, non-reusable state).
+    """
+
+    ACTIVE = "ACTIVE"
+    CONSUMED = "CONSUMED"
+    EXPIRED = "EXPIRED"
 
 
 # --------------------------------------------------------------------------- #

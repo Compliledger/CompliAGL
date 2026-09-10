@@ -3,7 +3,8 @@
 Exposes the finding-and-remediation lifecycle: list/get/assign findings, create
 remediation plans, update remediation status, submit resolution evidence,
 validate resolution, trigger re-assessment, DevSync dispatch/callbacks, review
-records, and decision history retrieval.
+records, escalation approvals (submit / list / get / apply), and decision
+history retrieval.
 """
 
 from __future__ import annotations
@@ -15,11 +16,14 @@ from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_org_id
 from app.core.database import get_db
+from app.schemas.canonical.governance import DecisionResponse
 from app.schemas.canonical.remediation import (
     DecisionHistoryResponse,
     DevSyncCallbackRequest,
     DevSyncDispatchRequest,
     DevSyncDispatchResponse,
+    EscalationApprovalResponse,
+    EscalationApprovalSubmit,
     FindingAssignRequest,
     FindingGenerateRequest,
     FindingResponse,
@@ -36,6 +40,7 @@ from app.schemas.canonical.remediation import (
 from app.schemas.canonical.serialization import orm_to_dict
 from app.services.canonical import (
     devsync_service,
+    escalation_approval_service,
     finding_service,
     reassessment_service,
     remediation_service,
@@ -43,7 +48,11 @@ from app.services.canonical import (
     resolution_validation_service,
     review_service,
 )
-from app.services.canonical.errors import ConflictError, NotFoundError
+from app.services.canonical.errors import (
+    AuthorityVerificationError,
+    ConflictError,
+    NotFoundError,
+)
 
 router = APIRouter(tags=["v1:remediation"])
 
@@ -254,6 +263,104 @@ def create_review(payload: ReviewRecordCreate, db: Session = Depends(get_db)):
         return orm_to_dict(review_service.record(db, payload))
     except NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+
+
+# --------------------------------------------------------------------------- #
+# Escalation approvals (human approval of a policy-escalated decision)
+# --------------------------------------------------------------------------- #
+@router.post(
+    "/escalation-approvals",
+    response_model=EscalationApprovalResponse,
+    status_code=201,
+)
+def submit_escalation_approval(
+    payload: EscalationApprovalSubmit, db: Session = Depends(get_db)
+):
+    """Step 1: record an authority-verified human approval of an ESCALATED
+    decision. Does not re-decide -- call ``.../apply`` for that."""
+    try:
+        return orm_to_dict(
+            escalation_approval_service.submit(
+                db,
+                payload.organization_id,
+                decision_id=payload.decision_id,
+                approver_principal_id=payload.approver_principal_id,
+                rationale=payload.rationale,
+                valid_until=payload.valid_until,
+            )
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except AuthorityVerificationError as exc:
+        # Fail-closed: the approver's authority to approve this action could not
+        # be verified against CompliIdentity. `reason` is the machine code.
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "authority_verification_failed",
+                "reason": exc.reason,
+                "message": str(exc),
+            },
+        )
+
+
+@router.get(
+    "/escalation-approvals",
+    response_model=list[EscalationApprovalResponse],
+)
+def list_escalation_approvals(
+    decision_id: str,
+    organization_id: str = Depends(get_org_id),
+    db: Session = Depends(get_db),
+):
+    return [
+        orm_to_dict(a)
+        for a in escalation_approval_service.list_for_decision(
+            db, organization_id, decision_id
+        )
+    ]
+
+
+@router.get(
+    "/escalation-approvals/{resource_id}",
+    response_model=EscalationApprovalResponse,
+)
+def get_escalation_approval(
+    resource_id: str,
+    organization_id: str = Depends(get_org_id),
+    db: Session = Depends(get_db),
+):
+    obj = escalation_approval_service.get(db, organization_id, resource_id)
+    if obj is None:
+        raise HTTPException(status_code=404, detail="EscalationApproval not found")
+    return orm_to_dict(obj)
+
+
+@router.post(
+    "/escalation-approvals/{resource_id}/apply",
+    response_model=DecisionResponse,
+    status_code=201,
+)
+def apply_escalation_approval(
+    resource_id: str,
+    organization_id: str = Depends(get_org_id),
+    db: Session = Depends(get_db),
+):
+    """Step 2: re-decide the escalated decision, consuming this ACTIVE approval.
+    Returns the new deterministic decision (APPROVED only if the governing
+    package's conditions upgrade the escalation off the ``approval`` fact)."""
+    try:
+        return orm_to_dict(
+            escalation_approval_service.apply(
+                db, organization_id, escalation_approval_id=resource_id
+            )
+        )
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
 
 
 # --------------------------------------------------------------------------- #
