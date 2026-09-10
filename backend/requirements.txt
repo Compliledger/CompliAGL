@@ -8,6 +8,12 @@ aiosqlite==0.20.0
 alembic==1.13.2
 jsonschema==4.10.3
 
+# Astra (AIRA / SENTRY) tool-calling layer -- OpenAI Responses API transport.
+# Imported lazily in app/astra/responses/client.py: the rest of the astra
+# layer (tool schemas, dispatch, handlers) runs without it, and the agent
+# loop is gated behind ASTRA_ENABLED regardless.
+openai==1.63.0
+
 # Optional: shared Algorand anchoring adapter. Installed separately (see
 # requirements-adapter.txt and app/mvp2/anchor/README.md) so the backend can
 # run without it. Reused by app/mvp2/anchor/algorand_adapter_service.py.

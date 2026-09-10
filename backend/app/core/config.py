@@ -1,5 +1,7 @@
 """Application settings loaded from environment variables."""
 
+from typing import Optional
+
 from pydantic_settings import BaseSettings
 
 
@@ -107,6 +109,17 @@ class Settings(BaseSettings):
     # Logical issuer identity stamped into every AIProof (the CompliAGL instance
     # that generated and signed it).
     AIPROOF_ISSUER: str = "CompliAGL"
+
+    # ── Astra (AIRA / SENTRY) tool-calling layer ─────────────────────
+    # ``gpt-6-astra`` via OpenAI's Responses API powers both agent personas.
+    # Only the Responses API transport (``app/astra/responses/client.py``)
+    # needs the key -- tool schemas and dispatch work without it. ``ASTRA_ENABLED``
+    # gates the agent loop specifically (fail-closed: false = loop refuses to
+    # run), independent of whether a key is present.
+    OPENAI_API_KEY: Optional[str] = None
+    ASTRA_MODEL: str = "gpt-6-astra"
+    ASTRA_ENABLED: bool = False
+    ASTRA_MAX_TOOL_ITERATIONS: int = 8
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
