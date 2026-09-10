@@ -19,3 +19,5 @@ openai==1.63.0
 # run without it. Reused by app/mvp2/anchor/algorand_adapter_service.py.
 
 psycopg[binary]>=3.1
+
+# force rebuild
