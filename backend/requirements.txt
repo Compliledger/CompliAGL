@@ -17,3 +17,5 @@ openai==1.63.0
 # Optional: shared Algorand anchoring adapter. Installed separately (see
 # requirements-adapter.txt and app/mvp2/anchor/README.md) so the backend can
 # run without it. Reused by app/mvp2/anchor/algorand_adapter_service.py.
+
+psycopg[binary]>=3.1
