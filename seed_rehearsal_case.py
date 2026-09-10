@@ -102,7 +102,7 @@ def main() -> None:
             TargetCreate(
                 organization_id=HARBORSTONE_ORG_ID,
                 target_type=TargetType.TRANSACTION,
-                external_identifier=CASE,
+                external_identifier=COUNTERPARTY_WALLET,
             ),
         )
         print(f"target created: {target.id}")

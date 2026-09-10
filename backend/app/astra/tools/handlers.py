@@ -169,6 +169,22 @@ def get_case_data(
     out: dict[str, Any] = {"case_id": case_id}
 
     if "case" in wanted:
+        # Targets are linked to this case via its resolutions' target_id --
+        # NOT by Target.external_identifier == case_id. A Target's own
+        # external_identifier is the thing being screened (the counterparty
+        # /wallet), a distinct concept from the case id, which lives in
+        # Intent.parameters["compliidentity_resource_instance"] (see
+        # _intents_for_case above).
+        case_resolutions = [
+            r
+            for r in PolicyResolutionRepository(ctx.db).list(
+                ctx.organization_id, skip=0, limit=1000
+            )
+            if r.intent_id in {i.id for i in case_intents}
+        ]
+        case_target_ids = {
+            r.target_id for r in case_resolutions if r.target_id is not None
+        }
         targets = [
             {
                 "target_id": t.id,
@@ -181,7 +197,7 @@ def get_case_data(
             for t in TargetRepository(ctx.db).list(
                 ctx.organization_id, skip=0, limit=1000
             )
-            if t.external_identifier == case_id
+            if t.id in case_target_ids
         ]
         out["case"] = {
             "case_id": case_id,
