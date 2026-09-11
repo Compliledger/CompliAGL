@@ -54,10 +54,22 @@ def evaluate_expression(expression: str, context: dict[str, Any]) -> Any:
 
 def _eval_node(node: ast.AST, context: dict[str, Any]) -> Any:
     if isinstance(node, ast.BoolOp):
-        values = [_eval_node(v, context) for v in node.values]
+        # Short-circuit like real Python `and`/`or`: a downstream operand
+        # referencing a field that doesn't exist for this context (e.g. an
+        # intent with no amount_minor) must not be evaluated once the
+        # combining operator's result is already determined -- evaluating
+        # it eagerly raised TypeError('>=' not supported between NoneType
+        # and int) for expressions like `amount_currency == 'USD' and
+        # amount_minor >= threshold` on intents with no amount at all.
         if isinstance(node.op, ast.And):
-            return all(values)
-        return any(values)
+            for value_node in node.values:
+                if not _eval_node(value_node, context):
+                    return False
+            return True
+        for value_node in node.values:
+            if _eval_node(value_node, context):
+                return True
+        return False
     if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
         return not _eval_node(node.operand, context)
     if isinstance(node, ast.Compare):
