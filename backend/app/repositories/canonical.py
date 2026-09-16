@@ -277,6 +277,42 @@ class ExecutionAuthorizationRepository(TenantRepository[ExecutionAuthorization])
 class ExternalExecutionResultRepository(TenantRepository[ExternalExecutionResult]):
     model = ExternalExecutionResult
 
+    def list_for_intent(
+        self,
+        organization_id: str,
+        intent_id: str,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> Sequence[ExternalExecutionResult]:
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.intent_id == intent_id)
+            .order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def list_for_authorization(
+        self,
+        organization_id: str,
+        execution_authorization_id: str,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> Sequence[ExternalExecutionResult]:
+        return (
+            self._scoped(organization_id)
+            .filter(
+                self.model.execution_authorization_id == execution_authorization_id
+            )
+            .order_by(self.model.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
 
 class ExecutableGovernancePackageRepository(
     TenantRepository[ExecutableGovernancePackage]
@@ -789,6 +825,24 @@ class EscalationApprovalRepository(TenantRepository[EscalationApproval]):
         return (
             self._scoped(organization_id)
             .filter(self.model.decision_id == decision_id)
+            .order_by(self.model.created_at.asc())
+            .all()
+        )
+
+    def list_for_intent(
+        self, organization_id: str, intent_id: str
+    ) -> Sequence[EscalationApproval]:
+        """All approvals across every decision in one intent's chain.
+
+        ``EscalationApproval.decision_id`` names one specific (usually
+        superseded) ``ESCALATED`` decision, but ``intent_id`` is stable across
+        a re-decision chain -- this is what a run-state view keyed by intent
+        needs to find the most recent approval action regardless of which
+        decision in the chain it was submitted against.
+        """
+        return (
+            self._scoped(organization_id)
+            .filter(self.model.intent_id == intent_id)
             .order_by(self.model.created_at.asc())
             .all()
         )

@@ -9,6 +9,7 @@ from app.api.v1 import (
     aiproofs,
     astra,
     authorization,
+    demo_runs,
     evidence,
     governance,
     governance_packages,
@@ -25,6 +26,7 @@ api_v1_router = APIRouter(prefix="/api/v1")
 api_v1_router.include_router(actor_identities.router)
 api_v1_router.include_router(intents.router)
 api_v1_router.include_router(astra.router)
+api_v1_router.include_router(demo_runs.router)
 api_v1_router.include_router(targets.router)
 api_v1_router.include_router(operational_contexts.router)
 api_v1_router.include_router(governance.router)
