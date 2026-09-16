@@ -10,7 +10,7 @@ the CompliIdentity instance on ``COMPLIIDENTITY_BASE_URL`` (default
 ``http://127.0.0.1:8137``, the ``compliidentity_demo3_step2.db`` instance
 created by ``compliidentity_setup_phases_1_7.py``).
 
-Scenarios (Fix Order step 2 acceptance criteria 4a / 4b / 4c / 4d / 4e):
+Scenarios (Fix Order step 2 acceptance criteria 4a / 4b / 4c / 4d / 4e / 4f):
 
     4a  SENTRY attempts aml.case:read outside its delegated scope   -> DENIED
     4b  AIRA proposes a $250,000 action                             -> ESCALATED
@@ -21,27 +21,40 @@ Scenarios (Fix Order step 2 acceptance criteria 4a / 4b / 4c / 4d / 4e):
         4c-neg-expired-approval an expired approval does not upgrade
     4d  wrong actor / wrong action / wrong instance (3 combos)       -> not APPROVED
     4e  no ExecutionAuthorization is issued for any DENIED/ESCALATED decision
+    4f  4c's APPROVED decision's ExecutionAuthorization is verified, consumed,
+        an external execution result is recorded, and a canonical AIProof is
+        generated, signed, and independently re-verified -- the second half of
+        the chain (APPROVED -> authorization -> AIProof) this driver never
+        exercised before.
 
 ===================================================================
-PLACEHOLDER SCREENING -- READ THIS
+SANCTIONS SCREENING -- READ THIS
 ===================================================================
-The HarborStone package's only mandatory control,
-``CTL-PLACEHOLDER-SANCTIONS-SCREENING``, has ``evaluation_expression: "True"``
--- it evaluates no real sanctions-screening signal (see
-``backend/PENDING_REVIEW_harborstone_screening_control_placeholder.md``).
-This driver satisfies it with a mock stand-in connector
-(``sim-harborstone-screening-PLACEHOLDER``) so the assessment reaches
-SATISFIED and the decision outcome is driven by the *authority-context
-wiring* (4a/4b/4d), not by an evidence gap.
+Every scenario below registers the **real** SENTRY sanctions-screening
+connector (``harborstone_sentry_screening_connector``, ``is_mock=False`` --
+see ``backend/app/services/evidence/connectors/harborstone_sentry_screening.py``),
+the same one CompliAGL registers by default in production. Every scenario's
+resource_instance is a case id, not a wallet id, so the connector resolves an
+unknown screening subject -> ``NO_MATCH`` -> ``CTL-HARBORSTONE-SANCTIONS-
+SCREENING`` SATISFIED; the decision outcome below 4d/4e is driven purely by
+the *authority-context wiring* (4a/4b/4d), not by an evidence gap. What is
+still simulated is only the screening *lookup* itself (a small deterministic
+dataset, not a real OFAC/vendor call) -- see that connector's own docstring
+for the ``claims.simulation=True`` disclosure. This replaces the retired
+``CTL-PLACEHOLDER-SANCTIONS-SCREENING`` stand-in this driver used through
+2026-09-10 (before the real connector existed).
 
-**These results prove the CompliIdentity authority integration and the
-decision-engine wiring. They do NOT prove that sanctions screening works.**
+**These results prove the CompliIdentity authority integration, the
+decision-engine wiring, and (as of 4f) the post-APPROVED authorization ->
+AIProof chain, all against a live CompliIdentity instance. They do NOT prove
+that a real (non-simulated) sanctions-list lookup works.**
 Every scenario below carries an explicit ``proves`` / ``does_NOT_prove``.
 
 Run:
     # CompliIdentity must be up (separate terminal, CompliIdentity repo):
-    #   $env:DATABASE_URL="sqlite:///./compliidentity_demo3_step2.db"
+    #   $env:DATABASE_URL="sqlite:///./compliidentity_demo3_step2_live.db"
     #   python -m uvicorn compliidentity.bootstrap:create_app --factory --port 8137
+    backend/venv/Scripts/python.exe demo3_step2/compliidentity_setup_phases_1_7.py
     backend/venv/Scripts/python.exe demo3_step2/compliagl_scenarios.py
 """
 from __future__ import annotations
@@ -92,6 +105,17 @@ from app.schemas.canonical.policy_applicability import (  # noqa: E402
     ApplicabilityEvaluationCreate,
     PolicyResolutionCreate,
 )
+from app.schemas.canonical.aiproof import (  # noqa: E402
+    ActorIdentityRef,
+    DecisionRef,
+    ExecutionAuthorizationRef,
+    ExternalExecutionResultRef,
+    GovernedOutcome,
+    IntentRef,
+    ProofMetadata,
+    ProofTimestamps,
+)
+from app.schemas.canonical.governance import ExternalExecutionResultCreate  # noqa: E402
 from app.schemas.canonical.target import TargetCreate  # noqa: E402
 from app.services.canonical import (  # noqa: E402
     applicability_service,
@@ -102,78 +126,36 @@ from app.services.canonical import (  # noqa: E402
     decision_service,
     escalation_approval_service,
     evidence_sufficiency_service,
+    governance_service,
     intent_service,
     operational_context_service,
     policy_resolution_service,
     target_service,
 )
+from app.services.canonical.aiproof import generator as aiproof_generator  # noqa: E402
+from app.services.canonical.aiproof import service as aiproof_service  # noqa: E402
+from app.services.canonical.aiproof.verify import verify_aiproof  # noqa: E402
 from app.services.canonical.errors import (  # noqa: E402
     AuthorityVerificationError,
     ConflictError,
 )
 from app.services.evidence import evidence_collection_service  # noqa: E402
 from app.services.evidence.connectors import ConnectorRegistry  # noqa: E402
-from app.services.evidence.connectors.simulators import (  # noqa: E402
-    SimulatedConnector,
+from app.services.evidence.connectors.harborstone_sentry_screening import (  # noqa: E402
+    harborstone_sentry_screening_connector,
 )
 from app.utils.canonical_enums import (  # noqa: E402
-    EvidenceSourceType,
+    ExecutionResultStatus,
     IntentType,
     TargetType,
 )
 
 CASE = "HARBORSTONE-2024-0042"
 OTHER_CASE = "OTHER-CASE-0001"
-EV_ID = "EV-PLACEHOLDER-SANCTIONS-SCREENING"
-SCREENING_TYPE = "harborstone.sanctions_screening_placeholder"
-PLACEHOLDER_ISSUER = "harborstone-screening-placeholder.example"
 
 _RESULTS_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "compliagl_scenarios_results.json"
 )
-
-
-# --------------------------------------------------------------------------- #
-# PLACEHOLDER sanctions-screening evidence -- NOT A REAL SCREENING RESULT
-# --------------------------------------------------------------------------- #
-def placeholder_screening_connector() -> SimulatedConnector:
-    """Mock stand-in for HarborStone's (undesigned) real sanctions-screening
-    evidence source.
-
-    Exists ONLY so ``CTL-PLACEHOLDER-SANCTIONS-SCREENING`` (which is itself a
-    placeholder, ``evaluation_expression: "True"``) can be satisfied and the
-    decision-engine + CompliIdentity authority wiring exercised end-to-end.
-    ``is_mock=True`` -- rejected in production mode. See
-    ``backend/PENDING_REVIEW_harborstone_screening_control_placeholder.md``.
-    """
-    now = datetime.now(timezone.utc)
-    return SimulatedConnector(
-        connector_id="sim-harborstone-screening-PLACEHOLDER",
-        source_type=EvidenceSourceType.EXTERNAL_APPLICATION.value,
-        supported_evidence_types=(SCREENING_TYPE,),
-        trusted_issuers=(PLACEHOLDER_ISSUER,),
-        is_mock=True,
-        fixtures={
-            EV_ID: {
-                "behavior": "collect",
-                "issuer": PLACEHOLDER_ISSUER,
-                "issued_at": now - timedelta(minutes=5),
-                "expires_at": now + timedelta(days=3650),
-                "signature": "PLACEHOLDER-SIGNATURE-not-a-real-attestation",
-                "signature_valid": True,
-                "claims": {
-                    "PLACEHOLDER": True,
-                    "screening_result": "STANDIN_PASS",
-                    "note": (
-                        "Not a real sanctions screening result. Stand-in so "
-                        "the decision-engine + CompliIdentity authority wiring "
-                        "runs end-to-end. See PENDING_REVIEW_harborstone_"
-                        "screening_control_placeholder.md"
-                    ),
-                },
-            }
-        },
-    )
 
 
 # --------------------------------------------------------------------------- #
@@ -284,7 +266,7 @@ def run_pipeline(
         HARBORSTONE_ORG_ID,
         resolution.id,
         production_mode=False,
-        registry=ConnectorRegistry([placeholder_screening_connector()]),
+        registry=ConnectorRegistry([harborstone_sentry_screening_connector()]),
     )
     evidence_sufficiency_service.evaluate_for_resolution(
         db, HARBORSTONE_ORG_ID, resolution.id
@@ -383,8 +365,9 @@ def main() -> int:
                 "otherwise-SATISFIED assessment"
             ),
             "does_NOT_prove": (
-                "anything about sanctions screening -- "
-                "CTL-PLACEHOLDER-SANCTIONS-SCREENING is a stand-in (True)"
+                "a real (non-simulated) sanctions-list lookup -- the "
+                "screening subject resolves to an unknown id (the case, not "
+                "a wallet), so it's always NO_MATCH regardless of a real hit"
             ),
             "actor": "sentry",
             "compliidentity": {
@@ -426,8 +409,9 @@ def main() -> int:
                 "authority-context wiring, not an evidence gap"
             ),
             "does_NOT_prove": (
-                "that real sanctions screening passed -- "
-                "CTL-PLACEHOLDER-SANCTIONS-SCREENING is a stand-in (True)"
+                "a real (non-simulated) sanctions-list lookup -- the "
+                "screening subject resolves to an unknown id (the case, not "
+                "a wallet), so it's always NO_MATCH regardless of a real hit"
             ),
             "actor": "aira",
             "compliidentity": {
@@ -510,8 +494,9 @@ def main() -> int:
                 "does an ExecutionAuthorization issue."
             ),
             "does_NOT_prove": (
-                "that real sanctions screening passed -- "
-                "CTL-PLACEHOLDER-SANCTIONS-SCREENING is a stand-in (True)"
+                "a real (non-simulated) sanctions-list lookup -- the "
+                "screening subject resolves to an unknown id (the case, not "
+                "a wallet), so it's always NO_MATCH regardless of a real hit"
             ),
             "actor": "jordan",
             "compliidentity": {
@@ -592,7 +577,8 @@ def main() -> int:
                 "EscalationApproval is recorded and the decision stays ESCALATED"
             ),
             "does_NOT_prove": (
-                "anything about sanctions screening (placeholder control)"
+                "a real (non-simulated) sanctions-list lookup (see the "
+                "connector's own claims.simulation disclosure)"
             ),
             "actor": "sentry",
             "compliidentity": {
@@ -647,7 +633,8 @@ def main() -> int:
                 "re-decision is still ESCALATED and the approval is not consumed"
             ),
             "does_NOT_prove": (
-                "anything about sanctions screening (placeholder control)"
+                "a real (non-simulated) sanctions-list lookup (see the "
+                "connector's own claims.simulation disclosure)"
             ),
             "actor": "jordan",
             "compliidentity": {
@@ -750,7 +737,8 @@ def main() -> int:
                     "never reaches APPROVED"
                 ),
                 "does_NOT_prove": (
-                    "anything about sanctions screening (placeholder control)"
+                    "a real (non-simulated) sanctions-list lookup (see the "
+                "connector's own claims.simulation disclosure)"
                 ),
                 "actor": actor_name,
                 "compliidentity": {
@@ -767,9 +755,141 @@ def main() -> int:
             }
         )
 
+    # --- 4f: 4c's APPROVED decision -> authorization -> AIProof -------- #
+    # Everything from here on is CompliAGL-internal (no further CompliIdentity
+    # calls) but chains directly off d2/auth_after -- the real, live-verified
+    # APPROVED decision and the authorization issued for it in scenario 4c.
+    d2_intent = intent_service.get(db, HARBORSTONE_ORG_ID, d2.intent_id)
+    verify_result = authorization_service.verify(db, HARBORSTONE_ORG_ID, auth_after.id)
+    execution_result = governance_service.create_execution_result(
+        db,
+        ExternalExecutionResultCreate(
+            organization_id=HARBORSTONE_ORG_ID,
+            execution_authorization_id=auth_after.id,
+            intent_id=d2.intent_id,
+            adapter="hedera",
+            status=ExecutionResultStatus.CONFIRMED,
+            external_reference="0.0.123456@1700000000.000000000",
+            settlement_chain="hedera-testnet",
+        ),
+    )
+    try:
+        consumed_auth = authorization_service.consume(db, HARBORSTONE_ORG_ID, auth_after.id)
+        replay = authorization_service.consume(db, HARBORSTONE_ORG_ID, auth_after.id)
+        replay_rejected = {"rejected": False, "VIOLATION": "a consumed authorization was reused"}
+    except ConflictError as exc:
+        replay_rejected = {"rejected": True, "message": str(exc)}
+
+    proof = aiproof_generator.generate_signed_aiproof(
+        metadata=ProofMetadata(
+            aiproof_id=f"proof-{d2.intent_id}",
+            organization_id=HARBORSTONE_ORG_ID,
+            governance_evaluation_id=d2.policy_resolution_id,
+            correlation_id=d2_intent.correlation_id if d2_intent else None,
+            governed_outcome=GovernedOutcome.APPROVED_AND_EXECUTED,
+        ),
+        actor_identity=ActorIdentityRef(actor_identity_id=HARBORSTONE_AIRA_ACTOR_ID),
+        intent=IntentRef(
+            intent_id=d2.intent_id,
+            intent_type=d2_intent.intent_type if d2_intent else None,
+            action=d2_intent.action if d2_intent else None,
+            amount_minor=d2_intent.amount_minor if d2_intent else None,
+            amount_currency=d2_intent.amount_currency if d2_intent else None,
+        ),
+        decision=DecisionRef(
+            decision_id=d2.id,
+            outcome=d2.outcome,
+            reason_codes=json.loads(d2.reason_codes or "[]"),
+            supersession_status=d2.supersession_status,
+            prior_decision_id=d2.prior_decision_id,
+            decision_hash=d2.decision_hash,
+        ),
+        execution_authorization=ExecutionAuthorizationRef(
+            execution_authorization_id=auth_after.id,
+            status=consumed_auth.status,
+            authorized_action=auth_after.authorized_action,
+            authorization_hash=auth_after.authorization_hash,
+        ),
+        external_execution_result=ExternalExecutionResultRef(
+            external_execution_result_id=execution_result.id,
+            adapter=execution_result.adapter,
+            status=execution_result.status,
+            external_reference=execution_result.external_reference,
+            settlement_chain=execution_result.settlement_chain,
+        ),
+        timestamps=ProofTimestamps(
+            generated_at=datetime.now(timezone.utc).isoformat(),
+            decided_at=d2.decided_at.isoformat() if d2.decided_at else None,
+            authorized_at=auth_after.authorized_at.isoformat() if auth_after.authorized_at else None,
+            executed_at=execution_result.executed_at.isoformat() if execution_result.executed_at else None,
+        ),
+    )
+    aiproof_row = aiproof_service.store_aiproof(db, proof)
+    verification = verify_aiproof(proof)
+
+    scenarios.append(
+        {
+            "id": "4f",
+            "title": (
+                "4c's APPROVED decision: authorization verify/consume, "
+                "external execution result, canonical AIProof generate + verify"
+            ),
+            "proves": (
+                "the second half of the governed-action chain -- APPROVED -> "
+                "signed ExecutionAuthorization -> independent verify() (ISSUED "
+                "-> ACTIVE) -> an external execution result recorded against it "
+                "-> one-time consume() (ACTIVE -> CONSUMED, replay rejected) -> "
+                "a canonical AIProof built from these exact real records, "
+                "signed, and independently re-verified (hash + component "
+                "hashes + signature all reproduce). Chains directly off the "
+                "same APPROVED decision 4c got a real CompliIdentity "
+                "authority-context response for."
+            ),
+            "does_NOT_prove": (
+                "anything about CompliIdentity -- no further CompliIdentity "
+                "calls happen after authorization is issued; this is entirely "
+                "CompliAGL-internal from here on"
+            ),
+            "expected": {
+                "verify_valid": True,
+                "consume_ok": True,
+                "replay_rejected": True,
+                "aiproof_valid": True,
+            },
+            "source_decision_id": d2.id,
+            "execution_authorization_id": auth_after.id,
+            "verify_result": verify_result,
+            "external_execution_result": {
+                "id": execution_result.id,
+                "status": execution_result.status,
+                "adapter": execution_result.adapter,
+                "external_reference": execution_result.external_reference,
+            },
+            "consumed_authorization_status": consumed_auth.status,
+            "replay_attempt": replay_rejected,
+            "aiproof": {
+                "aiproof_id": aiproof_row.id,
+                "aiproof_hash": proof.aiproof_hash,
+                "governed_outcome": proof.metadata.governed_outcome.value,
+                "component_hashes": dict(proof.component_hashes),
+            },
+            "aiproof_verification": verification.model_dump(),
+            "PASS": (
+                verify_result is not None
+                and verify_result["valid"] is True
+                and consumed_auth.status == "CONSUMED"
+                and replay_rejected.get("rejected") is True
+                and execution_result.status == "CONFIRMED"
+                and verification.valid is True
+            ),
+        }
+    )
+
     # --- 4e: aggregate check ------------------------------------------- #
     e_ok = all(
-        s["no_execution_authorization"].get("issued") is False for s in scenarios
+        s["no_execution_authorization"].get("issued") is False
+        for s in scenarios
+        if "no_execution_authorization" in s
     )
     scenarios.append(
         {
@@ -789,12 +909,15 @@ def main() -> int:
     passed = sum(1 for s in scenarios if s.get("PASS"))
     out = {
         "_WARNING": (
-            "The sanctions-screening control in this run is a PLACEHOLDER "
-            "(CTL-PLACEHOLDER-SANCTIONS-SCREENING, evaluation_expression 'True'). "
-            "These results prove the CompliIdentity authority-context integration "
-            "and the decision-engine wiring ONLY. They do NOT prove that "
-            "sanctions screening works. See "
-            "backend/PENDING_REVIEW_harborstone_screening_control_placeholder.md."
+            "Sanctions screening in this run uses the real "
+            "harborstone-sentry-sanctions-screening connector against its "
+            "own simulated dataset (claims.simulation=True), not a real "
+            "OFAC/vendor lookup. Every scenario's resource_instance is a "
+            "case id (not a wallet id), so screening always resolves NO_MATCH. "
+            "These results prove the CompliIdentity authority-context "
+            "integration, the decision-engine wiring, and (4f) the "
+            "APPROVED -> authorization -> AIProof chain. They do NOT prove a "
+            "real sanctions-list lookup."
         ),
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "compliidentity_base_url": os.environ["COMPLIIDENTITY_BASE_URL"],
@@ -804,12 +927,14 @@ def main() -> int:
         "tenant__organization_id": HARBORSTONE_ORG_ID,
         "case_resource_instance": CASE,
         "actor_principal_ids": principals,
-        "placeholder_screening": {
-            "control_id": "CTL-PLACEHOLDER-SANCTIONS-SCREENING",
-            "evaluation_expression": "True",
-            "connector_id": "sim-harborstone-screening-PLACEHOLDER",
+        "sanctions_screening": {
+            "control_id": "CTL-HARBORSTONE-SANCTIONS-SCREENING",
+            "connector_id": "harborstone-sentry-sanctions-screening",
+            "is_mock": False,
+            "simulated_lookup": True,
             "reference": (
-                "backend/PENDING_REVIEW_harborstone_screening_control_placeholder.md"
+                "backend/app/services/evidence/connectors/"
+                "harborstone_sentry_screening.py"
             ),
         },
         "summary": {"passed": passed, "total": len(scenarios)},

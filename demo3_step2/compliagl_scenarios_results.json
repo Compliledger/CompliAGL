@@ -1,31 +1,32 @@
 {
-  "_WARNING": "The sanctions-screening control in this run is a PLACEHOLDER (CTL-PLACEHOLDER-SANCTIONS-SCREENING, evaluation_expression 'True'). These results prove the CompliIdentity authority-context integration and the decision-engine wiring ONLY. They do NOT prove that sanctions screening works. See backend/PENDING_REVIEW_harborstone_screening_control_placeholder.md.",
-  "generated_at": "2026-09-06T13:08:53.924602+00:00",
+  "_WARNING": "Sanctions screening in this run uses the real harborstone-sentry-sanctions-screening connector against its own simulated dataset (claims.simulation=True), not a real OFAC/vendor lookup. Every scenario's resource_instance is a case id (not a wallet id), so screening always resolves NO_MATCH. These results prove the CompliIdentity authority-context integration, the decision-engine wiring, and (4f) the APPROVED -> authorization -> AIProof chain. They do NOT prove a real sanctions-list lookup.",
+  "generated_at": "2026-09-16T14:53:49.694273+00:00",
   "compliidentity_base_url": "http://127.0.0.1:8137",
-  "compliidentity_service_principal_id": "ae24b758-edb6-4ffa-895e-78990ca8293c",
+  "compliidentity_service_principal_id": "6e7cf703-d5ab-4df1-bad4-52b7c5213e28",
   "tenant__organization_id": "harborstone-demo",
   "case_resource_instance": "HARBORSTONE-2024-0042",
   "actor_principal_ids": {
-    "aira": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
-    "sentry": "302415c0-00ab-49b0-8a65-01175c0deb68",
-    "jordan": "e35d7b95-1a10-4654-9b02-2181df052f96"
+    "aira": "3d5366bd-3bb4-44d5-8108-1759e6fe45f3",
+    "sentry": "ea0c8c69-a745-4b6a-85aa-aa5c3bb22958",
+    "jordan": "91a86c47-27ec-4c09-afda-3ac7dc618589"
   },
-  "placeholder_screening": {
-    "control_id": "CTL-PLACEHOLDER-SANCTIONS-SCREENING",
-    "evaluation_expression": "True",
-    "connector_id": "sim-harborstone-screening-PLACEHOLDER",
-    "reference": "backend/PENDING_REVIEW_harborstone_screening_control_placeholder.md"
+  "sanctions_screening": {
+    "control_id": "CTL-HARBORSTONE-SANCTIONS-SCREENING",
+    "connector_id": "harborstone-sentry-sanctions-screening",
+    "is_mock": false,
+    "simulated_lookup": true,
+    "reference": "backend/app/services/evidence/connectors/harborstone_sentry_screening.py"
   },
   "summary": {
-    "passed": 9,
-    "total": 9
+    "passed": 10,
+    "total": 10
   },
   "scenarios": [
     {
       "id": "4a",
       "title": "SENTRY attempts aml.case:read outside its delegated scope",
       "proves": "CompliIdentity reports the delegate has no permission for this resource, and CompliAGL's DC-HARBORSTONE-AUTHORITY-DENIED condition turns that into a terminal DENIED -- overriding an otherwise-SATISFIED assessment",
-      "does_NOT_prove": "anything about sanctions screening -- CTL-PLACEHOLDER-SANCTIONS-SCREENING is a stand-in (True)",
+      "does_NOT_prove": "a real (non-simulated) sanctions-list lookup -- the screening subject resolves to an unknown id (the case, not a wallet), so it's always NO_MATCH regardless of a real hit",
       "actor": "sentry",
       "compliidentity": {
         "resource": "aml.case",
@@ -38,7 +39,7 @@
       },
       "assessment_result": "SATISFIED",
       "decision": {
-        "decision_id": "574c1724-85d4-4b23-8f4c-4540e68c93ab",
+        "decision_id": "9de828f1-32ef-4fa0-9a88-c818e52bbfce",
         "outcome": "DENIED",
         "reason_codes": [
           "DECISION_DENIED",
@@ -48,7 +49,7 @@
         "decision_conditions_triggered": [
           {
             "condition_id": "DC-HARBORSTONE-AUTHORITY-DENIED",
-            "package_id": "c4a48baa-f742-49f2-b3ab-5e9fd2768053",
+            "package_id": "33184b99-c9f9-4231-919f-902788be5861",
             "resulting_decision": "DENIED",
             "reason_code": "AUTHORITY_DENIED",
             "priority": 10,
@@ -58,8 +59,8 @@
         "authority_status": "OK",
         "authority_reason": "permission_missing",
         "required_approver_types": [],
-        "input_hash": "8d6c8a3b4e6c61b369ebeed3604e4538055bd218443fcef19e6b2fae41432e96",
-        "decision_hash": "13cd4eb1bbdd426cfe481a5006b00bef316a745cd2f7edfdb566705567795e71",
+        "input_hash": "36b5cf201d3ec8a168cbe03f6b691fcd480c0adc25639d7a86d9b2875ad1f2a2",
+        "decision_hash": "817b67108a89e82499fba37764fa6d0dbf0c83c50e1fd070e2432aa26e8dd3df",
         "approval_hash": null,
         "prior_decision_id": null,
         "superseded_by_decision_id": null,
@@ -68,13 +69,13 @@
       "no_execution_authorization": {
         "issued": false,
         "raised": "ConflictError",
-        "message": "Execution authorization can only be issued for an APPROVED decision (decision 574c1724-85d4-4b23-8f4c-4540e68c93ab is DENIED)."
+        "message": "Execution authorization can only be issued for an APPROVED decision (decision 9de828f1-32ef-4fa0-9a88-c818e52bbfce is DENIED)."
       },
       "compliidentity_calls": [
         {
           "request": {
             "organization_id": "harborstone-demo",
-            "principal_id": "302415c0-00ab-49b0-8a65-01175c0deb68",
+            "principal_id": "ea0c8c69-a745-4b6a-85aa-aa5c3bb22958",
             "resource": "aml.case",
             "action": "read",
             "resource_instance": "HARBORSTONE-2024-0042"
@@ -90,16 +91,16 @@
             "trust_absent",
             "trust_refresh_required"
           ],
-          "authority_revision": "f0eda3e54b3f54cface88093cdcb99880cb98ffe74314721f1b1884ff931e77c",
-          "integrity_content_hash": "9b7e19da70db5870c414b7499facc79ac1771ce2453a0fc9c436897e3655f233",
+          "authority_revision": "53ea330eeb82fac20fd6e5a4c51e4eb329b21a5c507245d224d136cfd24faa6e",
+          "integrity_content_hash": "3d675feb68c680f5e726972925d28295b76f701c8dd6e8ce804d69464effe884",
           "raw_response": {
             "contract_id": "compliidentity.agl.authority.v1",
             "contract_version": "1",
             "tenant_id": "harborstone-demo",
-            "principal_id": "302415c0-00ab-49b0-8a65-01175c0deb68",
-            "evaluated_at": "2026-09-06T13:08:45.899198Z",
+            "principal_id": "ea0c8c69-a745-4b6a-85aa-aa5c3bb22958",
+            "evaluated_at": "2026-09-16T14:53:40.306965Z",
             "principal": {
-              "principal_id": "302415c0-00ab-49b0-8a65-01175c0deb68",
+              "principal_id": "ea0c8c69-a745-4b6a-85aa-aa5c3bb22958",
               "principal_type": "AI_AGENT",
               "status": "ACTIVE",
               "did": null,
@@ -110,22 +111,22 @@
             "roles": [],
             "permissions": [
               {
-                "permission_id": "1da46aee-93e6-4fe4-82a4-d49db8fadfa5",
+                "permission_id": "50b7fcac-fd91-4072-adfd-042ae53f5517",
                 "resource": "sanctions.screening",
                 "action": "read",
-                "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                "assignment_id": "delegation:c464d43b-c69a-4004-989c-3f9bbdc061c3",
+                "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                "assignment_id": "delegation:633b4675-260c-4a46-8290-740517ede842",
                 "scope": "*",
                 "source_kind": "delegation",
-                "delegation_id": "c464d43b-c69a-4004-989c-3f9bbdc061c3",
-                "expires_at": "2026-09-07T07:46:46Z",
+                "delegation_id": "633b4675-260c-4a46-8290-740517ede842",
+                "expires_at": "2026-09-17T14:44:34Z",
                 "lineage": [
-                  "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                  "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                  "role_permission:16f4634c-9734-463d-856c-06a01bff75e8:v1",
-                  "permission:1da46aee-93e6-4fe4-82a4-d49db8fadfa5",
-                  "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                  "delegation:c464d43b-c69a-4004-989c-3f9bbdc061c3:v1"
+                  "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                  "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                  "role_permission:5360d67b-53f1-4a5f-9c99-30ecfd8d2e17:v1",
+                  "permission:50b7fcac-fd91-4072-adfd-042ae53f5517",
+                  "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                  "delegation:633b4675-260c-4a46-8290-740517ede842:v1"
                 ]
               }
             ],
@@ -144,29 +145,29 @@
                 "threshold": "24999999",
                 "approver_principal_type": "HUMAN",
                 "unit": null,
-                "source": "delegation:c464d43b-c69a-4004-989c-3f9bbdc061c3:v1:role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1"
+                "source": "delegation:633b4675-260c-4a46-8290-740517ede842:v1:role_permission:0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b:v1"
               }
             ],
             "delegation_chain": [
               {
-                "delegation_id": "c464d43b-c69a-4004-989c-3f9bbdc061c3",
+                "delegation_id": "633b4675-260c-4a46-8290-740517ede842",
                 "status": "ACTIVE",
                 "live": true,
-                "delegator_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
-                "delegate_id": "302415c0-00ab-49b0-8a65-01175c0deb68",
+                "delegator_id": "3d5366bd-3bb4-44d5-8108-1759e6fe45f3",
+                "delegate_id": "ea0c8c69-a745-4b6a-85aa-aa5c3bb22958",
                 "parent_id": null,
                 "actions": [
                   "read"
                 ],
                 "resource_selector": "sanctions.screening",
-                "valid_until": "2026-09-07T07:46:46Z",
+                "valid_until": "2026-09-17T14:44:34Z",
                 "depth": 0
               }
             ],
             "credential_state": [],
             "assurance": {
               "current": false,
-              "evaluated_at": "2026-09-06T13:08:45.899198Z",
+              "evaluated_at": "2026-09-16T14:53:40.306965Z",
               "ial": {
                 "kind": "IAL",
                 "not_applicable": true,
@@ -242,7 +243,7 @@
               },
               {
                 "kind": "delegation",
-                "identifier": "c464d43b-c69a-4004-989c-3f9bbdc061c3",
+                "identifier": "633b4675-260c-4a46-8290-740517ede842",
                 "version": "1"
               }
             ],
@@ -271,7 +272,7 @@
             "evidence": [
               {
                 "kind": "delegation",
-                "identifier": "c464d43b-c69a-4004-989c-3f9bbdc061c3",
+                "identifier": "633b4675-260c-4a46-8290-740517ede842",
                 "status": "ACTIVE"
               }
             ],
@@ -280,7 +281,7 @@
               "must_revalidate": true,
               "no_store": true,
               "cache_control": "no-store",
-              "not_after": "2026-09-07T07:46:46Z",
+              "not_after": "2026-09-17T14:44:34Z",
               "revalidate_on": [
                 "iam.assignment.revoked",
                 "iam.grant.revoked",
@@ -293,13 +294,13 @@
                 "proof.invalidated"
               ]
             },
-            "authority_revision": "f0eda3e54b3f54cface88093cdcb99880cb98ffe74314721f1b1884ff931e77c",
+            "authority_revision": "53ea330eeb82fac20fd6e5a4c51e4eb329b21a5c507245d224d136cfd24faa6e",
             "authorizes": false,
             "executes": false,
             "agl_decision": "not_made",
             "integrity": {
-              "content_hash": "9b7e19da70db5870c414b7499facc79ac1771ce2453a0fc9c436897e3655f233",
-              "signature": "b180f83abf2b850f0739761228e69b7940b23110299fe326e85676dcbca33f76c51540544872f9bd1eda04997ec48ce33cfdf0a2bda3ad4b977604d92adc640a",
+              "content_hash": "3d675feb68c680f5e726972925d28295b76f701c8dd6e8ce804d69464effe884",
+              "signature": "345ea7394ca1fcf00bac8c9c2850224bde0e10bfe672ff53acae35b8563806706338562f954b105963bb5d63a5aa269dc5a8dbc10fedd4f6282693d23dab4505",
               "signature_algorithm": "ed25519",
               "signer_key_id": "compliidentity.proof.ed25519.dev"
             },
@@ -313,7 +314,7 @@
       "id": "4b",
       "title": "AIRA proposes a $250,000.00 action",
       "proves": "CompliIdentity reports approval_required:true at exactly the $250,000.00 threshold; CompliAGL's DC-HARBORSTONE-HUMAN-APPROVAL condition turns that into ESCALATED / HUMAN_APPROVAL_REQUIRED. The assessment is SATISFIED, so the escalation comes from the authority-context wiring, not an evidence gap",
-      "does_NOT_prove": "that real sanctions screening passed -- CTL-PLACEHOLDER-SANCTIONS-SCREENING is a stand-in (True)",
+      "does_NOT_prove": "a real (non-simulated) sanctions-list lookup -- the screening subject resolves to an unknown id (the case, not a wallet), so it's always NO_MATCH regardless of a real hit",
       "actor": "aira",
       "compliidentity": {
         "resource": "aml.action",
@@ -328,7 +329,7 @@
       },
       "assessment_result": "SATISFIED",
       "decision": {
-        "decision_id": "1e011296-8b7f-4047-9529-cb164c79c6a8",
+        "decision_id": "c31e0907-8454-4edf-89ad-4043877b734d",
         "outcome": "ESCALATED",
         "reason_codes": [
           "DECISION_ESCALATED",
@@ -338,7 +339,7 @@
         "decision_conditions_triggered": [
           {
             "condition_id": "DC-HARBORSTONE-HUMAN-APPROVAL",
-            "package_id": "c4a48baa-f742-49f2-b3ab-5e9fd2768053",
+            "package_id": "33184b99-c9f9-4231-919f-902788be5861",
             "resulting_decision": "ESCALATED",
             "reason_code": "HUMAN_APPROVAL_REQUIRED",
             "priority": 20,
@@ -350,8 +351,8 @@
         "required_approver_types": [
           "HUMAN"
         ],
-        "input_hash": "8d57a4336810f20def5a0d14564e1ae2aa81078c0216358bbcd1bb3aa1fcf872",
-        "decision_hash": "21f07b47c11db72be80f263eb97098623d69a0c8bb68f875bcf3247b97742167",
+        "input_hash": "8c892bd9787aee127cb4ed0003111736d42783257eca7b387859f5da4d89a230",
+        "decision_hash": "07dbbfe0ed1312592659acf189bcea2a9914a1573bdddccdc8114fdc2b869db2",
         "approval_hash": null,
         "prior_decision_id": null,
         "superseded_by_decision_id": null,
@@ -360,13 +361,13 @@
       "no_execution_authorization": {
         "issued": false,
         "raised": "ConflictError",
-        "message": "Execution authorization can only be issued for an APPROVED decision (decision 1e011296-8b7f-4047-9529-cb164c79c6a8 is ESCALATED)."
+        "message": "Execution authorization can only be issued for an APPROVED decision (decision c31e0907-8454-4edf-89ad-4043877b734d is ESCALATED)."
       },
       "compliidentity_calls": [
         {
           "request": {
             "organization_id": "harborstone-demo",
-            "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
+            "principal_id": "3d5366bd-3bb4-44d5-8108-1759e6fe45f3",
             "resource": "aml.action",
             "action": "propose",
             "resource_instance": "HARBORSTONE-2024-0042",
@@ -385,16 +386,16 @@
             "trust_absent",
             "trust_refresh_required"
           ],
-          "authority_revision": "8d84261bf9f081b91a9604bd2bbf7c7db6a0d9b933dee2adc1fb20825e449fdc",
-          "integrity_content_hash": "88fa0934742c52d7dfedf2316315eb51842e70a000aab40a373a8568f057bdf5",
+          "authority_revision": "ea3e54e97afa4eaae21c0e170557c5c99f6988d8c381001661413b6a384f80ef",
+          "integrity_content_hash": "b54f34047a849473bff51de8c3c14d7a5fd593b63d277fdf02c52c5d609b639a",
           "raw_response": {
             "contract_id": "compliidentity.agl.authority.v1",
             "contract_version": "1",
             "tenant_id": "harborstone-demo",
-            "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
-            "evaluated_at": "2026-09-06T13:08:46.295723Z",
+            "principal_id": "3d5366bd-3bb4-44d5-8108-1759e6fe45f3",
+            "evaluated_at": "2026-09-16T14:53:40.695970Z",
             "principal": {
-              "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
+              "principal_id": "3d5366bd-3bb4-44d5-8108-1759e6fe45f3",
               "principal_type": "AI_AGENT",
               "status": "ACTIVE",
               "did": null,
@@ -404,97 +405,97 @@
             "active": true,
             "roles": [
               {
-                "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
                 "name": "aira-aml-investigator",
                 "system_role": false,
                 "version": 1,
-                "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c"
+                "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e"
               }
             ],
             "permissions": [
               {
-                "permission_id": "7c9e1c98-001e-4afd-a1c6-e635236ed99c",
+                "permission_id": "bf9ad876-3ff6-4893-a396-c952ee374b9e",
                 "resource": "aml.action",
                 "action": "propose",
-                "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                 "scope": "*",
                 "source_kind": "assignment",
                 "delegation_id": null,
                 "expires_at": null,
                 "lineage": [
-                  "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                  "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                  "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1",
-                  "permission:7c9e1c98-001e-4afd-a1c6-e635236ed99c"
+                  "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                  "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                  "role_permission:0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b:v1",
+                  "permission:bf9ad876-3ff6-4893-a396-c952ee374b9e"
                 ]
               },
               {
-                "permission_id": "ef6ab7cc-20f4-46c9-a777-5b83c6b9cfd9",
+                "permission_id": "e6646d35-3f53-46bc-8c82-5a40f0efc0b9",
                 "resource": "aml.case",
                 "action": "assess",
-                "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                 "scope": "*",
                 "source_kind": "assignment",
                 "delegation_id": null,
                 "expires_at": null,
                 "lineage": [
-                  "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                  "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                  "role_permission:69ac5432-8237-4f44-84e4-5ff724585197:v1",
-                  "permission:ef6ab7cc-20f4-46c9-a777-5b83c6b9cfd9"
+                  "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                  "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                  "role_permission:7554d301-1eb5-4ae7-b66f-1ceec022350d:v1",
+                  "permission:e6646d35-3f53-46bc-8c82-5a40f0efc0b9"
                 ]
               },
               {
-                "permission_id": "17fd1c95-84d4-4247-958f-ff82f1ad95e0",
+                "permission_id": "297ac79b-3be3-4165-8d5c-7af63cfe33a3",
                 "resource": "aml.case",
                 "action": "read",
-                "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                 "scope": "*",
                 "source_kind": "assignment",
                 "delegation_id": null,
                 "expires_at": null,
                 "lineage": [
-                  "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                  "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                  "role_permission:dc565684-3ebf-4ac5-8574-9f09b4f2f91b:v1",
-                  "permission:17fd1c95-84d4-4247-958f-ff82f1ad95e0"
+                  "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                  "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                  "role_permission:4de691c2-2c4f-4e39-a6ab-073b582ea91a:v1",
+                  "permission:297ac79b-3be3-4165-8d5c-7af63cfe33a3"
                 ]
               },
               {
-                "permission_id": "6b661e3b-9c39-4d0e-be19-41173a4314b0",
+                "permission_id": "d79c39cf-4add-4740-958f-8976912107ba",
                 "resource": "aml.escalation",
                 "action": "create",
-                "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                 "scope": "*",
                 "source_kind": "assignment",
                 "delegation_id": null,
                 "expires_at": null,
                 "lineage": [
-                  "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                  "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                  "role_permission:5cb43175-5871-48d0-aae1-74703195b04b:v1",
-                  "permission:6b661e3b-9c39-4d0e-be19-41173a4314b0"
+                  "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                  "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                  "role_permission:1fe64041-b47c-45c7-87ea-87311acaeada:v1",
+                  "permission:d79c39cf-4add-4740-958f-8976912107ba"
                 ]
               },
               {
-                "permission_id": "1da46aee-93e6-4fe4-82a4-d49db8fadfa5",
+                "permission_id": "50b7fcac-fd91-4072-adfd-042ae53f5517",
                 "resource": "sanctions.screening",
                 "action": "read",
-                "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                 "scope": "*",
                 "source_kind": "assignment",
                 "delegation_id": null,
                 "expires_at": null,
                 "lineage": [
-                  "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                  "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                  "role_permission:16f4634c-9734-463d-856c-06a01bff75e8:v1",
-                  "permission:1da46aee-93e6-4fe4-82a4-d49db8fadfa5"
+                  "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                  "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                  "role_permission:5360d67b-53f1-4a5f-9c99-30ecfd8d2e17:v1",
+                  "permission:50b7fcac-fd91-4072-adfd-042ae53f5517"
                 ]
               }
             ],
@@ -513,14 +514,14 @@
                 "threshold": "24999999",
                 "approver_principal_type": "HUMAN",
                 "unit": null,
-                "source": "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1"
+                "source": "role_permission:0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b:v1"
               }
             ],
             "delegation_chain": [],
             "credential_state": [],
             "assurance": {
               "current": false,
-              "evaluated_at": "2026-09-06T13:08:46.295723Z",
+              "evaluated_at": "2026-09-16T14:53:40.695970Z",
               "ial": {
                 "kind": "IAL",
                 "not_applicable": true,
@@ -591,7 +592,7 @@
             "policy_refs": [
               {
                 "kind": "assignment",
-                "identifier": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                "identifier": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                 "version": "1"
               },
               {
@@ -601,57 +602,57 @@
               },
               {
                 "kind": "permission",
-                "identifier": "17fd1c95-84d4-4247-958f-ff82f1ad95e0",
+                "identifier": "297ac79b-3be3-4165-8d5c-7af63cfe33a3",
                 "version": null
               },
               {
                 "kind": "permission",
-                "identifier": "1da46aee-93e6-4fe4-82a4-d49db8fadfa5",
+                "identifier": "50b7fcac-fd91-4072-adfd-042ae53f5517",
                 "version": null
               },
               {
                 "kind": "permission",
-                "identifier": "6b661e3b-9c39-4d0e-be19-41173a4314b0",
+                "identifier": "bf9ad876-3ff6-4893-a396-c952ee374b9e",
                 "version": null
               },
               {
                 "kind": "permission",
-                "identifier": "7c9e1c98-001e-4afd-a1c6-e635236ed99c",
+                "identifier": "d79c39cf-4add-4740-958f-8976912107ba",
                 "version": null
               },
               {
                 "kind": "permission",
-                "identifier": "ef6ab7cc-20f4-46c9-a777-5b83c6b9cfd9",
+                "identifier": "e6646d35-3f53-46bc-8c82-5a40f0efc0b9",
                 "version": null
               },
               {
                 "kind": "role",
-                "identifier": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                "identifier": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
                 "version": "1"
               },
               {
                 "kind": "role_permission",
-                "identifier": "16f4634c-9734-463d-856c-06a01bff75e8",
+                "identifier": "0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b",
                 "version": "1"
               },
               {
                 "kind": "role_permission",
-                "identifier": "2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527",
+                "identifier": "1fe64041-b47c-45c7-87ea-87311acaeada",
                 "version": "1"
               },
               {
                 "kind": "role_permission",
-                "identifier": "5cb43175-5871-48d0-aae1-74703195b04b",
+                "identifier": "4de691c2-2c4f-4e39-a6ab-073b582ea91a",
                 "version": "1"
               },
               {
                 "kind": "role_permission",
-                "identifier": "69ac5432-8237-4f44-84e4-5ff724585197",
+                "identifier": "5360d67b-53f1-4a5f-9c99-30ecfd8d2e17",
                 "version": "1"
               },
               {
                 "kind": "role_permission",
-                "identifier": "dc565684-3ebf-4ac5-8574-9f09b4f2f91b",
+                "identifier": "7554d301-1eb5-4ae7-b66f-1ceec022350d",
                 "version": "1"
               }
             ],
@@ -676,20 +677,20 @@
               ],
               "matching_permissions": [
                 {
-                  "permission_id": "7c9e1c98-001e-4afd-a1c6-e635236ed99c",
+                  "permission_id": "bf9ad876-3ff6-4893-a396-c952ee374b9e",
                   "resource": "aml.action",
                   "action": "propose",
-                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                  "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                   "scope": "*",
                   "source_kind": "assignment",
                   "delegation_id": null,
                   "expires_at": null,
                   "lineage": [
-                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                    "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1",
-                    "permission:7c9e1c98-001e-4afd-a1c6-e635236ed99c"
+                    "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                    "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                    "role_permission:0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b:v1",
+                    "permission:bf9ad876-3ff6-4893-a396-c952ee374b9e"
                   ]
                 }
               ],
@@ -702,14 +703,14 @@
                   "threshold": "24999999",
                   "approver_principal_type": "HUMAN",
                   "unit": null,
-                  "source": "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1"
+                  "source": "role_permission:0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b:v1"
                 }
               ]
             },
             "evidence": [
               {
                 "kind": "assignment",
-                "identifier": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                "identifier": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                 "status": null
               }
             ],
@@ -718,7 +719,7 @@
               "must_revalidate": true,
               "no_store": true,
               "cache_control": "no-store",
-              "not_after": "2026-09-07T07:46:46Z",
+              "not_after": "2026-09-17T14:44:34Z",
               "revalidate_on": [
                 "iam.assignment.revoked",
                 "iam.grant.revoked",
@@ -731,13 +732,13 @@
                 "proof.invalidated"
               ]
             },
-            "authority_revision": "8d84261bf9f081b91a9604bd2bbf7c7db6a0d9b933dee2adc1fb20825e449fdc",
+            "authority_revision": "ea3e54e97afa4eaae21c0e170557c5c99f6988d8c381001661413b6a384f80ef",
             "authorizes": false,
             "executes": false,
             "agl_decision": "not_made",
             "integrity": {
-              "content_hash": "88fa0934742c52d7dfedf2316315eb51842e70a000aab40a373a8568f057bdf5",
-              "signature": "b54769bbe2dbb32b29860c2f8c4eb9c0f67deecb46dd282356ddd25e477d3de479c2553b8bb97ed5aacf8f61ce8eb20468dfb37e85cadc49c57d00130c6e090a",
+              "content_hash": "b54f34047a849473bff51de8c3c14d7a5fd593b63d277fdf02c52c5d609b639a",
+              "signature": "652f824ff3f95fec653f5752174b67964631573764d1a81fa5cf547bb7fb9c636e3658c1f1ddee730294aff3b87d68f811c3716ce083bc477fda9b95b8af3e08",
               "signature_algorithm": "ed25519",
               "signer_key_id": "compliidentity.proof.ed25519.dev"
             },
@@ -751,13 +752,13 @@
       "id": "4c",
       "title": "Jordan approves the escalated decision; CompliAGL re-evaluates to APPROVED, first decision preserved",
       "proves": "escalation_approval_service.submit() verifies Jordan's authority to approve LIVE against CompliIdentity (real aml.action:approve probe -> sufficient:true, HUMAN principal, matching Decision.required_approver_types distilled from CompliIdentity's own applicable_approvals on AIRA's probe); then decide_for_resolution(prior_decision_id=) upgrades the escalation via DC-HARBORSTONE-APPROVED-VIA-HUMAN. The prior ESCALATED decision is preserved + SUPERSEDED, a NEW APPROVED decision is created, the approval is CONSUMED, and only then does an ExecutionAuthorization issue.",
-      "does_NOT_prove": "that real sanctions screening passed -- CTL-PLACEHOLDER-SANCTIONS-SCREENING is a stand-in (True)",
+      "does_NOT_prove": "a real (non-simulated) sanctions-list lookup -- the screening subject resolves to an unknown id (the case, not a wallet), so it's always NO_MATCH regardless of a real hit",
       "actor": "jordan",
       "compliidentity": {
         "resource": "aml.action",
         "action": "approve",
         "resource_instance": "HARBORSTONE-2024-0042",
-        "approver_principal_id": "e35d7b95-1a10-4654-9b02-2181df052f96"
+        "approver_principal_id": "91a86c47-27ec-4c09-afda-3ac7dc618589"
       },
       "expected": {
         "outcome": "APPROVED",
@@ -767,7 +768,7 @@
         "HUMAN"
       ],
       "first_decision": {
-        "decision_id": "08ee0eb5-b11e-4b2c-b207-4e3f15a0a819",
+        "decision_id": "dd1a97b3-9061-459a-8c7b-436f07123bb6",
         "outcome": "ESCALATED",
         "reason_codes": [
           "DECISION_ESCALATED",
@@ -777,7 +778,7 @@
         "decision_conditions_triggered": [
           {
             "condition_id": "DC-HARBORSTONE-HUMAN-APPROVAL",
-            "package_id": "c4a48baa-f742-49f2-b3ab-5e9fd2768053",
+            "package_id": "33184b99-c9f9-4231-919f-902788be5861",
             "resulting_decision": "ESCALATED",
             "reason_code": "HUMAN_APPROVAL_REQUIRED",
             "priority": 20,
@@ -789,24 +790,24 @@
         "required_approver_types": [
           "HUMAN"
         ],
-        "input_hash": "1abc0ab63cb94f51093c0a0ce5b596e38dd7f426af3485ea4e39b90e6f9ec899",
-        "decision_hash": "bd02b9666fa17adc8ee2574a911b7f24e5494530e7d0e3de389c5d34722d9354",
+        "input_hash": "a604c9b8f48200a1ff845f8a87051059b4ca7eaf6dc2538b1e8f71c76e7c7cdf",
+        "decision_hash": "2cea506cfe9ec299858abcd9bbf954a1be60b5f6c1729bacbc79305a9e7f5c29",
         "approval_hash": null,
         "prior_decision_id": null,
-        "superseded_by_decision_id": "760564c3-dd68-43be-97a9-5b2ac2cef7d5",
+        "superseded_by_decision_id": "8e579b23-da92-4664-8c72-8987f5b6addb",
         "supersession_status": "SUPERSEDED"
       },
       "escalation_approval": {
-        "escalation_approval_id": "EAP-c7fe7ced438e1dae",
-        "approver_principal_id": "e35d7b95-1a10-4654-9b02-2181df052f96",
+        "escalation_approval_id": "EAP-e81e631a04c3e302",
+        "approver_principal_id": "91a86c47-27ec-4c09-afda-3ac7dc618589",
         "approver_principal_type": "HUMAN",
-        "approver_authority_hash": "14613da257b889eb537c9af3486674cff4456b4f45a61895b5562e5597c02d63",
-        "valid_until": "2026-09-06 13:23:47.089937",
+        "approver_authority_hash": "644225a9695605e639e8c2783c44df828815d8a0efcd96f66955c14dadf01399",
+        "valid_until": "2026-09-16 15:08:41.678655",
         "status_after_reevaluation": "CONSUMED",
-        "consumed_by_decision_id": "760564c3-dd68-43be-97a9-5b2ac2cef7d5"
+        "consumed_by_decision_id": "8e579b23-da92-4664-8c72-8987f5b6addb"
       },
       "reevaluated_decision": {
-        "decision_id": "760564c3-dd68-43be-97a9-5b2ac2cef7d5",
+        "decision_id": "8e579b23-da92-4664-8c72-8987f5b6addb",
         "outcome": "APPROVED",
         "reason_codes": [
           "DECISION_APPROVED",
@@ -816,7 +817,7 @@
         "decision_conditions_triggered": [
           {
             "condition_id": "DC-HARBORSTONE-APPROVED-VIA-HUMAN",
-            "package_id": "c4a48baa-f742-49f2-b3ab-5e9fd2768053",
+            "package_id": "33184b99-c9f9-4231-919f-902788be5861",
             "resulting_decision": "APPROVED",
             "reason_code": "HARBORSTONE_APPROVED_VIA_HUMAN",
             "priority": 15,
@@ -828,15 +829,15 @@
         "required_approver_types": [
           "HUMAN"
         ],
-        "input_hash": "abf66434b8fdc277216d8bdeb3bd32ac4315d83397aef29920f0e6661b94005d",
-        "decision_hash": "cb8a8b78e43956ccded210d33ea6dd17afd131fb6db44204f33780dd2cbdd788",
-        "approval_hash": "63181396aa9970452bd6463abbfe8347ef62e86bd515c9d298ab1518defc3037",
-        "prior_decision_id": "08ee0eb5-b11e-4b2c-b207-4e3f15a0a819",
+        "input_hash": "efe8c4018b52a87c18963bd94a0566fe2a8ff24faf7c7b54bb524b6ac054f431",
+        "decision_hash": "8b589d01f8882636c9abe2fd18c3ee88c6adf13a464388f224cfe54a4e6fac85",
+        "approval_hash": "51a2ce8b62d86a1bda1dec0f0b99b0f045196df39a886fdb56f85f040a30d72d",
+        "prior_decision_id": "dd1a97b3-9061-459a-8c7b-436f07123bb6",
         "superseded_by_decision_id": null,
         "supersession_status": "CURRENT"
       },
       "first_decision_after_reevaluation": {
-        "decision_id": "08ee0eb5-b11e-4b2c-b207-4e3f15a0a819",
+        "decision_id": "dd1a97b3-9061-459a-8c7b-436f07123bb6",
         "outcome": "ESCALATED",
         "reason_codes": [
           "DECISION_ESCALATED",
@@ -846,7 +847,7 @@
         "decision_conditions_triggered": [
           {
             "condition_id": "DC-HARBORSTONE-HUMAN-APPROVAL",
-            "package_id": "c4a48baa-f742-49f2-b3ab-5e9fd2768053",
+            "package_id": "33184b99-c9f9-4231-919f-902788be5861",
             "resulting_decision": "ESCALATED",
             "reason_code": "HUMAN_APPROVAL_REQUIRED",
             "priority": 20,
@@ -858,29 +859,29 @@
         "required_approver_types": [
           "HUMAN"
         ],
-        "input_hash": "1abc0ab63cb94f51093c0a0ce5b596e38dd7f426af3485ea4e39b90e6f9ec899",
-        "decision_hash": "bd02b9666fa17adc8ee2574a911b7f24e5494530e7d0e3de389c5d34722d9354",
+        "input_hash": "a604c9b8f48200a1ff845f8a87051059b4ca7eaf6dc2538b1e8f71c76e7c7cdf",
+        "decision_hash": "2cea506cfe9ec299858abcd9bbf954a1be60b5f6c1729bacbc79305a9e7f5c29",
         "approval_hash": null,
         "prior_decision_id": null,
-        "superseded_by_decision_id": "760564c3-dd68-43be-97a9-5b2ac2cef7d5",
+        "superseded_by_decision_id": "8e579b23-da92-4664-8c72-8987f5b6addb",
         "supersession_status": "SUPERSEDED"
       },
       "no_execution_authorization": {
         "issued": false,
         "raised": "ConflictError",
-        "message": "Execution authorization can only be issued for an APPROVED decision (decision 08ee0eb5-b11e-4b2c-b207-4e3f15a0a819 is ESCALATED)."
+        "message": "Execution authorization can only be issued for an APPROVED decision (decision dd1a97b3-9061-459a-8c7b-436f07123bb6 is ESCALATED)."
       },
       "execution_authorization_after_approval": {
         "issued": true,
-        "authorization_id": "ae6e90c2-f5e6-4a8b-bb52-f9e43ad3b7c0",
-        "decision_id": "760564c3-dd68-43be-97a9-5b2ac2cef7d5"
+        "authorization_id": "79332edb-37d4-4496-b7e6-29bf66928e06",
+        "decision_id": "8e579b23-da92-4664-8c72-8987f5b6addb"
       },
       "compliidentity_calls": {
         "first_decision": [
           {
             "request": {
               "organization_id": "harborstone-demo",
-              "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
+              "principal_id": "3d5366bd-3bb4-44d5-8108-1759e6fe45f3",
               "resource": "aml.action",
               "action": "propose",
               "resource_instance": "HARBORSTONE-2024-0042",
@@ -899,16 +900,16 @@
               "trust_absent",
               "trust_refresh_required"
             ],
-            "authority_revision": "8d84261bf9f081b91a9604bd2bbf7c7db6a0d9b933dee2adc1fb20825e449fdc",
-            "integrity_content_hash": "a55e6b9f57bfb345b44134155a9176d1613bf97bc71301301b2c2f2ad5255ed1",
+            "authority_revision": "ea3e54e97afa4eaae21c0e170557c5c99f6988d8c381001661413b6a384f80ef",
+            "integrity_content_hash": "c3dffe03283e2bd538de384f5197f2c4b0a5d00a398569a48c07812036d467aa",
             "raw_response": {
               "contract_id": "compliidentity.agl.authority.v1",
               "contract_version": "1",
               "tenant_id": "harborstone-demo",
-              "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
-              "evaluated_at": "2026-09-06T13:08:46.648173Z",
+              "principal_id": "3d5366bd-3bb4-44d5-8108-1759e6fe45f3",
+              "evaluated_at": "2026-09-16T14:53:41.083140Z",
               "principal": {
-                "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
+                "principal_id": "3d5366bd-3bb4-44d5-8108-1759e6fe45f3",
                 "principal_type": "AI_AGENT",
                 "status": "ACTIVE",
                 "did": null,
@@ -918,97 +919,97 @@
               "active": true,
               "roles": [
                 {
-                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                  "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
                   "name": "aira-aml-investigator",
                   "system_role": false,
                   "version": 1,
-                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c"
+                  "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e"
                 }
               ],
               "permissions": [
                 {
-                  "permission_id": "7c9e1c98-001e-4afd-a1c6-e635236ed99c",
+                  "permission_id": "bf9ad876-3ff6-4893-a396-c952ee374b9e",
                   "resource": "aml.action",
                   "action": "propose",
-                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                  "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                   "scope": "*",
                   "source_kind": "assignment",
                   "delegation_id": null,
                   "expires_at": null,
                   "lineage": [
-                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                    "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1",
-                    "permission:7c9e1c98-001e-4afd-a1c6-e635236ed99c"
+                    "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                    "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                    "role_permission:0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b:v1",
+                    "permission:bf9ad876-3ff6-4893-a396-c952ee374b9e"
                   ]
                 },
                 {
-                  "permission_id": "ef6ab7cc-20f4-46c9-a777-5b83c6b9cfd9",
+                  "permission_id": "e6646d35-3f53-46bc-8c82-5a40f0efc0b9",
                   "resource": "aml.case",
                   "action": "assess",
-                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                  "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                   "scope": "*",
                   "source_kind": "assignment",
                   "delegation_id": null,
                   "expires_at": null,
                   "lineage": [
-                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                    "role_permission:69ac5432-8237-4f44-84e4-5ff724585197:v1",
-                    "permission:ef6ab7cc-20f4-46c9-a777-5b83c6b9cfd9"
+                    "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                    "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                    "role_permission:7554d301-1eb5-4ae7-b66f-1ceec022350d:v1",
+                    "permission:e6646d35-3f53-46bc-8c82-5a40f0efc0b9"
                   ]
                 },
                 {
-                  "permission_id": "17fd1c95-84d4-4247-958f-ff82f1ad95e0",
+                  "permission_id": "297ac79b-3be3-4165-8d5c-7af63cfe33a3",
                   "resource": "aml.case",
                   "action": "read",
-                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                  "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                   "scope": "*",
                   "source_kind": "assignment",
                   "delegation_id": null,
                   "expires_at": null,
                   "lineage": [
-                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                    "role_permission:dc565684-3ebf-4ac5-8574-9f09b4f2f91b:v1",
-                    "permission:17fd1c95-84d4-4247-958f-ff82f1ad95e0"
+                    "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                    "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                    "role_permission:4de691c2-2c4f-4e39-a6ab-073b582ea91a:v1",
+                    "permission:297ac79b-3be3-4165-8d5c-7af63cfe33a3"
                   ]
                 },
                 {
-                  "permission_id": "6b661e3b-9c39-4d0e-be19-41173a4314b0",
+                  "permission_id": "d79c39cf-4add-4740-958f-8976912107ba",
                   "resource": "aml.escalation",
                   "action": "create",
-                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                  "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                   "scope": "*",
                   "source_kind": "assignment",
                   "delegation_id": null,
                   "expires_at": null,
                   "lineage": [
-                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                    "role_permission:5cb43175-5871-48d0-aae1-74703195b04b:v1",
-                    "permission:6b661e3b-9c39-4d0e-be19-41173a4314b0"
+                    "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                    "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                    "role_permission:1fe64041-b47c-45c7-87ea-87311acaeada:v1",
+                    "permission:d79c39cf-4add-4740-958f-8976912107ba"
                   ]
                 },
                 {
-                  "permission_id": "1da46aee-93e6-4fe4-82a4-d49db8fadfa5",
+                  "permission_id": "50b7fcac-fd91-4072-adfd-042ae53f5517",
                   "resource": "sanctions.screening",
                   "action": "read",
-                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                  "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                   "scope": "*",
                   "source_kind": "assignment",
                   "delegation_id": null,
                   "expires_at": null,
                   "lineage": [
-                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                    "role_permission:16f4634c-9734-463d-856c-06a01bff75e8:v1",
-                    "permission:1da46aee-93e6-4fe4-82a4-d49db8fadfa5"
+                    "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                    "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                    "role_permission:5360d67b-53f1-4a5f-9c99-30ecfd8d2e17:v1",
+                    "permission:50b7fcac-fd91-4072-adfd-042ae53f5517"
                   ]
                 }
               ],
@@ -1027,14 +1028,14 @@
                   "threshold": "24999999",
                   "approver_principal_type": "HUMAN",
                   "unit": null,
-                  "source": "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1"
+                  "source": "role_permission:0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b:v1"
                 }
               ],
               "delegation_chain": [],
               "credential_state": [],
               "assurance": {
                 "current": false,
-                "evaluated_at": "2026-09-06T13:08:46.648173Z",
+                "evaluated_at": "2026-09-16T14:53:41.083140Z",
                 "ial": {
                   "kind": "IAL",
                   "not_applicable": true,
@@ -1105,7 +1106,7 @@
               "policy_refs": [
                 {
                   "kind": "assignment",
-                  "identifier": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "identifier": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                   "version": "1"
                 },
                 {
@@ -1115,57 +1116,57 @@
                 },
                 {
                   "kind": "permission",
-                  "identifier": "17fd1c95-84d4-4247-958f-ff82f1ad95e0",
+                  "identifier": "297ac79b-3be3-4165-8d5c-7af63cfe33a3",
                   "version": null
                 },
                 {
                   "kind": "permission",
-                  "identifier": "1da46aee-93e6-4fe4-82a4-d49db8fadfa5",
+                  "identifier": "50b7fcac-fd91-4072-adfd-042ae53f5517",
                   "version": null
                 },
                 {
                   "kind": "permission",
-                  "identifier": "6b661e3b-9c39-4d0e-be19-41173a4314b0",
+                  "identifier": "bf9ad876-3ff6-4893-a396-c952ee374b9e",
                   "version": null
                 },
                 {
                   "kind": "permission",
-                  "identifier": "7c9e1c98-001e-4afd-a1c6-e635236ed99c",
+                  "identifier": "d79c39cf-4add-4740-958f-8976912107ba",
                   "version": null
                 },
                 {
                   "kind": "permission",
-                  "identifier": "ef6ab7cc-20f4-46c9-a777-5b83c6b9cfd9",
+                  "identifier": "e6646d35-3f53-46bc-8c82-5a40f0efc0b9",
                   "version": null
                 },
                 {
                   "kind": "role",
-                  "identifier": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                  "identifier": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
                   "version": "1"
                 },
                 {
                   "kind": "role_permission",
-                  "identifier": "16f4634c-9734-463d-856c-06a01bff75e8",
+                  "identifier": "0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b",
                   "version": "1"
                 },
                 {
                   "kind": "role_permission",
-                  "identifier": "2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527",
+                  "identifier": "1fe64041-b47c-45c7-87ea-87311acaeada",
                   "version": "1"
                 },
                 {
                   "kind": "role_permission",
-                  "identifier": "5cb43175-5871-48d0-aae1-74703195b04b",
+                  "identifier": "4de691c2-2c4f-4e39-a6ab-073b582ea91a",
                   "version": "1"
                 },
                 {
                   "kind": "role_permission",
-                  "identifier": "69ac5432-8237-4f44-84e4-5ff724585197",
+                  "identifier": "5360d67b-53f1-4a5f-9c99-30ecfd8d2e17",
                   "version": "1"
                 },
                 {
                   "kind": "role_permission",
-                  "identifier": "dc565684-3ebf-4ac5-8574-9f09b4f2f91b",
+                  "identifier": "7554d301-1eb5-4ae7-b66f-1ceec022350d",
                   "version": "1"
                 }
               ],
@@ -1190,20 +1191,20 @@
                 ],
                 "matching_permissions": [
                   {
-                    "permission_id": "7c9e1c98-001e-4afd-a1c6-e635236ed99c",
+                    "permission_id": "bf9ad876-3ff6-4893-a396-c952ee374b9e",
                     "resource": "aml.action",
                     "action": "propose",
-                    "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                    "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                    "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                    "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                     "scope": "*",
                     "source_kind": "assignment",
                     "delegation_id": null,
                     "expires_at": null,
                     "lineage": [
-                      "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                      "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                      "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1",
-                      "permission:7c9e1c98-001e-4afd-a1c6-e635236ed99c"
+                      "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                      "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                      "role_permission:0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b:v1",
+                      "permission:bf9ad876-3ff6-4893-a396-c952ee374b9e"
                     ]
                   }
                 ],
@@ -1216,14 +1217,14 @@
                     "threshold": "24999999",
                     "approver_principal_type": "HUMAN",
                     "unit": null,
-                    "source": "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1"
+                    "source": "role_permission:0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b:v1"
                   }
                 ]
               },
               "evidence": [
                 {
                   "kind": "assignment",
-                  "identifier": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "identifier": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                   "status": null
                 }
               ],
@@ -1232,7 +1233,7 @@
                 "must_revalidate": true,
                 "no_store": true,
                 "cache_control": "no-store",
-                "not_after": "2026-09-07T07:46:46Z",
+                "not_after": "2026-09-17T14:44:34Z",
                 "revalidate_on": [
                   "iam.assignment.revoked",
                   "iam.grant.revoked",
@@ -1245,13 +1246,13 @@
                   "proof.invalidated"
                 ]
               },
-              "authority_revision": "8d84261bf9f081b91a9604bd2bbf7c7db6a0d9b933dee2adc1fb20825e449fdc",
+              "authority_revision": "ea3e54e97afa4eaae21c0e170557c5c99f6988d8c381001661413b6a384f80ef",
               "authorizes": false,
               "executes": false,
               "agl_decision": "not_made",
               "integrity": {
-                "content_hash": "a55e6b9f57bfb345b44134155a9176d1613bf97bc71301301b2c2f2ad5255ed1",
-                "signature": "9d851c0558981da67a6e2e4fb5630c75bb26d702c20b8d183397573343b8d532538dd6fecdfa967aaa5cb944d3c20e975923d277a936fa31050a9104ace09905",
+                "content_hash": "c3dffe03283e2bd538de384f5197f2c4b0a5d00a398569a48c07812036d467aa",
+                "signature": "d0d28c46c2d975f7b8f3a7517613a89f510dc06d33de9d9009c7f68696ab6a4bcbfd3f8cd7619e86b23b940dc4a1ad76d9ad22b58ecf2b48da2bec3caa0c6600",
                 "signature_algorithm": "ed25519",
                 "signer_key_id": "compliidentity.proof.ed25519.dev"
               },
@@ -1263,7 +1264,7 @@
           {
             "request": {
               "organization_id": "harborstone-demo",
-              "principal_id": "e35d7b95-1a10-4654-9b02-2181df052f96",
+              "principal_id": "91a86c47-27ec-4c09-afda-3ac7dc618589",
               "resource": "aml.action",
               "action": "approve",
               "resource_instance": "HARBORSTONE-2024-0042",
@@ -1281,16 +1282,16 @@
               "trust_absent",
               "trust_refresh_required"
             ],
-            "authority_revision": "9fe43933f6a51a5f6292ce262238a8b51b544a4fa2da04f4e2d9a5c33e9fc0c4",
-            "integrity_content_hash": "ca2244c65f95c18ba2241ebac618d8ce478d7f9398b06bb0ace929ca1ab9e88a",
+            "authority_revision": "cf5bc10cc258ed664867ea169601414623c1e87ed624c186458138f8b71ffc90",
+            "integrity_content_hash": "e892a8d838741881e7ca6868c23d98e7581e1ed32d37fbae7d0b3b0bc8da83e0",
             "raw_response": {
               "contract_id": "compliidentity.agl.authority.v1",
               "contract_version": "1",
               "tenant_id": "harborstone-demo",
-              "principal_id": "e35d7b95-1a10-4654-9b02-2181df052f96",
-              "evaluated_at": "2026-09-06T13:08:47.077226Z",
+              "principal_id": "91a86c47-27ec-4c09-afda-3ac7dc618589",
+              "evaluated_at": "2026-09-16T14:53:41.662868Z",
               "principal": {
-                "principal_id": "e35d7b95-1a10-4654-9b02-2181df052f96",
+                "principal_id": "91a86c47-27ec-4c09-afda-3ac7dc618589",
                 "principal_type": "HUMAN",
                 "status": "ACTIVE",
                 "did": null,
@@ -1300,29 +1301,29 @@
               "active": true,
               "roles": [
                 {
-                  "role_id": "19319b0e-0254-48e0-9893-ec66593730b2",
+                  "role_id": "ad8f2347-8351-46f1-b6db-71a0275c31fb",
                   "name": "jordan-aml-approver",
                   "system_role": false,
                   "version": 1,
-                  "assignment_id": "ac5f1f70-a29a-4006-944f-4b1580a83c2c"
+                  "assignment_id": "c5225812-034b-4196-a6ad-3b4990d6a0c4"
                 }
               ],
               "permissions": [
                 {
-                  "permission_id": "42e41882-cb56-4184-8503-6028b67848e2",
+                  "permission_id": "ef92c279-1643-43ac-8dd2-28f1b5e016ae",
                   "resource": "aml.action",
                   "action": "approve",
-                  "role_id": "19319b0e-0254-48e0-9893-ec66593730b2",
-                  "assignment_id": "ac5f1f70-a29a-4006-944f-4b1580a83c2c",
+                  "role_id": "ad8f2347-8351-46f1-b6db-71a0275c31fb",
+                  "assignment_id": "c5225812-034b-4196-a6ad-3b4990d6a0c4",
                   "scope": "*",
                   "source_kind": "assignment",
                   "delegation_id": null,
                   "expires_at": null,
                   "lineage": [
-                    "role:19319b0e-0254-48e0-9893-ec66593730b2:v1",
-                    "assignment:ac5f1f70-a29a-4006-944f-4b1580a83c2c:v1",
-                    "role_permission:4e9ca954-1daf-43c2-a40a-e28ffc600872:v1",
-                    "permission:42e41882-cb56-4184-8503-6028b67848e2"
+                    "role:ad8f2347-8351-46f1-b6db-71a0275c31fb:v1",
+                    "assignment:c5225812-034b-4196-a6ad-3b4990d6a0c4:v1",
+                    "role_permission:28a14c04-7aac-4a12-8a75-c06009e9f908:v1",
+                    "permission:ef92c279-1643-43ac-8dd2-28f1b5e016ae"
                   ]
                 }
               ],
@@ -1338,7 +1339,7 @@
               "credential_state": [],
               "assurance": {
                 "current": false,
-                "evaluated_at": "2026-09-06T13:08:47.077226Z",
+                "evaluated_at": "2026-09-16T14:53:41.662868Z",
                 "ial": {
                   "kind": "IAL",
                   "not_applicable": false,
@@ -1409,7 +1410,7 @@
               "policy_refs": [
                 {
                   "kind": "assignment",
-                  "identifier": "ac5f1f70-a29a-4006-944f-4b1580a83c2c",
+                  "identifier": "c5225812-034b-4196-a6ad-3b4990d6a0c4",
                   "version": "1"
                 },
                 {
@@ -1419,17 +1420,17 @@
                 },
                 {
                   "kind": "permission",
-                  "identifier": "42e41882-cb56-4184-8503-6028b67848e2",
+                  "identifier": "ef92c279-1643-43ac-8dd2-28f1b5e016ae",
                   "version": null
                 },
                 {
                   "kind": "role",
-                  "identifier": "19319b0e-0254-48e0-9893-ec66593730b2",
+                  "identifier": "ad8f2347-8351-46f1-b6db-71a0275c31fb",
                   "version": "1"
                 },
                 {
                   "kind": "role_permission",
-                  "identifier": "4e9ca954-1daf-43c2-a40a-e28ffc600872",
+                  "identifier": "28a14c04-7aac-4a12-8a75-c06009e9f908",
                   "version": "1"
                 }
               ],
@@ -1453,20 +1454,20 @@
                 ],
                 "matching_permissions": [
                   {
-                    "permission_id": "42e41882-cb56-4184-8503-6028b67848e2",
+                    "permission_id": "ef92c279-1643-43ac-8dd2-28f1b5e016ae",
                     "resource": "aml.action",
                     "action": "approve",
-                    "role_id": "19319b0e-0254-48e0-9893-ec66593730b2",
-                    "assignment_id": "ac5f1f70-a29a-4006-944f-4b1580a83c2c",
+                    "role_id": "ad8f2347-8351-46f1-b6db-71a0275c31fb",
+                    "assignment_id": "c5225812-034b-4196-a6ad-3b4990d6a0c4",
                     "scope": "*",
                     "source_kind": "assignment",
                     "delegation_id": null,
                     "expires_at": null,
                     "lineage": [
-                      "role:19319b0e-0254-48e0-9893-ec66593730b2:v1",
-                      "assignment:ac5f1f70-a29a-4006-944f-4b1580a83c2c:v1",
-                      "role_permission:4e9ca954-1daf-43c2-a40a-e28ffc600872:v1",
-                      "permission:42e41882-cb56-4184-8503-6028b67848e2"
+                      "role:ad8f2347-8351-46f1-b6db-71a0275c31fb:v1",
+                      "assignment:c5225812-034b-4196-a6ad-3b4990d6a0c4:v1",
+                      "role_permission:28a14c04-7aac-4a12-8a75-c06009e9f908:v1",
+                      "permission:ef92c279-1643-43ac-8dd2-28f1b5e016ae"
                     ]
                   }
                 ],
@@ -1476,7 +1477,7 @@
               "evidence": [
                 {
                   "kind": "assignment",
-                  "identifier": "ac5f1f70-a29a-4006-944f-4b1580a83c2c",
+                  "identifier": "c5225812-034b-4196-a6ad-3b4990d6a0c4",
                   "status": null
                 }
               ],
@@ -1498,13 +1499,13 @@
                   "proof.invalidated"
                 ]
               },
-              "authority_revision": "9fe43933f6a51a5f6292ce262238a8b51b544a4fa2da04f4e2d9a5c33e9fc0c4",
+              "authority_revision": "cf5bc10cc258ed664867ea169601414623c1e87ed624c186458138f8b71ffc90",
               "authorizes": false,
               "executes": false,
               "agl_decision": "not_made",
               "integrity": {
-                "content_hash": "ca2244c65f95c18ba2241ebac618d8ce478d7f9398b06bb0ace929ca1ab9e88a",
-                "signature": "5554f2460d41e7852470c31b0e7a82b82c957415cfb9a5d792692ea07b7c6f808ae3d83d70ea15b1a5738edeece1f4c80cee23c471eead7a52665783c07aaa0d",
+                "content_hash": "e892a8d838741881e7ca6868c23d98e7581e1ed32d37fbae7d0b3b0bc8da83e0",
+                "signature": "9f5efd41cfefcc0635487abb87e00d5d5c7c43ba2b8481e12a55c16d0cdba87afaffb427ff6914a4d49359835573f877ccbd8a4730f6ca126b9534b1834bcf02",
                 "signature_algorithm": "ed25519",
                 "signer_key_id": "compliidentity.proof.ed25519.dev"
               },
@@ -1516,7 +1517,7 @@
           {
             "request": {
               "organization_id": "harborstone-demo",
-              "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
+              "principal_id": "3d5366bd-3bb4-44d5-8108-1759e6fe45f3",
               "resource": "aml.action",
               "action": "propose",
               "resource_instance": "HARBORSTONE-2024-0042",
@@ -1535,16 +1536,16 @@
               "trust_absent",
               "trust_refresh_required"
             ],
-            "authority_revision": "8d84261bf9f081b91a9604bd2bbf7c7db6a0d9b933dee2adc1fb20825e449fdc",
-            "integrity_content_hash": "44f19de1d60f0cbce1c7c7cc230d5d4f0ff0781c6463b12476721bc95f43275b",
+            "authority_revision": "ea3e54e97afa4eaae21c0e170557c5c99f6988d8c381001661413b6a384f80ef",
+            "integrity_content_hash": "1ee8d791e7638f0a74ab1d703c9d3611fc50a50f651b0b1e2f4ff40f5b1e4e50",
             "raw_response": {
               "contract_id": "compliidentity.agl.authority.v1",
               "contract_version": "1",
               "tenant_id": "harborstone-demo",
-              "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
-              "evaluated_at": "2026-09-06T13:08:47.557443Z",
+              "principal_id": "3d5366bd-3bb4-44d5-8108-1759e6fe45f3",
+              "evaluated_at": "2026-09-16T14:53:42.453625Z",
               "principal": {
-                "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
+                "principal_id": "3d5366bd-3bb4-44d5-8108-1759e6fe45f3",
                 "principal_type": "AI_AGENT",
                 "status": "ACTIVE",
                 "did": null,
@@ -1554,97 +1555,97 @@
               "active": true,
               "roles": [
                 {
-                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                  "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
                   "name": "aira-aml-investigator",
                   "system_role": false,
                   "version": 1,
-                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c"
+                  "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e"
                 }
               ],
               "permissions": [
                 {
-                  "permission_id": "7c9e1c98-001e-4afd-a1c6-e635236ed99c",
+                  "permission_id": "bf9ad876-3ff6-4893-a396-c952ee374b9e",
                   "resource": "aml.action",
                   "action": "propose",
-                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                  "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                   "scope": "*",
                   "source_kind": "assignment",
                   "delegation_id": null,
                   "expires_at": null,
                   "lineage": [
-                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                    "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1",
-                    "permission:7c9e1c98-001e-4afd-a1c6-e635236ed99c"
+                    "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                    "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                    "role_permission:0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b:v1",
+                    "permission:bf9ad876-3ff6-4893-a396-c952ee374b9e"
                   ]
                 },
                 {
-                  "permission_id": "ef6ab7cc-20f4-46c9-a777-5b83c6b9cfd9",
+                  "permission_id": "e6646d35-3f53-46bc-8c82-5a40f0efc0b9",
                   "resource": "aml.case",
                   "action": "assess",
-                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                  "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                   "scope": "*",
                   "source_kind": "assignment",
                   "delegation_id": null,
                   "expires_at": null,
                   "lineage": [
-                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                    "role_permission:69ac5432-8237-4f44-84e4-5ff724585197:v1",
-                    "permission:ef6ab7cc-20f4-46c9-a777-5b83c6b9cfd9"
+                    "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                    "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                    "role_permission:7554d301-1eb5-4ae7-b66f-1ceec022350d:v1",
+                    "permission:e6646d35-3f53-46bc-8c82-5a40f0efc0b9"
                   ]
                 },
                 {
-                  "permission_id": "17fd1c95-84d4-4247-958f-ff82f1ad95e0",
+                  "permission_id": "297ac79b-3be3-4165-8d5c-7af63cfe33a3",
                   "resource": "aml.case",
                   "action": "read",
-                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                  "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                   "scope": "*",
                   "source_kind": "assignment",
                   "delegation_id": null,
                   "expires_at": null,
                   "lineage": [
-                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                    "role_permission:dc565684-3ebf-4ac5-8574-9f09b4f2f91b:v1",
-                    "permission:17fd1c95-84d4-4247-958f-ff82f1ad95e0"
+                    "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                    "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                    "role_permission:4de691c2-2c4f-4e39-a6ab-073b582ea91a:v1",
+                    "permission:297ac79b-3be3-4165-8d5c-7af63cfe33a3"
                   ]
                 },
                 {
-                  "permission_id": "6b661e3b-9c39-4d0e-be19-41173a4314b0",
+                  "permission_id": "d79c39cf-4add-4740-958f-8976912107ba",
                   "resource": "aml.escalation",
                   "action": "create",
-                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                  "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                   "scope": "*",
                   "source_kind": "assignment",
                   "delegation_id": null,
                   "expires_at": null,
                   "lineage": [
-                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                    "role_permission:5cb43175-5871-48d0-aae1-74703195b04b:v1",
-                    "permission:6b661e3b-9c39-4d0e-be19-41173a4314b0"
+                    "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                    "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                    "role_permission:1fe64041-b47c-45c7-87ea-87311acaeada:v1",
+                    "permission:d79c39cf-4add-4740-958f-8976912107ba"
                   ]
                 },
                 {
-                  "permission_id": "1da46aee-93e6-4fe4-82a4-d49db8fadfa5",
+                  "permission_id": "50b7fcac-fd91-4072-adfd-042ae53f5517",
                   "resource": "sanctions.screening",
                   "action": "read",
-                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                  "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                   "scope": "*",
                   "source_kind": "assignment",
                   "delegation_id": null,
                   "expires_at": null,
                   "lineage": [
-                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                    "role_permission:16f4634c-9734-463d-856c-06a01bff75e8:v1",
-                    "permission:1da46aee-93e6-4fe4-82a4-d49db8fadfa5"
+                    "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                    "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                    "role_permission:5360d67b-53f1-4a5f-9c99-30ecfd8d2e17:v1",
+                    "permission:50b7fcac-fd91-4072-adfd-042ae53f5517"
                   ]
                 }
               ],
@@ -1663,14 +1664,14 @@
                   "threshold": "24999999",
                   "approver_principal_type": "HUMAN",
                   "unit": null,
-                  "source": "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1"
+                  "source": "role_permission:0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b:v1"
                 }
               ],
               "delegation_chain": [],
               "credential_state": [],
               "assurance": {
                 "current": false,
-                "evaluated_at": "2026-09-06T13:08:47.557443Z",
+                "evaluated_at": "2026-09-16T14:53:42.453625Z",
                 "ial": {
                   "kind": "IAL",
                   "not_applicable": true,
@@ -1741,7 +1742,7 @@
               "policy_refs": [
                 {
                   "kind": "assignment",
-                  "identifier": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "identifier": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                   "version": "1"
                 },
                 {
@@ -1751,57 +1752,57 @@
                 },
                 {
                   "kind": "permission",
-                  "identifier": "17fd1c95-84d4-4247-958f-ff82f1ad95e0",
+                  "identifier": "297ac79b-3be3-4165-8d5c-7af63cfe33a3",
                   "version": null
                 },
                 {
                   "kind": "permission",
-                  "identifier": "1da46aee-93e6-4fe4-82a4-d49db8fadfa5",
+                  "identifier": "50b7fcac-fd91-4072-adfd-042ae53f5517",
                   "version": null
                 },
                 {
                   "kind": "permission",
-                  "identifier": "6b661e3b-9c39-4d0e-be19-41173a4314b0",
+                  "identifier": "bf9ad876-3ff6-4893-a396-c952ee374b9e",
                   "version": null
                 },
                 {
                   "kind": "permission",
-                  "identifier": "7c9e1c98-001e-4afd-a1c6-e635236ed99c",
+                  "identifier": "d79c39cf-4add-4740-958f-8976912107ba",
                   "version": null
                 },
                 {
                   "kind": "permission",
-                  "identifier": "ef6ab7cc-20f4-46c9-a777-5b83c6b9cfd9",
+                  "identifier": "e6646d35-3f53-46bc-8c82-5a40f0efc0b9",
                   "version": null
                 },
                 {
                   "kind": "role",
-                  "identifier": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                  "identifier": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
                   "version": "1"
                 },
                 {
                   "kind": "role_permission",
-                  "identifier": "16f4634c-9734-463d-856c-06a01bff75e8",
+                  "identifier": "0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b",
                   "version": "1"
                 },
                 {
                   "kind": "role_permission",
-                  "identifier": "2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527",
+                  "identifier": "1fe64041-b47c-45c7-87ea-87311acaeada",
                   "version": "1"
                 },
                 {
                   "kind": "role_permission",
-                  "identifier": "5cb43175-5871-48d0-aae1-74703195b04b",
+                  "identifier": "4de691c2-2c4f-4e39-a6ab-073b582ea91a",
                   "version": "1"
                 },
                 {
                   "kind": "role_permission",
-                  "identifier": "69ac5432-8237-4f44-84e4-5ff724585197",
+                  "identifier": "5360d67b-53f1-4a5f-9c99-30ecfd8d2e17",
                   "version": "1"
                 },
                 {
                   "kind": "role_permission",
-                  "identifier": "dc565684-3ebf-4ac5-8574-9f09b4f2f91b",
+                  "identifier": "7554d301-1eb5-4ae7-b66f-1ceec022350d",
                   "version": "1"
                 }
               ],
@@ -1826,20 +1827,20 @@
                 ],
                 "matching_permissions": [
                   {
-                    "permission_id": "7c9e1c98-001e-4afd-a1c6-e635236ed99c",
+                    "permission_id": "bf9ad876-3ff6-4893-a396-c952ee374b9e",
                     "resource": "aml.action",
                     "action": "propose",
-                    "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                    "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                    "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                    "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                     "scope": "*",
                     "source_kind": "assignment",
                     "delegation_id": null,
                     "expires_at": null,
                     "lineage": [
-                      "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                      "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                      "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1",
-                      "permission:7c9e1c98-001e-4afd-a1c6-e635236ed99c"
+                      "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                      "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                      "role_permission:0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b:v1",
+                      "permission:bf9ad876-3ff6-4893-a396-c952ee374b9e"
                     ]
                   }
                 ],
@@ -1852,14 +1853,14 @@
                     "threshold": "24999999",
                     "approver_principal_type": "HUMAN",
                     "unit": null,
-                    "source": "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1"
+                    "source": "role_permission:0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b:v1"
                   }
                 ]
               },
               "evidence": [
                 {
                   "kind": "assignment",
-                  "identifier": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "identifier": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                   "status": null
                 }
               ],
@@ -1868,7 +1869,7 @@
                 "must_revalidate": true,
                 "no_store": true,
                 "cache_control": "no-store",
-                "not_after": "2026-09-07T07:46:46Z",
+                "not_after": "2026-09-17T14:44:34Z",
                 "revalidate_on": [
                   "iam.assignment.revoked",
                   "iam.grant.revoked",
@@ -1881,13 +1882,13 @@
                   "proof.invalidated"
                 ]
               },
-              "authority_revision": "8d84261bf9f081b91a9604bd2bbf7c7db6a0d9b933dee2adc1fb20825e449fdc",
+              "authority_revision": "ea3e54e97afa4eaae21c0e170557c5c99f6988d8c381001661413b6a384f80ef",
               "authorizes": false,
               "executes": false,
               "agl_decision": "not_made",
               "integrity": {
-                "content_hash": "44f19de1d60f0cbce1c7c7cc230d5d4f0ff0781c6463b12476721bc95f43275b",
-                "signature": "8d3e90e5aaa7ce9b410bb21f25d48625759726e8b0bc77541b2100a292104f0bff309d6d1b4db4047fa5dc02d58229f44953b1bc087800ce4f3de9bf5547a50d",
+                "content_hash": "1ee8d791e7638f0a74ab1d703c9d3611fc50a50f651b0b1e2f4ff40f5b1e4e50",
+                "signature": "19adde4f1cb55d568f65feaf138de2cbdef3b97f199476f1bee389a5d80ebeec0f09991b348fa78a28e070f4188b9dc953881bcc01a4026de120e0ec6418ca07",
                 "signature_algorithm": "ed25519",
                 "signer_key_id": "compliidentity.proof.ed25519.dev"
               },
@@ -1902,20 +1903,20 @@
       "id": "4c-neg-wrong-approver",
       "title": "an approver without aml.action:approve authority is rejected",
       "proves": "submit() rejects SENTRY -- CompliIdentity reports sufficient:false for SENTRY on aml.action:approve -- no EscalationApproval is recorded and the decision stays ESCALATED",
-      "does_NOT_prove": "anything about sanctions screening (placeholder control)",
+      "does_NOT_prove": "a real (non-simulated) sanctions-list lookup (see the connector's own claims.simulation disclosure)",
       "actor": "sentry",
       "compliidentity": {
         "resource": "aml.action",
         "action": "approve",
         "resource_instance": "HARBORSTONE-2024-0042",
-        "approver_principal_id": "302415c0-00ab-49b0-8a65-01175c0deb68"
+        "approver_principal_id": "ea0c8c69-a745-4b6a-85aa-aa5c3bb22958"
       },
       "expected": {
         "approval_rejected": true,
         "decision_still": "ESCALATED"
       },
       "first_decision": {
-        "decision_id": "32c3d175-b526-4f2b-b36f-ae492590b843",
+        "decision_id": "c2b84534-52e0-4231-88c6-8ae92652a271",
         "outcome": "ESCALATED",
         "reason_codes": [
           "DECISION_ESCALATED",
@@ -1925,7 +1926,7 @@
         "decision_conditions_triggered": [
           {
             "condition_id": "DC-HARBORSTONE-HUMAN-APPROVAL",
-            "package_id": "c4a48baa-f742-49f2-b3ab-5e9fd2768053",
+            "package_id": "33184b99-c9f9-4231-919f-902788be5861",
             "resulting_decision": "ESCALATED",
             "reason_code": "HUMAN_APPROVAL_REQUIRED",
             "priority": 20,
@@ -1937,8 +1938,8 @@
         "required_approver_types": [
           "HUMAN"
         ],
-        "input_hash": "08a392329690900e1b24c80ac13ff8bbb7779a4dfe2aa31cc70472063222435b",
-        "decision_hash": "bbe7e7719aef317b38815ccce03af782891a174e8f71f2d93dcab7ff472b2ce6",
+        "input_hash": "ecb92d31b351706e3f0e7476f53ae3c62e1e658f3a4fc481661bfb912b86d46f",
+        "decision_hash": "d4822724ca9a1f8d1b6e4ab25c0f37caa92c40c01b836843fdba8f25ff58507a",
         "approval_hash": null,
         "prior_decision_id": null,
         "superseded_by_decision_id": null,
@@ -1952,14 +1953,14 @@
       "no_execution_authorization": {
         "issued": false,
         "raised": "ConflictError",
-        "message": "Execution authorization can only be issued for an APPROVED decision (decision 32c3d175-b526-4f2b-b36f-ae492590b843 is ESCALATED)."
+        "message": "Execution authorization can only be issued for an APPROVED decision (decision c2b84534-52e0-4231-88c6-8ae92652a271 is ESCALATED)."
       },
       "compliidentity_calls": {
         "approver_probe": [
           {
             "request": {
               "organization_id": "harborstone-demo",
-              "principal_id": "302415c0-00ab-49b0-8a65-01175c0deb68",
+              "principal_id": "ea0c8c69-a745-4b6a-85aa-aa5c3bb22958",
               "resource": "aml.action",
               "action": "approve",
               "resource_instance": "HARBORSTONE-2024-0042",
@@ -1977,16 +1978,16 @@
               "trust_absent",
               "trust_refresh_required"
             ],
-            "authority_revision": "a3ce5b8bc420d0985e0826b91fd815bd0c2704d8323675b8987833b4566d23f5",
-            "integrity_content_hash": "3b768e0888288a3cf870fd9eea6cf64be730d1aa6c101e912480769b732b62b9",
+            "authority_revision": "606a483141aa26151f324469412c206f76dfebb9916fb621d75d7011a9bc673b",
+            "integrity_content_hash": "2f829eb946b7ca6f87d715edd94aa44fb6987364f54f7a40b3c67ae3ef2a0072",
             "raw_response": {
               "contract_id": "compliidentity.agl.authority.v1",
               "contract_version": "1",
               "tenant_id": "harborstone-demo",
-              "principal_id": "302415c0-00ab-49b0-8a65-01175c0deb68",
-              "evaluated_at": "2026-09-06T13:08:49.165857Z",
+              "principal_id": "ea0c8c69-a745-4b6a-85aa-aa5c3bb22958",
+              "evaluated_at": "2026-09-16T14:53:44.251266Z",
               "principal": {
-                "principal_id": "302415c0-00ab-49b0-8a65-01175c0deb68",
+                "principal_id": "ea0c8c69-a745-4b6a-85aa-aa5c3bb22958",
                 "principal_type": "AI_AGENT",
                 "status": "ACTIVE",
                 "did": null,
@@ -1997,22 +1998,22 @@
               "roles": [],
               "permissions": [
                 {
-                  "permission_id": "1da46aee-93e6-4fe4-82a4-d49db8fadfa5",
+                  "permission_id": "50b7fcac-fd91-4072-adfd-042ae53f5517",
                   "resource": "sanctions.screening",
                   "action": "read",
-                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                  "assignment_id": "delegation:c464d43b-c69a-4004-989c-3f9bbdc061c3",
+                  "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                  "assignment_id": "delegation:633b4675-260c-4a46-8290-740517ede842",
                   "scope": "*",
                   "source_kind": "delegation",
-                  "delegation_id": "c464d43b-c69a-4004-989c-3f9bbdc061c3",
-                  "expires_at": "2026-09-07T07:46:46Z",
+                  "delegation_id": "633b4675-260c-4a46-8290-740517ede842",
+                  "expires_at": "2026-09-17T14:44:34Z",
                   "lineage": [
-                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                    "role_permission:16f4634c-9734-463d-856c-06a01bff75e8:v1",
-                    "permission:1da46aee-93e6-4fe4-82a4-d49db8fadfa5",
-                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                    "delegation:c464d43b-c69a-4004-989c-3f9bbdc061c3:v1"
+                    "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                    "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                    "role_permission:5360d67b-53f1-4a5f-9c99-30ecfd8d2e17:v1",
+                    "permission:50b7fcac-fd91-4072-adfd-042ae53f5517",
+                    "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                    "delegation:633b4675-260c-4a46-8290-740517ede842:v1"
                   ]
                 }
               ],
@@ -2031,29 +2032,29 @@
                   "threshold": "24999999",
                   "approver_principal_type": "HUMAN",
                   "unit": null,
-                  "source": "delegation:c464d43b-c69a-4004-989c-3f9bbdc061c3:v1:role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1"
+                  "source": "delegation:633b4675-260c-4a46-8290-740517ede842:v1:role_permission:0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b:v1"
                 }
               ],
               "delegation_chain": [
                 {
-                  "delegation_id": "c464d43b-c69a-4004-989c-3f9bbdc061c3",
+                  "delegation_id": "633b4675-260c-4a46-8290-740517ede842",
                   "status": "ACTIVE",
                   "live": true,
-                  "delegator_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
-                  "delegate_id": "302415c0-00ab-49b0-8a65-01175c0deb68",
+                  "delegator_id": "3d5366bd-3bb4-44d5-8108-1759e6fe45f3",
+                  "delegate_id": "ea0c8c69-a745-4b6a-85aa-aa5c3bb22958",
                   "parent_id": null,
                   "actions": [
                     "read"
                   ],
                   "resource_selector": "sanctions.screening",
-                  "valid_until": "2026-09-07T07:46:46Z",
+                  "valid_until": "2026-09-17T14:44:34Z",
                   "depth": 0
                 }
               ],
               "credential_state": [],
               "assurance": {
                 "current": false,
-                "evaluated_at": "2026-09-06T13:08:49.165857Z",
+                "evaluated_at": "2026-09-16T14:53:44.251266Z",
                 "ial": {
                   "kind": "IAL",
                   "not_applicable": true,
@@ -2129,7 +2130,7 @@
                 },
                 {
                   "kind": "delegation",
-                  "identifier": "c464d43b-c69a-4004-989c-3f9bbdc061c3",
+                  "identifier": "633b4675-260c-4a46-8290-740517ede842",
                   "version": "1"
                 }
               ],
@@ -2158,7 +2159,7 @@
               "evidence": [
                 {
                   "kind": "delegation",
-                  "identifier": "c464d43b-c69a-4004-989c-3f9bbdc061c3",
+                  "identifier": "633b4675-260c-4a46-8290-740517ede842",
                   "status": "ACTIVE"
                 }
               ],
@@ -2167,7 +2168,7 @@
                 "must_revalidate": true,
                 "no_store": true,
                 "cache_control": "no-store",
-                "not_after": "2026-09-07T07:46:46Z",
+                "not_after": "2026-09-17T14:44:34Z",
                 "revalidate_on": [
                   "iam.assignment.revoked",
                   "iam.grant.revoked",
@@ -2180,13 +2181,13 @@
                   "proof.invalidated"
                 ]
               },
-              "authority_revision": "a3ce5b8bc420d0985e0826b91fd815bd0c2704d8323675b8987833b4566d23f5",
+              "authority_revision": "606a483141aa26151f324469412c206f76dfebb9916fb621d75d7011a9bc673b",
               "authorizes": false,
               "executes": false,
               "agl_decision": "not_made",
               "integrity": {
-                "content_hash": "3b768e0888288a3cf870fd9eea6cf64be730d1aa6c101e912480769b732b62b9",
-                "signature": "abc2da1bc672a1cd5eddb35d220e354b901f07976c505cb49ce6f60e1a4b5511248565568471073c5ffeb82402688a29bdcf2a637c0e5fdc2d87d9a6b257360e",
+                "content_hash": "2f829eb946b7ca6f87d715edd94aa44fb6987364f54f7a40b3c67ae3ef2a0072",
+                "signature": "e30adffd904ebb577a92a69e174f56c6ce8254537b7f7ce98693ff9c6be821e7c1bb33b77427ee8140e2e3f25c11f31e2d0a177b6dbc297959977f79da0c9308",
                 "signature_algorithm": "ed25519",
                 "signer_key_id": "compliidentity.proof.ed25519.dev"
               },
@@ -2201,7 +2202,7 @@
       "id": "4c-neg-expired-approval",
       "title": "an expired approval does not upgrade the escalation",
       "proves": "the approval is authority-verified and recorded, but approval.expired is true at re-decision time, so DC-HARBORSTONE-APPROVED-VIA-HUMAN does not fire -- the re-decision is still ESCALATED and the approval is not consumed",
-      "does_NOT_prove": "anything about sanctions screening (placeholder control)",
+      "does_NOT_prove": "a real (non-simulated) sanctions-list lookup (see the connector's own claims.simulation disclosure)",
       "actor": "jordan",
       "compliidentity": {
         "resource": "aml.action",
@@ -2213,7 +2214,7 @@
         "approval_consumed": false
       },
       "first_decision": {
-        "decision_id": "ce1f4411-1e99-4e6f-9070-cf06ed2d6454",
+        "decision_id": "1ffb46cc-60bf-4d53-85ba-32b2e5509b8c",
         "outcome": "ESCALATED",
         "reason_codes": [
           "DECISION_ESCALATED",
@@ -2223,7 +2224,7 @@
         "decision_conditions_triggered": [
           {
             "condition_id": "DC-HARBORSTONE-HUMAN-APPROVAL",
-            "package_id": "c4a48baa-f742-49f2-b3ab-5e9fd2768053",
+            "package_id": "33184b99-c9f9-4231-919f-902788be5861",
             "resulting_decision": "ESCALATED",
             "reason_code": "HUMAN_APPROVAL_REQUIRED",
             "priority": 20,
@@ -2235,21 +2236,21 @@
         "required_approver_types": [
           "HUMAN"
         ],
-        "input_hash": "c142e8d12de777f4e22b8e7cd2743727a191d452820f15efb517379ab03758b1",
-        "decision_hash": "bc431eac124eb54d121a6bf4bce2eab27ac3c87f5a36a30a08d3225e09903799",
+        "input_hash": "2865ebd7df995c9dc9fd223b0b8305d5dd633c518f24e7813a72fb346dd32a60",
+        "decision_hash": "b515fe7fb085a1b86213ee482f7e59b6d1829e3adbdb4f3bc870a723f2b814c8",
         "approval_hash": null,
         "prior_decision_id": null,
-        "superseded_by_decision_id": "8ce35968-d442-4133-9eba-94f8a6e3e303",
+        "superseded_by_decision_id": "42435370-57f8-4fc1-a602-a6d87e141b70",
         "supersession_status": "SUPERSEDED"
       },
       "escalation_approval": {
-        "escalation_approval_id": "EAP-fce4e483b15f7895",
-        "valid_until": "2026-09-06 13:08:49.343887",
+        "escalation_approval_id": "EAP-3c75c5429e7558fc",
+        "valid_until": "2026-09-16 14:53:44.201473",
         "status_after_reevaluation": "ACTIVE",
         "consumed_by_decision_id": null
       },
       "reevaluated_decision": {
-        "decision_id": "8ce35968-d442-4133-9eba-94f8a6e3e303",
+        "decision_id": "42435370-57f8-4fc1-a602-a6d87e141b70",
         "outcome": "ESCALATED",
         "reason_codes": [
           "DECISION_ESCALATED",
@@ -2259,7 +2260,7 @@
         "decision_conditions_triggered": [
           {
             "condition_id": "DC-HARBORSTONE-HUMAN-APPROVAL",
-            "package_id": "c4a48baa-f742-49f2-b3ab-5e9fd2768053",
+            "package_id": "33184b99-c9f9-4231-919f-902788be5861",
             "resulting_decision": "ESCALATED",
             "reason_code": "HUMAN_APPROVAL_REQUIRED",
             "priority": 20,
@@ -2271,24 +2272,24 @@
         "required_approver_types": [
           "HUMAN"
         ],
-        "input_hash": "13b1d788280389d98cedbbc588b3e9567ee83f7c7143ac3c9f33904c5d26cf69",
-        "decision_hash": "b1ce17e9cf6d1d66b9d25cc2dd3d7be243e4a795d88310ff29caf2d835696d49",
-        "approval_hash": "22391689edaa45143a6df169866c8c844068a73184d6413c08d10177e854ccdc",
-        "prior_decision_id": "ce1f4411-1e99-4e6f-9070-cf06ed2d6454",
+        "input_hash": "cdddc6c6145b560cfa49c1c7d9b5ef1f94c2e2bfe8c5449ca06926482dab902e",
+        "decision_hash": "d3e0cb3e3729f4ff8cdec48a1149eb63abe2e7ea2b82134680174f83837defb4",
+        "approval_hash": "004992916f4521c0ece3739e1ea3b217d9e0500c0b4bdd2a537416f4c4f0aa29",
+        "prior_decision_id": "1ffb46cc-60bf-4d53-85ba-32b2e5509b8c",
         "superseded_by_decision_id": null,
         "supersession_status": "CURRENT"
       },
       "no_execution_authorization": {
         "issued": false,
         "raised": "ConflictError",
-        "message": "Execution authorization can only be issued for an APPROVED decision (decision 8ce35968-d442-4133-9eba-94f8a6e3e303 is ESCALATED)."
+        "message": "Execution authorization can only be issued for an APPROVED decision (decision 42435370-57f8-4fc1-a602-a6d87e141b70 is ESCALATED)."
       },
       "compliidentity_calls": {
         "approver_probe": [
           {
             "request": {
               "organization_id": "harborstone-demo",
-              "principal_id": "e35d7b95-1a10-4654-9b02-2181df052f96",
+              "principal_id": "91a86c47-27ec-4c09-afda-3ac7dc618589",
               "resource": "aml.action",
               "action": "approve",
               "resource_instance": "HARBORSTONE-2024-0042",
@@ -2306,16 +2307,16 @@
               "trust_absent",
               "trust_refresh_required"
             ],
-            "authority_revision": "9fe43933f6a51a5f6292ce262238a8b51b544a4fa2da04f4e2d9a5c33e9fc0c4",
-            "integrity_content_hash": "b6ad6e51e72bc63740ee49c74207c3749a43a7c1a065a60a287937ea23d04771",
+            "authority_revision": "cf5bc10cc258ed664867ea169601414623c1e87ed624c186458138f8b71ffc90",
+            "integrity_content_hash": "6ff3a4ebcbe47cf8f40b85120cda87cb1bddcdf5e566d4f87d092960d3844b57",
             "raw_response": {
               "contract_id": "compliidentity.agl.authority.v1",
               "contract_version": "1",
               "tenant_id": "harborstone-demo",
-              "principal_id": "e35d7b95-1a10-4654-9b02-2181df052f96",
-              "evaluated_at": "2026-09-06T13:08:50.827442Z",
+              "principal_id": "91a86c47-27ec-4c09-afda-3ac7dc618589",
+              "evaluated_at": "2026-09-16T14:53:45.797252Z",
               "principal": {
-                "principal_id": "e35d7b95-1a10-4654-9b02-2181df052f96",
+                "principal_id": "91a86c47-27ec-4c09-afda-3ac7dc618589",
                 "principal_type": "HUMAN",
                 "status": "ACTIVE",
                 "did": null,
@@ -2325,29 +2326,29 @@
               "active": true,
               "roles": [
                 {
-                  "role_id": "19319b0e-0254-48e0-9893-ec66593730b2",
+                  "role_id": "ad8f2347-8351-46f1-b6db-71a0275c31fb",
                   "name": "jordan-aml-approver",
                   "system_role": false,
                   "version": 1,
-                  "assignment_id": "ac5f1f70-a29a-4006-944f-4b1580a83c2c"
+                  "assignment_id": "c5225812-034b-4196-a6ad-3b4990d6a0c4"
                 }
               ],
               "permissions": [
                 {
-                  "permission_id": "42e41882-cb56-4184-8503-6028b67848e2",
+                  "permission_id": "ef92c279-1643-43ac-8dd2-28f1b5e016ae",
                   "resource": "aml.action",
                   "action": "approve",
-                  "role_id": "19319b0e-0254-48e0-9893-ec66593730b2",
-                  "assignment_id": "ac5f1f70-a29a-4006-944f-4b1580a83c2c",
+                  "role_id": "ad8f2347-8351-46f1-b6db-71a0275c31fb",
+                  "assignment_id": "c5225812-034b-4196-a6ad-3b4990d6a0c4",
                   "scope": "*",
                   "source_kind": "assignment",
                   "delegation_id": null,
                   "expires_at": null,
                   "lineage": [
-                    "role:19319b0e-0254-48e0-9893-ec66593730b2:v1",
-                    "assignment:ac5f1f70-a29a-4006-944f-4b1580a83c2c:v1",
-                    "role_permission:4e9ca954-1daf-43c2-a40a-e28ffc600872:v1",
-                    "permission:42e41882-cb56-4184-8503-6028b67848e2"
+                    "role:ad8f2347-8351-46f1-b6db-71a0275c31fb:v1",
+                    "assignment:c5225812-034b-4196-a6ad-3b4990d6a0c4:v1",
+                    "role_permission:28a14c04-7aac-4a12-8a75-c06009e9f908:v1",
+                    "permission:ef92c279-1643-43ac-8dd2-28f1b5e016ae"
                   ]
                 }
               ],
@@ -2363,7 +2364,7 @@
               "credential_state": [],
               "assurance": {
                 "current": false,
-                "evaluated_at": "2026-09-06T13:08:50.827442Z",
+                "evaluated_at": "2026-09-16T14:53:45.797252Z",
                 "ial": {
                   "kind": "IAL",
                   "not_applicable": false,
@@ -2434,7 +2435,7 @@
               "policy_refs": [
                 {
                   "kind": "assignment",
-                  "identifier": "ac5f1f70-a29a-4006-944f-4b1580a83c2c",
+                  "identifier": "c5225812-034b-4196-a6ad-3b4990d6a0c4",
                   "version": "1"
                 },
                 {
@@ -2444,17 +2445,17 @@
                 },
                 {
                   "kind": "permission",
-                  "identifier": "42e41882-cb56-4184-8503-6028b67848e2",
+                  "identifier": "ef92c279-1643-43ac-8dd2-28f1b5e016ae",
                   "version": null
                 },
                 {
                   "kind": "role",
-                  "identifier": "19319b0e-0254-48e0-9893-ec66593730b2",
+                  "identifier": "ad8f2347-8351-46f1-b6db-71a0275c31fb",
                   "version": "1"
                 },
                 {
                   "kind": "role_permission",
-                  "identifier": "4e9ca954-1daf-43c2-a40a-e28ffc600872",
+                  "identifier": "28a14c04-7aac-4a12-8a75-c06009e9f908",
                   "version": "1"
                 }
               ],
@@ -2478,20 +2479,20 @@
                 ],
                 "matching_permissions": [
                   {
-                    "permission_id": "42e41882-cb56-4184-8503-6028b67848e2",
+                    "permission_id": "ef92c279-1643-43ac-8dd2-28f1b5e016ae",
                     "resource": "aml.action",
                     "action": "approve",
-                    "role_id": "19319b0e-0254-48e0-9893-ec66593730b2",
-                    "assignment_id": "ac5f1f70-a29a-4006-944f-4b1580a83c2c",
+                    "role_id": "ad8f2347-8351-46f1-b6db-71a0275c31fb",
+                    "assignment_id": "c5225812-034b-4196-a6ad-3b4990d6a0c4",
                     "scope": "*",
                     "source_kind": "assignment",
                     "delegation_id": null,
                     "expires_at": null,
                     "lineage": [
-                      "role:19319b0e-0254-48e0-9893-ec66593730b2:v1",
-                      "assignment:ac5f1f70-a29a-4006-944f-4b1580a83c2c:v1",
-                      "role_permission:4e9ca954-1daf-43c2-a40a-e28ffc600872:v1",
-                      "permission:42e41882-cb56-4184-8503-6028b67848e2"
+                      "role:ad8f2347-8351-46f1-b6db-71a0275c31fb:v1",
+                      "assignment:c5225812-034b-4196-a6ad-3b4990d6a0c4:v1",
+                      "role_permission:28a14c04-7aac-4a12-8a75-c06009e9f908:v1",
+                      "permission:ef92c279-1643-43ac-8dd2-28f1b5e016ae"
                     ]
                   }
                 ],
@@ -2501,7 +2502,7 @@
               "evidence": [
                 {
                   "kind": "assignment",
-                  "identifier": "ac5f1f70-a29a-4006-944f-4b1580a83c2c",
+                  "identifier": "c5225812-034b-4196-a6ad-3b4990d6a0c4",
                   "status": null
                 }
               ],
@@ -2523,13 +2524,13 @@
                   "proof.invalidated"
                 ]
               },
-              "authority_revision": "9fe43933f6a51a5f6292ce262238a8b51b544a4fa2da04f4e2d9a5c33e9fc0c4",
+              "authority_revision": "cf5bc10cc258ed664867ea169601414623c1e87ed624c186458138f8b71ffc90",
               "authorizes": false,
               "executes": false,
               "agl_decision": "not_made",
               "integrity": {
-                "content_hash": "b6ad6e51e72bc63740ee49c74207c3749a43a7c1a065a60a287937ea23d04771",
-                "signature": "2236208cb7b5f654726a31da1214e57c1277bec3e54ce61f6cf177090f1f133f1e4a84ecfd3dd70a951819f3aa869c89aefaab649edc843e501716b39c75ec0c",
+                "content_hash": "6ff3a4ebcbe47cf8f40b85120cda87cb1bddcdf5e566d4f87d092960d3844b57",
+                "signature": "310fb74c297a69c985e4319cacca96256aa28d2669102a59c87fb7baf4935382da04cc3b775b5b86638b028d0b38c0ae41eee1d87e7c75405c5a98ffb2039c0c",
                 "signature_algorithm": "ed25519",
                 "signer_key_id": "compliidentity.proof.ed25519.dev"
               },
@@ -2544,7 +2545,7 @@
       "id": "4d-i",
       "title": "wrong actor: SENTRY attempts aml.action:propose (it has no such grant)",
       "proves": "a wrong actor / wrong action / wrong resource_instance is reported by CompliIdentity as insufficient authority and never reaches APPROVED",
-      "does_NOT_prove": "anything about sanctions screening (placeholder control)",
+      "does_NOT_prove": "a real (non-simulated) sanctions-list lookup (see the connector's own claims.simulation disclosure)",
       "actor": "sentry",
       "compliidentity": {
         "resource": "aml.action",
@@ -2556,7 +2557,7 @@
       },
       "assessment_result": "SATISFIED",
       "decision": {
-        "decision_id": "58d828cc-c111-4366-9c69-7ea5645e17d0",
+        "decision_id": "20c6fa95-bd1e-44b5-b88f-dc6a4b99a2ca",
         "outcome": "DENIED",
         "reason_codes": [
           "DECISION_DENIED",
@@ -2566,7 +2567,7 @@
         "decision_conditions_triggered": [
           {
             "condition_id": "DC-HARBORSTONE-AUTHORITY-DENIED",
-            "package_id": "c4a48baa-f742-49f2-b3ab-5e9fd2768053",
+            "package_id": "33184b99-c9f9-4231-919f-902788be5861",
             "resulting_decision": "DENIED",
             "reason_code": "AUTHORITY_DENIED",
             "priority": 10,
@@ -2578,8 +2579,8 @@
         "required_approver_types": [
           "HUMAN"
         ],
-        "input_hash": "3041fab04a9191f73944fd195da2cb3c529d8ab2e999c1d5b8f0d20bbf73c397",
-        "decision_hash": "6b2136af032a347c0774b6dbfe2e0601621dbd83b5871615a354d981cdbab04b",
+        "input_hash": "d71c81eda660d6016ad28938cf51b7a3fed2acaa5c1811a29eebf2968787b8ec",
+        "decision_hash": "bdd795a1838b3fe2d1cd9927ed15deaafe1bb34bfed7aa422ddc35cdc8b41909",
         "approval_hash": null,
         "prior_decision_id": null,
         "superseded_by_decision_id": null,
@@ -2588,13 +2589,13 @@
       "no_execution_authorization": {
         "issued": false,
         "raised": "ConflictError",
-        "message": "Execution authorization can only be issued for an APPROVED decision (decision 58d828cc-c111-4366-9c69-7ea5645e17d0 is DENIED)."
+        "message": "Execution authorization can only be issued for an APPROVED decision (decision 20c6fa95-bd1e-44b5-b88f-dc6a4b99a2ca is DENIED)."
       },
       "compliidentity_calls": [
         {
           "request": {
             "organization_id": "harborstone-demo",
-            "principal_id": "302415c0-00ab-49b0-8a65-01175c0deb68",
+            "principal_id": "ea0c8c69-a745-4b6a-85aa-aa5c3bb22958",
             "resource": "aml.action",
             "action": "propose",
             "resource_instance": "HARBORSTONE-2024-0042"
@@ -2610,16 +2611,16 @@
             "trust_absent",
             "trust_refresh_required"
           ],
-          "authority_revision": "d82f26cecd2e949684dd358b4e99d40c42d16404d1848808e414e05744289051",
-          "integrity_content_hash": "33c8a0935a4422ffa725be43b211831d567eb353e9cadc6aa61e32ad10bcac66",
+          "authority_revision": "1c15dc0afa7129d111b2f72669314de35b2e1245cb330e504a05e815e648ed09",
+          "integrity_content_hash": "cf3a7afacb3891273bbb264de1a9cedb831ab098a22b656df51b738d83f7883a",
           "raw_response": {
             "contract_id": "compliidentity.agl.authority.v1",
             "contract_version": "1",
             "tenant_id": "harborstone-demo",
-            "principal_id": "302415c0-00ab-49b0-8a65-01175c0deb68",
-            "evaluated_at": "2026-09-06T13:08:52.038036Z",
+            "principal_id": "ea0c8c69-a745-4b6a-85aa-aa5c3bb22958",
+            "evaluated_at": "2026-09-16T14:53:47.616045Z",
             "principal": {
-              "principal_id": "302415c0-00ab-49b0-8a65-01175c0deb68",
+              "principal_id": "ea0c8c69-a745-4b6a-85aa-aa5c3bb22958",
               "principal_type": "AI_AGENT",
               "status": "ACTIVE",
               "did": null,
@@ -2630,22 +2631,22 @@
             "roles": [],
             "permissions": [
               {
-                "permission_id": "1da46aee-93e6-4fe4-82a4-d49db8fadfa5",
+                "permission_id": "50b7fcac-fd91-4072-adfd-042ae53f5517",
                 "resource": "sanctions.screening",
                 "action": "read",
-                "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                "assignment_id": "delegation:c464d43b-c69a-4004-989c-3f9bbdc061c3",
+                "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                "assignment_id": "delegation:633b4675-260c-4a46-8290-740517ede842",
                 "scope": "*",
                 "source_kind": "delegation",
-                "delegation_id": "c464d43b-c69a-4004-989c-3f9bbdc061c3",
-                "expires_at": "2026-09-07T07:46:46Z",
+                "delegation_id": "633b4675-260c-4a46-8290-740517ede842",
+                "expires_at": "2026-09-17T14:44:34Z",
                 "lineage": [
-                  "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                  "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                  "role_permission:16f4634c-9734-463d-856c-06a01bff75e8:v1",
-                  "permission:1da46aee-93e6-4fe4-82a4-d49db8fadfa5",
-                  "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                  "delegation:c464d43b-c69a-4004-989c-3f9bbdc061c3:v1"
+                  "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                  "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                  "role_permission:5360d67b-53f1-4a5f-9c99-30ecfd8d2e17:v1",
+                  "permission:50b7fcac-fd91-4072-adfd-042ae53f5517",
+                  "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                  "delegation:633b4675-260c-4a46-8290-740517ede842:v1"
                 ]
               }
             ],
@@ -2664,29 +2665,29 @@
                 "threshold": "24999999",
                 "approver_principal_type": "HUMAN",
                 "unit": null,
-                "source": "delegation:c464d43b-c69a-4004-989c-3f9bbdc061c3:v1:role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1"
+                "source": "delegation:633b4675-260c-4a46-8290-740517ede842:v1:role_permission:0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b:v1"
               }
             ],
             "delegation_chain": [
               {
-                "delegation_id": "c464d43b-c69a-4004-989c-3f9bbdc061c3",
+                "delegation_id": "633b4675-260c-4a46-8290-740517ede842",
                 "status": "ACTIVE",
                 "live": true,
-                "delegator_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
-                "delegate_id": "302415c0-00ab-49b0-8a65-01175c0deb68",
+                "delegator_id": "3d5366bd-3bb4-44d5-8108-1759e6fe45f3",
+                "delegate_id": "ea0c8c69-a745-4b6a-85aa-aa5c3bb22958",
                 "parent_id": null,
                 "actions": [
                   "read"
                 ],
                 "resource_selector": "sanctions.screening",
-                "valid_until": "2026-09-07T07:46:46Z",
+                "valid_until": "2026-09-17T14:44:34Z",
                 "depth": 0
               }
             ],
             "credential_state": [],
             "assurance": {
               "current": false,
-              "evaluated_at": "2026-09-06T13:08:52.038036Z",
+              "evaluated_at": "2026-09-16T14:53:47.616045Z",
               "ial": {
                 "kind": "IAL",
                 "not_applicable": true,
@@ -2762,7 +2763,7 @@
               },
               {
                 "kind": "delegation",
-                "identifier": "c464d43b-c69a-4004-989c-3f9bbdc061c3",
+                "identifier": "633b4675-260c-4a46-8290-740517ede842",
                 "version": "1"
               }
             ],
@@ -2794,14 +2795,14 @@
                   "threshold": "24999999",
                   "approver_principal_type": "HUMAN",
                   "unit": null,
-                  "source": "delegation:c464d43b-c69a-4004-989c-3f9bbdc061c3:v1:role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1"
+                  "source": "delegation:633b4675-260c-4a46-8290-740517ede842:v1:role_permission:0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b:v1"
                 }
               ]
             },
             "evidence": [
               {
                 "kind": "delegation",
-                "identifier": "c464d43b-c69a-4004-989c-3f9bbdc061c3",
+                "identifier": "633b4675-260c-4a46-8290-740517ede842",
                 "status": "ACTIVE"
               }
             ],
@@ -2810,7 +2811,7 @@
               "must_revalidate": true,
               "no_store": true,
               "cache_control": "no-store",
-              "not_after": "2026-09-07T07:46:46Z",
+              "not_after": "2026-09-17T14:44:34Z",
               "revalidate_on": [
                 "iam.assignment.revoked",
                 "iam.grant.revoked",
@@ -2823,13 +2824,13 @@
                 "proof.invalidated"
               ]
             },
-            "authority_revision": "d82f26cecd2e949684dd358b4e99d40c42d16404d1848808e414e05744289051",
+            "authority_revision": "1c15dc0afa7129d111b2f72669314de35b2e1245cb330e504a05e815e648ed09",
             "authorizes": false,
             "executes": false,
             "agl_decision": "not_made",
             "integrity": {
-              "content_hash": "33c8a0935a4422ffa725be43b211831d567eb353e9cadc6aa61e32ad10bcac66",
-              "signature": "351c9ede4fb48cc2b4678dcef7fe8a64dc305e9dd1643dadc908cf2d1a5204bae74eae81d43a4969dd53709f1c65dc699d555fec5221032e4dfcb3c2edac1704",
+              "content_hash": "cf3a7afacb3891273bbb264de1a9cedb831ab098a22b656df51b738d83f7883a",
+              "signature": "6d9ab2d4c445e37d6234ed9f7fd4a6b9fd51bc55d6467e12d0435fb5c2c35f506da3bc51141d419335a0832b5c54f92fbcb32e92b4e1ada6f9b4920ba1f39c03",
               "signature_algorithm": "ed25519",
               "signer_key_id": "compliidentity.proof.ed25519.dev"
             },
@@ -2843,7 +2844,7 @@
       "id": "4d-ii",
       "title": "wrong action: AIRA attempts aml.action:approve (Jordan's action)",
       "proves": "a wrong actor / wrong action / wrong resource_instance is reported by CompliIdentity as insufficient authority and never reaches APPROVED",
-      "does_NOT_prove": "anything about sanctions screening (placeholder control)",
+      "does_NOT_prove": "a real (non-simulated) sanctions-list lookup (see the connector's own claims.simulation disclosure)",
       "actor": "aira",
       "compliidentity": {
         "resource": "aml.action",
@@ -2855,7 +2856,7 @@
       },
       "assessment_result": "SATISFIED",
       "decision": {
-        "decision_id": "a03f63cd-f92f-4fd1-b5b7-487a2b9c55a1",
+        "decision_id": "f4f1c9c9-8132-4250-8cf5-a350e39ba02d",
         "outcome": "DENIED",
         "reason_codes": [
           "DECISION_DENIED",
@@ -2865,7 +2866,7 @@
         "decision_conditions_triggered": [
           {
             "condition_id": "DC-HARBORSTONE-AUTHORITY-DENIED",
-            "package_id": "c4a48baa-f742-49f2-b3ab-5e9fd2768053",
+            "package_id": "33184b99-c9f9-4231-919f-902788be5861",
             "resulting_decision": "DENIED",
             "reason_code": "AUTHORITY_DENIED",
             "priority": 10,
@@ -2875,8 +2876,8 @@
         "authority_status": "OK",
         "authority_reason": "permission_missing",
         "required_approver_types": [],
-        "input_hash": "aaaa8caaf145a25ca642a4559383e107d55c50d7df0523f9d01a7895065d517e",
-        "decision_hash": "1b082426f63a87df255af8734b3ec86d11bf68489ac1d98bc34e1e3418c62398",
+        "input_hash": "1141111c80c9468f15084ee5bc09980652d68f6b838ae372761a7f621481b116",
+        "decision_hash": "527b6200d4fcc2d5f51122604a2c61f6509791833b49abe49674314e0ea8d9d7",
         "approval_hash": null,
         "prior_decision_id": null,
         "superseded_by_decision_id": null,
@@ -2885,13 +2886,13 @@
       "no_execution_authorization": {
         "issued": false,
         "raised": "ConflictError",
-        "message": "Execution authorization can only be issued for an APPROVED decision (decision a03f63cd-f92f-4fd1-b5b7-487a2b9c55a1 is DENIED)."
+        "message": "Execution authorization can only be issued for an APPROVED decision (decision f4f1c9c9-8132-4250-8cf5-a350e39ba02d is DENIED)."
       },
       "compliidentity_calls": [
         {
           "request": {
             "organization_id": "harborstone-demo",
-            "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
+            "principal_id": "3d5366bd-3bb4-44d5-8108-1759e6fe45f3",
             "resource": "aml.action",
             "action": "approve",
             "resource_instance": "HARBORSTONE-2024-0042"
@@ -2907,16 +2908,16 @@
             "trust_absent",
             "trust_refresh_required"
           ],
-          "authority_revision": "6d40629863e50087caeeaa8c84d18e36f7d6d2b7d70218bc766e6908c9bc7a90",
-          "integrity_content_hash": "abe4aed413530912cf9db330527104c823420b90c0b15471abbd3a78fc81dcbc",
+          "authority_revision": "9e974571d403fcc905ff0f65a127ca80ff38de1bd9c259ea52881a59d77b87fb",
+          "integrity_content_hash": "7612e074ea54b47e2f9a83fab10157bb783c45c61d989bc82bf24c4c6c21e5d7",
           "raw_response": {
             "contract_id": "compliidentity.agl.authority.v1",
             "contract_version": "1",
             "tenant_id": "harborstone-demo",
-            "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
-            "evaluated_at": "2026-09-06T13:08:52.825831Z",
+            "principal_id": "3d5366bd-3bb4-44d5-8108-1759e6fe45f3",
+            "evaluated_at": "2026-09-16T14:53:48.647191Z",
             "principal": {
-              "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
+              "principal_id": "3d5366bd-3bb4-44d5-8108-1759e6fe45f3",
               "principal_type": "AI_AGENT",
               "status": "ACTIVE",
               "did": null,
@@ -2926,97 +2927,97 @@
             "active": true,
             "roles": [
               {
-                "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
                 "name": "aira-aml-investigator",
                 "system_role": false,
                 "version": 1,
-                "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c"
+                "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e"
               }
             ],
             "permissions": [
               {
-                "permission_id": "7c9e1c98-001e-4afd-a1c6-e635236ed99c",
+                "permission_id": "bf9ad876-3ff6-4893-a396-c952ee374b9e",
                 "resource": "aml.action",
                 "action": "propose",
-                "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                 "scope": "*",
                 "source_kind": "assignment",
                 "delegation_id": null,
                 "expires_at": null,
                 "lineage": [
-                  "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                  "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                  "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1",
-                  "permission:7c9e1c98-001e-4afd-a1c6-e635236ed99c"
+                  "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                  "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                  "role_permission:0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b:v1",
+                  "permission:bf9ad876-3ff6-4893-a396-c952ee374b9e"
                 ]
               },
               {
-                "permission_id": "ef6ab7cc-20f4-46c9-a777-5b83c6b9cfd9",
+                "permission_id": "e6646d35-3f53-46bc-8c82-5a40f0efc0b9",
                 "resource": "aml.case",
                 "action": "assess",
-                "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                 "scope": "*",
                 "source_kind": "assignment",
                 "delegation_id": null,
                 "expires_at": null,
                 "lineage": [
-                  "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                  "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                  "role_permission:69ac5432-8237-4f44-84e4-5ff724585197:v1",
-                  "permission:ef6ab7cc-20f4-46c9-a777-5b83c6b9cfd9"
+                  "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                  "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                  "role_permission:7554d301-1eb5-4ae7-b66f-1ceec022350d:v1",
+                  "permission:e6646d35-3f53-46bc-8c82-5a40f0efc0b9"
                 ]
               },
               {
-                "permission_id": "17fd1c95-84d4-4247-958f-ff82f1ad95e0",
+                "permission_id": "297ac79b-3be3-4165-8d5c-7af63cfe33a3",
                 "resource": "aml.case",
                 "action": "read",
-                "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                 "scope": "*",
                 "source_kind": "assignment",
                 "delegation_id": null,
                 "expires_at": null,
                 "lineage": [
-                  "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                  "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                  "role_permission:dc565684-3ebf-4ac5-8574-9f09b4f2f91b:v1",
-                  "permission:17fd1c95-84d4-4247-958f-ff82f1ad95e0"
+                  "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                  "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                  "role_permission:4de691c2-2c4f-4e39-a6ab-073b582ea91a:v1",
+                  "permission:297ac79b-3be3-4165-8d5c-7af63cfe33a3"
                 ]
               },
               {
-                "permission_id": "6b661e3b-9c39-4d0e-be19-41173a4314b0",
+                "permission_id": "d79c39cf-4add-4740-958f-8976912107ba",
                 "resource": "aml.escalation",
                 "action": "create",
-                "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                 "scope": "*",
                 "source_kind": "assignment",
                 "delegation_id": null,
                 "expires_at": null,
                 "lineage": [
-                  "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                  "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                  "role_permission:5cb43175-5871-48d0-aae1-74703195b04b:v1",
-                  "permission:6b661e3b-9c39-4d0e-be19-41173a4314b0"
+                  "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                  "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                  "role_permission:1fe64041-b47c-45c7-87ea-87311acaeada:v1",
+                  "permission:d79c39cf-4add-4740-958f-8976912107ba"
                 ]
               },
               {
-                "permission_id": "1da46aee-93e6-4fe4-82a4-d49db8fadfa5",
+                "permission_id": "50b7fcac-fd91-4072-adfd-042ae53f5517",
                 "resource": "sanctions.screening",
                 "action": "read",
-                "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                 "scope": "*",
                 "source_kind": "assignment",
                 "delegation_id": null,
                 "expires_at": null,
                 "lineage": [
-                  "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                  "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                  "role_permission:16f4634c-9734-463d-856c-06a01bff75e8:v1",
-                  "permission:1da46aee-93e6-4fe4-82a4-d49db8fadfa5"
+                  "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                  "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                  "role_permission:5360d67b-53f1-4a5f-9c99-30ecfd8d2e17:v1",
+                  "permission:50b7fcac-fd91-4072-adfd-042ae53f5517"
                 ]
               }
             ],
@@ -3035,14 +3036,14 @@
                 "threshold": "24999999",
                 "approver_principal_type": "HUMAN",
                 "unit": null,
-                "source": "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1"
+                "source": "role_permission:0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b:v1"
               }
             ],
             "delegation_chain": [],
             "credential_state": [],
             "assurance": {
               "current": false,
-              "evaluated_at": "2026-09-06T13:08:52.825831Z",
+              "evaluated_at": "2026-09-16T14:53:48.647191Z",
               "ial": {
                 "kind": "IAL",
                 "not_applicable": true,
@@ -3113,7 +3114,7 @@
             "policy_refs": [
               {
                 "kind": "assignment",
-                "identifier": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                "identifier": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                 "version": "1"
               },
               {
@@ -3123,57 +3124,57 @@
               },
               {
                 "kind": "permission",
-                "identifier": "17fd1c95-84d4-4247-958f-ff82f1ad95e0",
+                "identifier": "297ac79b-3be3-4165-8d5c-7af63cfe33a3",
                 "version": null
               },
               {
                 "kind": "permission",
-                "identifier": "1da46aee-93e6-4fe4-82a4-d49db8fadfa5",
+                "identifier": "50b7fcac-fd91-4072-adfd-042ae53f5517",
                 "version": null
               },
               {
                 "kind": "permission",
-                "identifier": "6b661e3b-9c39-4d0e-be19-41173a4314b0",
+                "identifier": "bf9ad876-3ff6-4893-a396-c952ee374b9e",
                 "version": null
               },
               {
                 "kind": "permission",
-                "identifier": "7c9e1c98-001e-4afd-a1c6-e635236ed99c",
+                "identifier": "d79c39cf-4add-4740-958f-8976912107ba",
                 "version": null
               },
               {
                 "kind": "permission",
-                "identifier": "ef6ab7cc-20f4-46c9-a777-5b83c6b9cfd9",
+                "identifier": "e6646d35-3f53-46bc-8c82-5a40f0efc0b9",
                 "version": null
               },
               {
                 "kind": "role",
-                "identifier": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                "identifier": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
                 "version": "1"
               },
               {
                 "kind": "role_permission",
-                "identifier": "16f4634c-9734-463d-856c-06a01bff75e8",
+                "identifier": "0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b",
                 "version": "1"
               },
               {
                 "kind": "role_permission",
-                "identifier": "2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527",
+                "identifier": "1fe64041-b47c-45c7-87ea-87311acaeada",
                 "version": "1"
               },
               {
                 "kind": "role_permission",
-                "identifier": "5cb43175-5871-48d0-aae1-74703195b04b",
+                "identifier": "4de691c2-2c4f-4e39-a6ab-073b582ea91a",
                 "version": "1"
               },
               {
                 "kind": "role_permission",
-                "identifier": "69ac5432-8237-4f44-84e4-5ff724585197",
+                "identifier": "5360d67b-53f1-4a5f-9c99-30ecfd8d2e17",
                 "version": "1"
               },
               {
                 "kind": "role_permission",
-                "identifier": "dc565684-3ebf-4ac5-8574-9f09b4f2f91b",
+                "identifier": "7554d301-1eb5-4ae7-b66f-1ceec022350d",
                 "version": "1"
               }
             ],
@@ -3202,7 +3203,7 @@
             "evidence": [
               {
                 "kind": "assignment",
-                "identifier": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                "identifier": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                 "status": null
               }
             ],
@@ -3211,7 +3212,7 @@
               "must_revalidate": true,
               "no_store": true,
               "cache_control": "no-store",
-              "not_after": "2026-09-07T07:46:46Z",
+              "not_after": "2026-09-17T14:44:34Z",
               "revalidate_on": [
                 "iam.assignment.revoked",
                 "iam.grant.revoked",
@@ -3224,13 +3225,13 @@
                 "proof.invalidated"
               ]
             },
-            "authority_revision": "6d40629863e50087caeeaa8c84d18e36f7d6d2b7d70218bc766e6908c9bc7a90",
+            "authority_revision": "9e974571d403fcc905ff0f65a127ca80ff38de1bd9c259ea52881a59d77b87fb",
             "authorizes": false,
             "executes": false,
             "agl_decision": "not_made",
             "integrity": {
-              "content_hash": "abe4aed413530912cf9db330527104c823420b90c0b15471abbd3a78fc81dcbc",
-              "signature": "2742f58bb9f2e174193b8c7d38c79795ea9e973b0d65395d9ac5884b7d98ac7d0c47f2e8e2f0d9d18df75c8bba99441fac815efd9df8166e064228ba41736b00",
+              "content_hash": "7612e074ea54b47e2f9a83fab10157bb783c45c61d989bc82bf24c4c6c21e5d7",
+              "signature": "8a4f8da675358511e578d80e5fd8cd07839cb4718317966f28fabd6add04403db987726578ee5d114e00a27581795bdbf805886644d1d54bb68001be5f21dc0e",
               "signature_algorithm": "ed25519",
               "signer_key_id": "compliidentity.proof.ed25519.dev"
             },
@@ -3244,7 +3245,7 @@
       "id": "4d-iii",
       "title": "wrong instance: AIRA proposes on OTHER-CASE-0001 (grant scoped to HARBORSTONE-2024-0042)",
       "proves": "a wrong actor / wrong action / wrong resource_instance is reported by CompliIdentity as insufficient authority and never reaches APPROVED",
-      "does_NOT_prove": "anything about sanctions screening (placeholder control)",
+      "does_NOT_prove": "a real (non-simulated) sanctions-list lookup (see the connector's own claims.simulation disclosure)",
       "actor": "aira",
       "compliidentity": {
         "resource": "aml.action",
@@ -3256,7 +3257,7 @@
       },
       "assessment_result": "SATISFIED",
       "decision": {
-        "decision_id": "a6d9d18d-d984-4c84-b8d6-9235b3c290f1",
+        "decision_id": "cbc93aac-168f-4980-8636-e73faec16977",
         "outcome": "DENIED",
         "reason_codes": [
           "DECISION_DENIED",
@@ -3266,7 +3267,7 @@
         "decision_conditions_triggered": [
           {
             "condition_id": "DC-HARBORSTONE-AUTHORITY-DENIED",
-            "package_id": "c4a48baa-f742-49f2-b3ab-5e9fd2768053",
+            "package_id": "33184b99-c9f9-4231-919f-902788be5861",
             "resulting_decision": "DENIED",
             "reason_code": "AUTHORITY_DENIED",
             "priority": 10,
@@ -3278,8 +3279,8 @@
         "required_approver_types": [
           "HUMAN"
         ],
-        "input_hash": "c4f31c197e0c3cf35e9fcdb129ee1f4bbeb373656b75307df2bc4ce11526043a",
-        "decision_hash": "6ef6d6f4592e4d61762df2a4f0a36f44c37d0088f90c0cedd49be2ac7ae4f170",
+        "input_hash": "235e5cce85f7bb20164959536eee37bd4d568c53ebe810991176a465c4aebb44",
+        "decision_hash": "f87b1a9ee6efe6baa282bbfea0268a8867e868ade7dda599534d49ad0a1bb1dd",
         "approval_hash": null,
         "prior_decision_id": null,
         "superseded_by_decision_id": null,
@@ -3288,13 +3289,13 @@
       "no_execution_authorization": {
         "issued": false,
         "raised": "ConflictError",
-        "message": "Execution authorization can only be issued for an APPROVED decision (decision a6d9d18d-d984-4c84-b8d6-9235b3c290f1 is DENIED)."
+        "message": "Execution authorization can only be issued for an APPROVED decision (decision cbc93aac-168f-4980-8636-e73faec16977 is DENIED)."
       },
       "compliidentity_calls": [
         {
           "request": {
             "organization_id": "harborstone-demo",
-            "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
+            "principal_id": "3d5366bd-3bb4-44d5-8108-1759e6fe45f3",
             "resource": "aml.action",
             "action": "propose",
             "resource_instance": "OTHER-CASE-0001",
@@ -3313,16 +3314,16 @@
             "trust_absent",
             "trust_refresh_required"
           ],
-          "authority_revision": "8d84261bf9f081b91a9604bd2bbf7c7db6a0d9b933dee2adc1fb20825e449fdc",
-          "integrity_content_hash": "dfbe3f0de0ece9da14cbf31849f514bb789a9bbac40286dc8195181c8ebf21ef",
+          "authority_revision": "ea3e54e97afa4eaae21c0e170557c5c99f6988d8c381001661413b6a384f80ef",
+          "integrity_content_hash": "5143d3250b1f5cc63519b6cf907e5b529bde038cac54142b5d82f2cfb6a3068e",
           "raw_response": {
             "contract_id": "compliidentity.agl.authority.v1",
             "contract_version": "1",
             "tenant_id": "harborstone-demo",
-            "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
-            "evaluated_at": "2026-09-06T13:08:53.893660Z",
+            "principal_id": "3d5366bd-3bb4-44d5-8108-1759e6fe45f3",
+            "evaluated_at": "2026-09-16T14:53:49.579568Z",
             "principal": {
-              "principal_id": "e35ac15a-b8f4-4a7d-9003-5a0d15750ade",
+              "principal_id": "3d5366bd-3bb4-44d5-8108-1759e6fe45f3",
               "principal_type": "AI_AGENT",
               "status": "ACTIVE",
               "did": null,
@@ -3332,97 +3333,97 @@
             "active": true,
             "roles": [
               {
-                "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
                 "name": "aira-aml-investigator",
                 "system_role": false,
                 "version": 1,
-                "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c"
+                "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e"
               }
             ],
             "permissions": [
               {
-                "permission_id": "7c9e1c98-001e-4afd-a1c6-e635236ed99c",
+                "permission_id": "bf9ad876-3ff6-4893-a396-c952ee374b9e",
                 "resource": "aml.action",
                 "action": "propose",
-                "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                 "scope": "*",
                 "source_kind": "assignment",
                 "delegation_id": null,
                 "expires_at": null,
                 "lineage": [
-                  "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                  "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                  "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1",
-                  "permission:7c9e1c98-001e-4afd-a1c6-e635236ed99c"
+                  "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                  "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                  "role_permission:0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b:v1",
+                  "permission:bf9ad876-3ff6-4893-a396-c952ee374b9e"
                 ]
               },
               {
-                "permission_id": "ef6ab7cc-20f4-46c9-a777-5b83c6b9cfd9",
+                "permission_id": "e6646d35-3f53-46bc-8c82-5a40f0efc0b9",
                 "resource": "aml.case",
                 "action": "assess",
-                "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                 "scope": "*",
                 "source_kind": "assignment",
                 "delegation_id": null,
                 "expires_at": null,
                 "lineage": [
-                  "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                  "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                  "role_permission:69ac5432-8237-4f44-84e4-5ff724585197:v1",
-                  "permission:ef6ab7cc-20f4-46c9-a777-5b83c6b9cfd9"
+                  "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                  "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                  "role_permission:7554d301-1eb5-4ae7-b66f-1ceec022350d:v1",
+                  "permission:e6646d35-3f53-46bc-8c82-5a40f0efc0b9"
                 ]
               },
               {
-                "permission_id": "17fd1c95-84d4-4247-958f-ff82f1ad95e0",
+                "permission_id": "297ac79b-3be3-4165-8d5c-7af63cfe33a3",
                 "resource": "aml.case",
                 "action": "read",
-                "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                 "scope": "*",
                 "source_kind": "assignment",
                 "delegation_id": null,
                 "expires_at": null,
                 "lineage": [
-                  "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                  "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                  "role_permission:dc565684-3ebf-4ac5-8574-9f09b4f2f91b:v1",
-                  "permission:17fd1c95-84d4-4247-958f-ff82f1ad95e0"
+                  "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                  "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                  "role_permission:4de691c2-2c4f-4e39-a6ab-073b582ea91a:v1",
+                  "permission:297ac79b-3be3-4165-8d5c-7af63cfe33a3"
                 ]
               },
               {
-                "permission_id": "6b661e3b-9c39-4d0e-be19-41173a4314b0",
+                "permission_id": "d79c39cf-4add-4740-958f-8976912107ba",
                 "resource": "aml.escalation",
                 "action": "create",
-                "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                 "scope": "*",
                 "source_kind": "assignment",
                 "delegation_id": null,
                 "expires_at": null,
                 "lineage": [
-                  "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                  "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                  "role_permission:5cb43175-5871-48d0-aae1-74703195b04b:v1",
-                  "permission:6b661e3b-9c39-4d0e-be19-41173a4314b0"
+                  "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                  "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                  "role_permission:1fe64041-b47c-45c7-87ea-87311acaeada:v1",
+                  "permission:d79c39cf-4add-4740-958f-8976912107ba"
                 ]
               },
               {
-                "permission_id": "1da46aee-93e6-4fe4-82a4-d49db8fadfa5",
+                "permission_id": "50b7fcac-fd91-4072-adfd-042ae53f5517",
                 "resource": "sanctions.screening",
                 "action": "read",
-                "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                 "scope": "*",
                 "source_kind": "assignment",
                 "delegation_id": null,
                 "expires_at": null,
                 "lineage": [
-                  "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                  "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                  "role_permission:16f4634c-9734-463d-856c-06a01bff75e8:v1",
-                  "permission:1da46aee-93e6-4fe4-82a4-d49db8fadfa5"
+                  "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                  "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                  "role_permission:5360d67b-53f1-4a5f-9c99-30ecfd8d2e17:v1",
+                  "permission:50b7fcac-fd91-4072-adfd-042ae53f5517"
                 ]
               }
             ],
@@ -3441,14 +3442,14 @@
                 "threshold": "24999999",
                 "approver_principal_type": "HUMAN",
                 "unit": null,
-                "source": "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1"
+                "source": "role_permission:0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b:v1"
               }
             ],
             "delegation_chain": [],
             "credential_state": [],
             "assurance": {
               "current": false,
-              "evaluated_at": "2026-09-06T13:08:53.893660Z",
+              "evaluated_at": "2026-09-16T14:53:49.579568Z",
               "ial": {
                 "kind": "IAL",
                 "not_applicable": true,
@@ -3519,7 +3520,7 @@
             "policy_refs": [
               {
                 "kind": "assignment",
-                "identifier": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                "identifier": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                 "version": "1"
               },
               {
@@ -3529,57 +3530,57 @@
               },
               {
                 "kind": "permission",
-                "identifier": "17fd1c95-84d4-4247-958f-ff82f1ad95e0",
+                "identifier": "297ac79b-3be3-4165-8d5c-7af63cfe33a3",
                 "version": null
               },
               {
                 "kind": "permission",
-                "identifier": "1da46aee-93e6-4fe4-82a4-d49db8fadfa5",
+                "identifier": "50b7fcac-fd91-4072-adfd-042ae53f5517",
                 "version": null
               },
               {
                 "kind": "permission",
-                "identifier": "6b661e3b-9c39-4d0e-be19-41173a4314b0",
+                "identifier": "bf9ad876-3ff6-4893-a396-c952ee374b9e",
                 "version": null
               },
               {
                 "kind": "permission",
-                "identifier": "7c9e1c98-001e-4afd-a1c6-e635236ed99c",
+                "identifier": "d79c39cf-4add-4740-958f-8976912107ba",
                 "version": null
               },
               {
                 "kind": "permission",
-                "identifier": "ef6ab7cc-20f4-46c9-a777-5b83c6b9cfd9",
+                "identifier": "e6646d35-3f53-46bc-8c82-5a40f0efc0b9",
                 "version": null
               },
               {
                 "kind": "role",
-                "identifier": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
+                "identifier": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
                 "version": "1"
               },
               {
                 "kind": "role_permission",
-                "identifier": "16f4634c-9734-463d-856c-06a01bff75e8",
+                "identifier": "0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b",
                 "version": "1"
               },
               {
                 "kind": "role_permission",
-                "identifier": "2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527",
+                "identifier": "1fe64041-b47c-45c7-87ea-87311acaeada",
                 "version": "1"
               },
               {
                 "kind": "role_permission",
-                "identifier": "5cb43175-5871-48d0-aae1-74703195b04b",
+                "identifier": "4de691c2-2c4f-4e39-a6ab-073b582ea91a",
                 "version": "1"
               },
               {
                 "kind": "role_permission",
-                "identifier": "69ac5432-8237-4f44-84e4-5ff724585197",
+                "identifier": "5360d67b-53f1-4a5f-9c99-30ecfd8d2e17",
                 "version": "1"
               },
               {
                 "kind": "role_permission",
-                "identifier": "dc565684-3ebf-4ac5-8574-9f09b4f2f91b",
+                "identifier": "7554d301-1eb5-4ae7-b66f-1ceec022350d",
                 "version": "1"
               }
             ],
@@ -3604,20 +3605,20 @@
               ],
               "matching_permissions": [
                 {
-                  "permission_id": "7c9e1c98-001e-4afd-a1c6-e635236ed99c",
+                  "permission_id": "bf9ad876-3ff6-4893-a396-c952ee374b9e",
                   "resource": "aml.action",
                   "action": "propose",
-                  "role_id": "71be88d7-c018-4e93-a74c-9ef0b06f1129",
-                  "assignment_id": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                  "role_id": "1a1c9553-c7d7-46e1-a4cf-fbd290de5aca",
+                  "assignment_id": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                   "scope": "*",
                   "source_kind": "assignment",
                   "delegation_id": null,
                   "expires_at": null,
                   "lineage": [
-                    "role:71be88d7-c018-4e93-a74c-9ef0b06f1129:v1",
-                    "assignment:93b903e1-e91d-4ef0-b984-46efc335e17c:v1",
-                    "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1",
-                    "permission:7c9e1c98-001e-4afd-a1c6-e635236ed99c"
+                    "role:1a1c9553-c7d7-46e1-a4cf-fbd290de5aca:v1",
+                    "assignment:eba915b4-11ef-437d-89d2-a6fe2d7e843e:v1",
+                    "role_permission:0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b:v1",
+                    "permission:bf9ad876-3ff6-4893-a396-c952ee374b9e"
                   ]
                 }
               ],
@@ -3630,14 +3631,14 @@
                   "threshold": "24999999",
                   "approver_principal_type": "HUMAN",
                   "unit": null,
-                  "source": "role_permission:2a8e4a7c-ccc6-43c9-aa4e-d0905ab69527:v1"
+                  "source": "role_permission:0f23dbe9-7ba9-4ba6-9bb6-dee78c29039b:v1"
                 }
               ]
             },
             "evidence": [
               {
                 "kind": "assignment",
-                "identifier": "93b903e1-e91d-4ef0-b984-46efc335e17c",
+                "identifier": "eba915b4-11ef-437d-89d2-a6fe2d7e843e",
                 "status": null
               }
             ],
@@ -3646,7 +3647,7 @@
               "must_revalidate": true,
               "no_store": true,
               "cache_control": "no-store",
-              "not_after": "2026-09-07T07:46:46Z",
+              "not_after": "2026-09-17T14:44:34Z",
               "revalidate_on": [
                 "iam.assignment.revoked",
                 "iam.grant.revoked",
@@ -3659,13 +3660,13 @@
                 "proof.invalidated"
               ]
             },
-            "authority_revision": "8d84261bf9f081b91a9604bd2bbf7c7db6a0d9b933dee2adc1fb20825e449fdc",
+            "authority_revision": "ea3e54e97afa4eaae21c0e170557c5c99f6988d8c381001661413b6a384f80ef",
             "authorizes": false,
             "executes": false,
             "agl_decision": "not_made",
             "integrity": {
-              "content_hash": "dfbe3f0de0ece9da14cbf31849f514bb789a9bbac40286dc8195181c8ebf21ef",
-              "signature": "f17b0ca13ad9ae5105f6fedd8e6f0a8b6845a01d0ee7a522866f71adced0f2f2c4c9fa064aac817e172f96581acc465170d31c03d7b398b5edacd71693b73c01",
+              "content_hash": "5143d3250b1f5cc63519b6cf907e5b529bde038cac54142b5d82f2cfb6a3068e",
+              "signature": "533fd6df2e437be796bf1b45bc6f379e6bc1b8f4f3d2e843e7807735cfb13d0a1a659c9d7d87f2f8aae2b4485950d4ce0bcd2adf9fe0d212df5019f5eb8b0b00",
               "signature_algorithm": "ed25519",
               "signer_key_id": "compliidentity.proof.ed25519.dev"
             },
@@ -3673,6 +3674,65 @@
           }
         }
       ],
+      "PASS": true
+    },
+    {
+      "id": "4f",
+      "title": "4c's APPROVED decision: authorization verify/consume, external execution result, canonical AIProof generate + verify",
+      "proves": "the second half of the governed-action chain -- APPROVED -> signed ExecutionAuthorization -> independent verify() (ISSUED -> ACTIVE) -> an external execution result recorded against it -> one-time consume() (ACTIVE -> CONSUMED, replay rejected) -> a canonical AIProof built from these exact real records, signed, and independently re-verified (hash + component hashes + signature all reproduce). Chains directly off the same APPROVED decision 4c got a real CompliIdentity authority-context response for.",
+      "does_NOT_prove": "anything about CompliIdentity -- no further CompliIdentity calls happen after authorization is issued; this is entirely CompliAGL-internal from here on",
+      "expected": {
+        "verify_valid": true,
+        "consume_ok": true,
+        "replay_rejected": true,
+        "aiproof_valid": true
+      },
+      "source_decision_id": "8e579b23-da92-4664-8c72-8987f5b6addb",
+      "execution_authorization_id": "79332edb-37d4-4496-b7e6-29bf66928e06",
+      "verify_result": {
+        "authorization_id": "79332edb-37d4-4496-b7e6-29bf66928e06",
+        "valid": true,
+        "status": "ACTIVE",
+        "reasons": [],
+        "hash_valid": true,
+        "signature_valid": true,
+        "expired": false
+      },
+      "external_execution_result": {
+        "id": "ae8402f9-cf2f-4dad-a9cc-2fcb01b07e02",
+        "status": "CONFIRMED",
+        "adapter": "hedera",
+        "external_reference": "0.0.123456@1700000000.000000000"
+      },
+      "consumed_authorization_status": "CONSUMED",
+      "replay_attempt": {
+        "rejected": true,
+        "message": "Authorization already consumed (replay rejected): 79332edb-37d4-4496-b7e6-29bf66928e06"
+      },
+      "aiproof": {
+        "aiproof_id": "proof-16e16206-ebdf-4309-8321-6abfc70a7792",
+        "aiproof_hash": "1f75f61c0ed821b7325c2973c32e85cc8c466254f27e8bf5d57beffa2a877897",
+        "governed_outcome": "APPROVED_AND_EXECUTED",
+        "component_hashes": {
+          "metadata": "9c01d2bfabb595e89df5d4f0730ee302e04b53ab69dacbc414627a294ca3dbd9",
+          "actor_identity": "ce677cc94f51aa34e8208af91ab151fd1cfc533debeaf914c55a30b4436b9a26",
+          "intent": "81dcc0621a5c7ebccbff4f8b41f283107210393412b3c9d864befd0c24951c82",
+          "decision": "64369b248920d6a227174e6fabcced63885db5888824328b5534e4bc736c7c61",
+          "execution_authorization": "dd219ad975fc37bb4d438768d5b6ee1585d483f3fd33c034309dcd59572db90c",
+          "external_execution_result": "e59d893eb745e70e62e88a754dfeb189e741e435fc468258f4469a679e6dbf98",
+          "timestamps": "20e3743b099eeb8877a4867d086b1e15f65725e135d857431865e24f355fd9d9"
+        }
+      },
+      "aiproof_verification": {
+        "valid": true,
+        "schema_valid": true,
+        "hash_valid": true,
+        "component_hashes_valid": true,
+        "signature_valid": true,
+        "algorithms_recognized": true,
+        "aiproof_id": "proof-16e16206-ebdf-4309-8321-6abfc70a7792",
+        "errors": []
+      },
       "PASS": true
     },
     {

@@ -109,3 +109,49 @@ def test_reseed_refreshes_principal_id_in_place(db_session, monkeypatch):
     md = json.loads(aira.identity_metadata)
     assert md["compliidentity_principal_id"] == "refreshed-aira-pid"
     assert md["compliidentity_instance"] == "regenerated.db"
+
+
+def test_is_production_reads_environment_then_railway_vars(monkeypatch):
+    monkeypatch.delenv("ENVIRONMENT", raising=False)
+    monkeypatch.delenv("RAILWAY_ENVIRONMENT_NAME", raising=False)
+    monkeypatch.delenv("RAILWAY_ENVIRONMENT", raising=False)
+    assert seed._is_production() is False
+
+    monkeypatch.setenv("RAILWAY_ENVIRONMENT_NAME", "production")
+    assert seed._is_production() is True
+
+    monkeypatch.setenv("RAILWAY_ENVIRONMENT_NAME", "staging")
+    assert seed._is_production() is False
+
+    # An explicit ENVIRONMENT always wins over the Railway auto-injected vars.
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    assert seed._is_production() is True
+
+
+def test_seed_demo_data_skips_harborstone_actors_in_production(db_session, monkeypatch):
+    """The one unconditional-overwrite step (real production principal_ids
+    must never be clobbered by these local-dev constants) is skipped; every
+    other step still runs."""
+    monkeypatch.setenv("ENVIRONMENT", "production")
+
+    seed.seed_demo_data(db_session)
+
+    assert db_session.query(ActorIdentity).filter(
+        ActorIdentity.id.in_(
+            [HARBORSTONE_AIRA_ACTOR_ID, HARBORSTONE_SENTRY_ACTOR_ID, HARBORSTONE_JORDAN_ACTOR_ID]
+        )
+    ).count() == 0
+    # Non-identity seeding is unaffected by the production gate.
+    from app.models.organization import Organization
+
+    assert db_session.get(Organization, HARBORSTONE_ORG_ID) is not None
+
+
+def test_seed_demo_data_seeds_harborstone_actors_outside_production(db_session, monkeypatch):
+    monkeypatch.delenv("ENVIRONMENT", raising=False)
+    monkeypatch.delenv("RAILWAY_ENVIRONMENT_NAME", raising=False)
+    monkeypatch.delenv("RAILWAY_ENVIRONMENT", raising=False)
+
+    seed.seed_demo_data(db_session)
+
+    assert db_session.get(ActorIdentity, HARBORSTONE_JORDAN_ACTOR_ID) is not None

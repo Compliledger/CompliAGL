@@ -9,7 +9,7 @@ the unit tests use).
 | file | what |
 |---|---|
 | `compliidentity_setup_phases_1_7.py` | CompliIdentity-side setup driver. A trimmed copy of the CompliIdentity repo's `demo3_setup.py` (commit `37f58b1`): phases 1–6 (bootstrap, permissions, org + principals + agents, roles, bounded AIRA→SENTRY delegation) + phase 7 (read-only acceptance probes). **Stops before phase 8** (the fail-closed teardown) so the instance is left live and clean. |
-| `compliidentity_setup_results.json` | Full request/response log from running the above against a fresh `compliidentity_demo3_step2.db`, 2026-09-06. The `ids` block holds the freshly-issued principal ids. |
+| `compliidentity_setup_results.json` | Full request/response log from running the above against a fresh `compliidentity_demo3_step2_live.db`, last regenerated 2026-09-16. The `ids` block holds the freshly-issued principal ids. |
 | `_live_env.py` | Single source of truth for `COMPLIIDENTITY_BASE_URL` / `COMPLIIDENTITY_SERVICE_PRINCIPAL_ID` — the live authority-context wiring `authority_context_service.default_client()` reads from `os.environ`. In-process drivers `import _live_env` (before any `app` import) and the values are applied via `setdefault`, so a real exported env var still wins. |
 | `live-env.ps1` | Dot-source (`. .\demo3_step2\live-env.ps1`) to set the same two vars in your own PowerShell session, for interactive REPL / ad-hoc use that isn't one of the self-configuring drivers. |
 | `check_live_wiring.py` | Pre-flight: fires one read-only authority-context probe and reports `LIVE` (a real response came back) vs `NOT LIVE` (unconfigured / unreachable / normalized to `UNAVAILABLE`). Exit 0 / 1. Run it before a scenario driver when unsure whether calls are actually reaching CompliIdentity. |
@@ -18,7 +18,7 @@ the unit tests use).
 
 ```
 # 1. fresh CompliIdentity instance (separate terminal, CompliIdentity repo)
-$env:DATABASE_URL = "sqlite:///./compliidentity_demo3_step2.db"
+$env:DATABASE_URL = "sqlite:///./compliidentity_demo3_step2_live.db"
 python -m uvicorn compliidentity.bootstrap:create_app --factory --host 127.0.0.1 --port 8137
 
 # 2. from this repo
@@ -44,6 +44,17 @@ session or a script that doesn't do that import:
 The `*.db` files this produces are gitignored — only the driver and the JSON
 evidence are tracked, the same treatment as CompliIdentity's
 `demo3_setup.py` / `demo3_results.json`.
+
+`compliagl_scenarios.py` covers acceptance criteria 4a–4e plus **4f**: 4c's
+APPROVED decision carried on into `authorization_service` issue → verify →
+consume, an external execution result recorded against it, and a canonical
+AIProof generated, signed, and independently re-verified. Everything through
+authorization *issue* still involves a live CompliIdentity call (the
+re-decision's authority probe); verify/consume/AIProof are CompliAGL-internal
+from there — no further CompliIdentity calls. It also uses the real
+`harborstone-sentry-sanctions-screening` connector (not a placeholder) —
+see that connector's own docstring for what's still simulated (the lookup
+dataset, not the evidence plumbing).
 
 ## Principal-id lifecycle
 

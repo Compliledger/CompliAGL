@@ -11,6 +11,7 @@ This replaces the deprecated in-memory ``seed_demo_actors`` /
 from __future__ import annotations
 
 import json
+import os
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -44,13 +45,40 @@ HARBORSTONE_SENTRY_ACTOR_ID = "harborstone-demo-actor-sentry"
 HARBORSTONE_JORDAN_ACTOR_ID = "harborstone-demo-actor-jordan"
 
 # CompliIdentity principal ids — issued by the local ``compliidentity_demo3_
-# step2.db`` instance (see ``demo3_step2/compliidentity_setup_phases_1_7.py``
+# step2_live.db`` instance (see ``demo3_step2/compliidentity_setup_phases_1_7.py``
 # and its ``compliidentity_setup_results.json``). Regenerating that instance
-# re-issues these; update the three values here when that happens.
-_COMPLIIDENTITY_INSTANCE = "compliidentity_demo3_step2.db"
-_HARBORSTONE_AIRA_PRINCIPAL_ID = "e35ac15a-b8f4-4a7d-9003-5a0d15750ade"
-_HARBORSTONE_SENTRY_PRINCIPAL_ID = "302415c0-00ab-49b0-8a65-01175c0deb68"
-_HARBORSTONE_JORDAN_PRINCIPAL_ID = "e35d7b95-1a10-4654-9b02-2181df052f96"
+# re-issues these; update the three values here when that happens. Refreshed
+# 2026-09-16 against a freshly-regenerated instance.
+_COMPLIIDENTITY_INSTANCE = "compliidentity_demo3_step2_live.db"
+_HARBORSTONE_AIRA_PRINCIPAL_ID = "3d5366bd-3bb4-44d5-8108-1759e6fe45f3"
+_HARBORSTONE_SENTRY_PRINCIPAL_ID = "ea0c8c69-a745-4b6a-85aa-aa5c3bb22958"
+_HARBORSTONE_JORDAN_PRINCIPAL_ID = "91a86c47-27ec-4c09-afda-3ac7dc618589"
+
+# These three ids are only ever correct for whichever local/dev CompliIdentity
+# instance was last regenerated -- they must never overwrite a real
+# production principal_id. seed_demo_data() (called unconditionally on every
+# boot, see app/main.py's lifespan hook -- there is no separate "prod main")
+# skips seed_harborstone_actors() entirely in production for exactly this
+# reason; see _is_production() below. A direct call to
+# seed_harborstone_actors() (every test, and demo3_step2/compliagl_scenarios.py)
+# is unaffected by this gate.
+
+
+def _is_production() -> bool:
+    """True when this process is a production deployment.
+
+    Checked directly against ``os.environ`` (not ``app.core.config.settings``,
+    which has no such field) so this also self-activates on Railway without
+    requiring a separately-configured env var: an explicit ``ENVIRONMENT``
+    always wins when set, otherwise Railway's own auto-injected environment
+    name is used (the exact var name changed across Railway versions, so both
+    are checked).
+    """
+    for var in ("ENVIRONMENT", "RAILWAY_ENVIRONMENT_NAME", "RAILWAY_ENVIRONMENT"):
+        value = os.environ.get(var)
+        if value:
+            return value.strip().lower() == "production"
+    return False
 
 
 def seed_demo_actors(db: Session) -> None:
@@ -310,10 +338,21 @@ def seed_hedera_demo_package(db: Session) -> None:
 
 
 def seed_demo_data(db: Session) -> None:
-    """Seed all canonical demo data (organizations + actors + policies)."""
+    """Seed all canonical demo data (organizations + actors + policies).
+
+    ``seed_harborstone_actors`` is skipped in production: it unconditionally
+    refreshes ``human_principal_id`` / ``wallet_or_agent_account_id`` on the
+    three HarborStone actor rows from the local-dev/demo constants above on
+    every call, which would silently clobber a real production principal_id
+    on every boot. Everything else here is safe to run everywhere -- it only
+    creates rows that don't yet exist (orgs, the demo travel actors/policy)
+    or supersedes an outdated package version, never overwrites an identity
+    field on an existing row.
+    """
     seed_organizations(db)
     seed_demo_actors(db)
     seed_demo_policies(db)
-    seed_harborstone_actors(db)
+    if not _is_production():
+        seed_harborstone_actors(db)
     seed_harborstone_package(db)
     seed_hedera_demo_package(db)

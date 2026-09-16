@@ -38,11 +38,9 @@ COMPLIIDENTITY_BASE_URL = "http://127.0.0.1:8137"
 
 # CompliAGL's own service principal ("CompliAGL Service", SERVICE, tenant
 # harborstone-demo) in that instance -- the X-Actor-Principal-Id CompliAGL
-# authenticates as. Confirmed 2026-09-10 against the live instance
-# (GET /api/v1/principals): the "CompliAGL Service" SERVICE principal is
-# 0812c9a2-...; the old ae24b758-... value now returns 401 actor_unauthenticated.
-# This matches CompliAegis's .env COMPLIAGL_SERVICE_PRINCIPAL_ID.
-COMPLIIDENTITY_SERVICE_PRINCIPAL_ID = "0812c9a2-f1c2-4cd2-81a8-8384502ad77e"
+# authenticates as. Refreshed 2026-09-16 against a freshly-regenerated
+# compliidentity_demo3_step2_live.db (see compliidentity_setup_results.json).
+COMPLIIDENTITY_SERVICE_PRINCIPAL_ID = "6e7cf703-d5ab-4df1-bad4-52b7c5213e28"
 
 
 def apply() -> dict[str, str]:
