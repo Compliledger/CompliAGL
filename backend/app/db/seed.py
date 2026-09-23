@@ -63,6 +63,20 @@ _HARBORSTONE_JORDAN_PRINCIPAL_ID = "91a86c47-27ec-4c09-afda-3ac7dc618589"
 # seed_harborstone_actors() (every test, and demo3_step2/compliagl_scenarios.py)
 # is unaffected by this gate.
 
+# --- Circle Grant MVP (PR 3a) ---------------------------------------------- #
+# Stable CompliAGL-side ids for the Circle demo org and its Treasury Agent.
+# Unlike HarborStone's actors, this agent carries no CompliIdentity
+# principal_id at all -- the package sets requires_authority_context: false
+# and delegated authority lives entirely in identity_metadata (docs/dev-
+# rules.md rule 6) -- so there is no principal-id-clobbering risk to gate on.
+# Instead, all three Circle seeds are gated behind ENABLE_CIRCLE_MVP (see
+# _circle_mvp_enabled() below): the demo is opt-in, and while opted in, the
+# agent's identity_metadata is deliberately reset to the fixed demo values on
+# every boot so the demo stays deterministic.
+CIRCLE_ORG_ID = "circle-mvp-demo"
+CIRCLE_TREASURY_AGENT_ID = "circle-mvp-treasury-agent"
+_CIRCLE_TREASURY_AGENT_ACCOUNT_ID = "circle-treasury-agent-wallet-001"
+
 
 def _is_production() -> bool:
     """True when this process is a production deployment.
@@ -79,6 +93,13 @@ def _is_production() -> bool:
         if value:
             return value.strip().lower() == "production"
     return False
+
+
+def _circle_mvp_enabled() -> bool:
+    """True when the Circle Grant MVP demo (org, Treasury Agent, package) is
+    opted in via ``ENABLE_CIRCLE_MVP``. Independent of ``_is_production()`` --
+    this is a feature flag, not a prod/non-prod distinction."""
+    return os.environ.get("ENABLE_CIRCLE_MVP", "").strip().lower() == "true"
 
 
 def seed_demo_actors(db: Session) -> None:
@@ -337,6 +358,109 @@ def seed_hedera_demo_package(db: Session) -> None:
     governance_package_service.publish(db, organization_id, pkg.id)
 
 
+def seed_circle_org(db: Session) -> None:
+    """Idempotently persist the Circle Grant MVP demo organization."""
+    org = db.get(Organization, CIRCLE_ORG_ID)
+    if org is None:
+        db.add(
+            Organization(
+                organization_id=CIRCLE_ORG_ID,
+                organization_name="Circle Grant MVP",
+                status="ACTIVE",
+            )
+        )
+    db.commit()
+
+
+def seed_circle_treasury_agent(db: Session) -> None:
+    """Idempotently persist the Circle Treasury Agent actor identity.
+
+    ``VERIFIED`` / not revoked, and carries its delegated authority directly
+    in ``identity_metadata.delegated_authority`` (docs/dev-rules.md rule 6 --
+    no CompliIdentity principal_id, no authority-context call). Refreshed in
+    place on every call while ``ENABLE_CIRCLE_MVP`` is on, same as
+    ``seed_harborstone_actors``, so the demo's delegated-authority limits stay
+    deterministic. Only ever touches this one row under ``CIRCLE_ORG_ID``.
+    """
+    metadata = {
+        "display_name": "Circle Treasury Agent",
+        "demo": "circle-mvp",
+        "delegated_authority": {
+            "allowed_actions": ["USDC_TRANSFER"],
+            "allowed_assets": ["USDC"],
+            "allowed_networks": ["ARC"],
+            "autonomous_limit_minor": 10_000_000,
+        },
+    }
+    actor = db.get(ActorIdentity, CIRCLE_TREASURY_AGENT_ID)
+    if actor is None:
+        actor = ActorIdentity(
+            id=CIRCLE_TREASURY_AGENT_ID,
+            organization_id=CIRCLE_ORG_ID,
+            actor_type=CanonicalActorType.AI_AGENT.value,
+            credential_type=CredentialType.NONE.value,
+            verification_status=VerificationStatus.VERIFIED.value,
+            revocation_status=RevocationStatus.ACTIVE.value,
+        )
+        db.add(actor)
+    actor.human_principal_id = None
+    actor.wallet_or_agent_account_id = _CIRCLE_TREASURY_AGENT_ACCOUNT_ID
+    actor.verification_status = VerificationStatus.VERIFIED.value
+    actor.revocation_status = RevocationStatus.ACTIVE.value
+    actor.identity_metadata = json.dumps(metadata)
+    db.commit()
+
+
+def seed_circle_package(db: Session) -> None:
+    """Idempotently publish the Circle treasury governance package.
+
+    Same create -> validate -> approve -> publish lifecycle as
+    ``seed_harborstone_package``; skips entirely when a PUBLISHED package
+    with the same (name, version) already exists, and supersedes an older
+    published version on publish.
+    """
+    from app.db.circle_treasury_package import (
+        PACKAGE_NAME,
+        PACKAGE_VERSION,
+        build_circle_treasury_package,
+    )
+    from app.repositories.canonical import (
+        ExecutableGovernancePackageRepository,
+    )
+    from app.services.canonical import governance_package_service
+    from app.utils.canonical_enums import PackageStatus
+
+    existing = governance_package_service.get_published_version(
+        db, CIRCLE_ORG_ID, PACKAGE_NAME, PACKAGE_VERSION
+    )
+    if existing is not None:
+        return
+
+    prior_published = ExecutableGovernancePackageRepository(db).list_filtered(
+        CIRCLE_ORG_ID,
+        package_name=PACKAGE_NAME,
+        status=PackageStatus.PUBLISHED.value,
+    )
+    create_payload = build_circle_treasury_package(CIRCLE_ORG_ID)
+    if prior_published:
+        create_payload.supersedes_package_id = prior_published[-1].id
+
+    pkg = governance_package_service.create(db, create_payload)
+    result = governance_package_service.validate(db, CIRCLE_ORG_ID, pkg.id)
+    if not result.valid:
+        raise RuntimeError(
+            f"Circle treasury governance package failed validation: {result.errors}"
+        )
+    governance_package_service.approve(
+        db,
+        CIRCLE_ORG_ID,
+        pkg.id,
+        approver_principal_id="seed-bootstrap",
+        rationale="Seeded on boot for the Circle Grant MVP demo.",
+    )
+    governance_package_service.publish(db, CIRCLE_ORG_ID, pkg.id)
+
+
 def seed_demo_data(db: Session) -> None:
     """Seed all canonical demo data (organizations + actors + policies).
 
@@ -356,3 +480,7 @@ def seed_demo_data(db: Session) -> None:
         seed_harborstone_actors(db)
     seed_harborstone_package(db)
     seed_hedera_demo_package(db)
+    if _circle_mvp_enabled():
+        seed_circle_org(db)
+        seed_circle_treasury_agent(db)
+        seed_circle_package(db)

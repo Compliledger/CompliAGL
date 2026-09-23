@@ -13,6 +13,7 @@ from app.api.v1 import (
     evidence,
     governance,
     governance_packages,
+    governed_actions,
     integration,
     intents,
     monitoring,
@@ -32,6 +33,7 @@ api_v1_router.include_router(operational_contexts.router)
 api_v1_router.include_router(governance.router)
 api_v1_router.include_router(authorization.router)
 api_v1_router.include_router(governance_packages.router)
+api_v1_router.include_router(governed_actions.router)
 api_v1_router.include_router(policy_applicability.router)
 api_v1_router.include_router(evidence.router)
 api_v1_router.include_router(remediation.router)

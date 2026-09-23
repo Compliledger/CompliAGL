@@ -17,6 +17,9 @@ from __future__ import annotations
 import os
 
 from app.services.evidence.connectors import ConnectorRegistry, simulators
+from app.services.evidence.connectors.compliledger_assurance import (
+    compliledger_assurance_connector,
+)
 from app.services.evidence.connectors.harborstone_sentry_screening import (
     harborstone_sentry_screening_connector,
 )
@@ -59,5 +62,19 @@ def default_production_registry() -> ConnectorRegistry:
     # EVIDENCE_COLLECTION_FAILED / HAS_UNRESOLVED rather than silently using
     # a mock in production, since is_mock connectors are already rejected in
     # production mode by the orchestrator (see connectors/base.py).
+
+    assurance_base_url = os.environ.get("COMPLILEDGER_ASSURANCE_BASE_URL")
+    if assurance_base_url:
+        connectors.append(
+            compliledger_assurance_connector(
+                base_url=assurance_base_url,
+                timeout_seconds=float(
+                    os.environ.get("COMPLILEDGER_ASSURANCE_TIMEOUT_SECONDS", "5.0")
+                ),
+            )
+        )
+    # Same fail-closed convention as SecureRob above: without the env var,
+    # compliledger.assurance_state.v1 has no authoritative connector and
+    # collection reports it missing rather than falling back to a mock.
 
     return ConnectorRegistry(connectors)
