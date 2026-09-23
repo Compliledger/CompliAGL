@@ -24,7 +24,7 @@ failure: a degraded claim must DENY via a terminal package condition, never
 via the engine auto-escalating a NOT_SATISFIED/NOT_EVALUABLE assessment
 (docs/dev-rules.md rule 4).
 
-Priorities 10-12 read ``evidence_claims['EV-CIRCLE-LUSD-ASSURANCE']`` --
+Priorities 10-13 read ``evidence_claims['EV-CIRCLE-LUSD-ASSURANCE']`` --
 the normalized assurance claim, surfaced into the decision context by
 ``decision_service`` (the same generic mechanism HarborStone's package
 uses). They fire correctly even when the connector produced no claim at all
@@ -39,6 +39,45 @@ literally missing. And because ``decision_service._resolve_outcome``
 checks ``condition_outcome == DENIED`` before any assessment-outcome
 branch, a matched terminal DENIED condition here wins regardless of
 whatever the assessment itself ends up being.
+
+The four assurance reason codes are deliberately distinct so a DENIED
+decision never implies the reserve requirement was *violated* when it
+simply couldn't be assessed:
+
+* ``REQUIRED_ASSURANCE_UNAVAILABLE`` -- the claim is missing entirely
+  (``result is None``): CompliLedger was unreachable, or the connector
+  otherwise produced no well-formed claim. Nothing was evaluated.
+* ``REQUIRED_ASSURANCE_NOT_EVALUABLE`` -- CompliLedger answered but
+  reports the control itself could not be evaluated (``result ==
+  'NOT_EVALUABLE'``, e.g. evidence went ``EXPIRED``).
+* ``REQUIRED_ASSURANCE_NOT_SATISFIED`` -- CompliLedger answered with any
+  other non-satisfied result (``result not in ('SATISFIED',
+  'NOT_EVALUABLE')``, chiefly ``NOT_SATISFIED`` itself). This is the only
+  one of the four that means the reserve requirement was actually
+  assessed and failed.
+* ``REQUIRED_ASSURANCE_STALE`` -- CompliLedger reports the control
+  ``SATISFIED`` but its continuous-monitoring status is not ``CURRENT``:
+  the requirement was met as of the last check, but that check is stale.
+
+Formal control: AGT-AUTH-001 (Agent Delegated Financial Authority)
+------------------------------------------------------------------
+``AGT-AUTH-001`` formally declares the requirement that the acting agent be
+verified, not revoked, and act within its delegated financial authority
+(``actor.metadata['delegated_authority']``). Delegated authority is
+first-class actor context here, not evidence (docs/dev-rules.md rule 6) --
+there is no evidence connector for it, and the control-evaluation stage's
+expression engine only ever sees normalized evidence facts, never
+``actor``/``intent`` (``control_evaluation_service._evidence_facts``, a
+decision-engine file this package must not touch -- docs/dev-rules.md rule
+2). So exactly like ``CTL-CIRCLE-LUSD-ASSURANCE`` above, this control's
+``evaluation_expression`` is structural-only (trivially ``True``: it has no
+evidence to gate on and is always reached SATISFIED) -- the actual
+verified/not-revoked/in-scope judgment is expressed via the
+``DC-AGT-AUTH-001-*`` terminal decision conditions below, priorities 20/30,
+which are the only place actor/intent context is available to the
+interpreter. The 10 USDC autonomous-limit check is a separate, unrelated
+decision condition (priority 40, ``ESCALATED``) -- it is not part of this
+control.
 """
 
 from __future__ import annotations
@@ -48,11 +87,14 @@ from app.schemas.canonical.governance_package import (
 )
 
 PACKAGE_NAME = "circle-treasury-governed-action"
-PACKAGE_VERSION = "1.0.0"
+PACKAGE_VERSION = "1.1.0"
 
 REQ_ASSURANCE = "REQ-CIRCLE-LUSD-ASSURANCE"
 CTL_ASSURANCE = "CTL-CIRCLE-LUSD-ASSURANCE"
 EV_ASSURANCE = "EV-CIRCLE-LUSD-ASSURANCE"
+
+REQ_AGENT_AUTHORITY = "REQ-CIRCLE-AGENT-AUTHORITY"
+CTL_AGENT_AUTHORITY = "AGT-AUTH-001"
 
 # Must match connectors/compliledger_assurance.py.
 ASSURANCE_EVIDENCE_TYPE = "compliledger.assurance_state.v1"
@@ -99,7 +141,26 @@ def build_circle_treasury_package(
                 "requirement_type": "continuous_assurance",
                 "classification": "OBLIGATION",
                 "mapped_control_ids": [CTL_ASSURANCE],
-            }
+            },
+            {
+                "requirement_id": REQ_AGENT_AUTHORITY,
+                "source_reference": (
+                    "Circle Grant MVP: a Treasury Agent may only act within "
+                    "its delegated financial authority. Contract: "
+                    "docs/circle-mvp-implementation-plan.md PR 3a, "
+                    "docs/dev-rules.md rule 6."
+                ),
+                "normalized_text": (
+                    "Before a treasury transfer is authorised, the acting "
+                    "agent must be verified, not revoked, and the proposed "
+                    "action/asset/network must fall within the agent's "
+                    "delegated financial authority "
+                    "(actor.metadata.delegated_authority)."
+                ),
+                "requirement_type": "agent_delegated_authority",
+                "classification": "OBLIGATION",
+                "mapped_control_ids": [CTL_AGENT_AUTHORITY],
+            },
         ],
         control_definitions=[
             {
@@ -119,7 +180,37 @@ def build_circle_treasury_package(
                 "severity": "HIGH",
                 "failure_disposition": "DENY",
                 "evidence_requirement_ids": [EV_ASSURANCE],
-            }
+            },
+            {
+                "control_id": CTL_AGENT_AUTHORITY,
+                "requirement_ids": [REQ_AGENT_AUTHORITY],
+                "control_objective": (
+                    "The Treasury Agent's identity is verified and not "
+                    "revoked, and the proposed action/asset/network fall "
+                    "within its delegated financial authority "
+                    "(actor.metadata['delegated_authority']). Delegated "
+                    "authority is first-class actor context, not evidence "
+                    "(docs/dev-rules.md rule 6), so -- exactly like "
+                    "CTL-CIRCLE-LUSD-ASSURANCE above -- this control's "
+                    "evaluation_expression is structural only; the actual "
+                    "verified/not-revoked/in-scope judgment is expressed via "
+                    "the DC-AGT-AUTH-001-* terminal decision conditions, the "
+                    "only place actor/intent context is available to the "
+                    "interpreter. See module docstring."
+                ),
+                "evaluation_expression": "True",
+                "mandatory": True,
+                "severity": "HIGH",
+                "failure_disposition": "DENY",
+                "evidence_requirement_ids": [],
+                "decision_impact": {
+                    "title": "Agent Delegated Financial Authority",
+                    "enforced_by": [
+                        "DC-AGT-AUTH-001-NOT-VERIFIED",
+                        "DC-AGT-AUTH-001-AUTHORITY-EXCEEDED",
+                    ],
+                },
+            },
         ],
         evidence_requirements=[
             {
@@ -136,34 +227,43 @@ def build_circle_treasury_package(
         ],
         decision_conditions=[
             {
-                "condition_id": "DC-CIRCLE-ASSURANCE-MISSING",
+                "condition_id": "DC-CIRCLE-ASSURANCE-UNAVAILABLE",
                 "expression": f"{_CLAIMS}['result'] == None",
                 "resulting_decision": "DENIED",
                 "priority": 10,
-                "reason_code": "REQUIRED_ASSURANCE_NOT_SATISFIED",
+                "reason_code": "REQUIRED_ASSURANCE_UNAVAILABLE",
                 "terminal": True,
             },
             {
                 "condition_id": "DC-CIRCLE-ASSURANCE-NOT-EVALUABLE",
-                "expression": (
-                    f"{_CLAIMS}['result'] != None and "
-                    f"{_CLAIMS}['result'] != 'SATISFIED'"
-                ),
+                "expression": f"{_CLAIMS}['result'] == 'NOT_EVALUABLE'",
                 "resulting_decision": "DENIED",
                 "priority": 11,
                 "reason_code": "REQUIRED_ASSURANCE_NOT_EVALUABLE",
                 "terminal": True,
             },
             {
+                "condition_id": "DC-CIRCLE-ASSURANCE-NOT-SATISFIED",
+                "expression": (
+                    f"{_CLAIMS}['result'] != None and "
+                    f"{_CLAIMS}['result'] != 'SATISFIED' and "
+                    f"{_CLAIMS}['result'] != 'NOT_EVALUABLE'"
+                ),
+                "resulting_decision": "DENIED",
+                "priority": 12,
+                "reason_code": "REQUIRED_ASSURANCE_NOT_SATISFIED",
+                "terminal": True,
+            },
+            {
                 "condition_id": "DC-CIRCLE-ASSURANCE-STALE",
                 "expression": f"{_CLAIMS}['monitoring_status'] != 'CURRENT'",
                 "resulting_decision": "DENIED",
-                "priority": 12,
+                "priority": 13,
                 "reason_code": "REQUIRED_ASSURANCE_STALE",
                 "terminal": True,
             },
             {
-                "condition_id": "DC-CIRCLE-ACTOR-NOT-VERIFIED",
+                "condition_id": "DC-AGT-AUTH-001-NOT-VERIFIED",
                 "expression": (
                     "actor.verification_status != 'VERIFIED' or "
                     "actor.revocation_status == 'REVOKED'"
@@ -174,7 +274,7 @@ def build_circle_treasury_package(
                 "terminal": True,
             },
             {
-                "condition_id": "DC-CIRCLE-DELEGATED-AUTHORITY-EXCEEDED",
+                "condition_id": "DC-AGT-AUTH-001-AUTHORITY-EXCEEDED",
                 "expression": (
                     f"intent.action not in {_DELEGATED}['allowed_actions'] or "
                     f"intent.parameters['asset'] not in {_DELEGATED}['allowed_assets'] or "
