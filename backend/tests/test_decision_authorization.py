@@ -647,6 +647,54 @@ def test_modified_target_rejected(db_session):
     assert "target_id" in bad["mismatched_fields"]
 
 
+def test_authorization_target_id_binds_to_external_identifier(db_session):
+    """Regression: ExecutionAuthorization.target_id must be the Target's own
+    external_identifier -- the identifier an external execution system (e.g.
+    CompliLedger's Arc adapter, verifying against the recipient address it
+    was asked to pay) actually knows the target by -- never CompliAGL's
+    internal Target.id primary key. Same bug class as backend commit
+    c362b89's evidence target-binding fix, for the execution-authorization
+    path."""
+    resolution, actor, target, assessment = _run_pipeline(
+        db_session, _APPROVE_CONDITIONS
+    )
+    decision = decision_service.decide_for_resolution(db_session, ORG, resolution.id)
+    assert decision.outcome == DecisionOutcome.APPROVED.value
+
+    auth = authorization_service.issue(db_session, ORG, decision.id)
+
+    assert auth.target_id == target.external_identifier
+    assert auth.target_id != target.id
+
+    result = authorization_service.verify(
+        db_session,
+        ORG,
+        auth.id,
+        expected_fields={"target_id": target.external_identifier},
+    )
+    assert result["valid"] is True
+
+
+def test_authorization_issue_fails_closed_without_target_external_identifier(
+    db_session,
+):
+    """A target with no external_identifier can never be independently
+    bound/verified by an external execution system -- issuing an
+    authorization for it would silently produce an unusable target_id.
+    Fail closed (docs/dev-rules.md rule 5 equivalent) instead."""
+    resolution, actor, target, assessment = _run_pipeline(
+        db_session, _APPROVE_CONDITIONS
+    )
+    target.external_identifier = None
+    db_session.commit()
+
+    decision = decision_service.decide_for_resolution(db_session, ORG, resolution.id)
+    assert decision.outcome == DecisionOutcome.APPROVED.value
+
+    with pytest.raises(ConflictError):
+        authorization_service.issue(db_session, ORG, decision.id)
+
+
 def test_modified_amount_rejected(db_session):
     decision = _approved_decision(db_session)
     auth = authorization_service.issue(db_session, ORG, decision.id)

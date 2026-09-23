@@ -37,6 +37,7 @@ from app.repositories.canonical import (
     ExecutionAuthorizationRepository,
     IntentRepository,
     PolicyResolutionRepository,
+    TargetRepository,
 )
 from app.services.canonical import authorization_signing
 from app.services.canonical.errors import ConflictError, NotFoundError
@@ -161,8 +162,22 @@ def issue(
         resolution = PolicyResolutionRepository(db).get(
             org, decision.policy_resolution_id
         )
-        if resolution is not None:
-            target_id = resolution.target_id
+        if resolution is not None and resolution.target_id:
+            # Bind to the target's own external_identifier (the identifier an
+            # external execution system -- e.g. CompliLedger's Arc adapter --
+            # actually knows this target by, such as a wallet/recipient
+            # address), never CompliAGL's internal Target.id primary key.
+            # Same identifier-namespace fix already applied to the evidence
+            # target-binding path (backend commit c362b89); this is the
+            # execution-authorization side of the same class of bug.
+            target = TargetRepository(db).get(org, resolution.target_id)
+            if target is None or not target.external_identifier:
+                raise ConflictError(
+                    "Cannot issue an execution authorization: target "
+                    f"{resolution.target_id!r} has no external_identifier to "
+                    "bind execution to."
+                )
+            target_id = target.external_identifier
 
     now = utc_now()
     if expires_at is None:
