@@ -153,6 +153,7 @@ def test_healthy_assurance_25_usdc_escalates_and_issue_raises_conflict(
 
 
 def test_degraded_assurance_5_usdc_denies_not_escalates(db_session, published_package):
+    # _degraded_handler returns result="NOT_EVALUABLE", monitoring_status="STALE".
     result = _propose(
         db_session,
         registry=_registry_for(_degraded_handler),
@@ -161,14 +162,29 @@ def test_degraded_assurance_5_usdc_denies_not_escalates(db_session, published_pa
     reasons = _reason_codes(result.decision)
     assert result.decision.outcome == DecisionOutcome.DENIED.value
     assert result.decision.outcome != DecisionOutcome.ESCALATED.value
-    assert any(
-        code in reasons
-        for code in (
-            "REQUIRED_ASSURANCE_NOT_SATISFIED",
-            "REQUIRED_ASSURANCE_NOT_EVALUABLE",
-            "REQUIRED_ASSURANCE_STALE",
-        )
+    assert "REQUIRED_ASSURANCE_NOT_EVALUABLE" in reasons
+
+
+def test_not_satisfied_assurance_5_usdc_denies_required_assurance_not_satisfied(
+    db_session, published_package
+):
+    result = _propose(
+        db_session,
+        registry=_registry_for(
+            lambda request: httpx.Response(
+                200,
+                json={
+                    "target_id": "target_lusd",
+                    "controls": [_control(result="NOT_SATISFIED")],
+                },
+            )
+        ),
+        amount_minor=FIVE_USDC_MINOR,
     )
+    reasons = _reason_codes(result.decision)
+    assert result.decision.outcome == DecisionOutcome.DENIED.value
+    assert result.decision.outcome != DecisionOutcome.ESCALATED.value
+    assert "REQUIRED_ASSURANCE_NOT_SATISFIED" in reasons
 
 
 def test_compliledger_unreachable_5_usdc_denies_via_required_assurance_condition(
@@ -185,14 +201,7 @@ def test_compliledger_unreachable_5_usdc_denies_via_required_assurance_condition
 
     assert result.decision.outcome == DecisionOutcome.DENIED.value
     assert result.decision.outcome != DecisionOutcome.ESCALATED.value
-    assert any(
-        code in reasons
-        for code in (
-            "REQUIRED_ASSURANCE_NOT_SATISFIED",
-            "REQUIRED_ASSURANCE_NOT_EVALUABLE",
-            "REQUIRED_ASSURANCE_STALE",
-        )
-    )
+    assert "REQUIRED_ASSURANCE_UNAVAILABLE" in reasons
     # Must have denied via a DC-CIRCLE-ASSURANCE-* condition, not the generic
     # MANDATORY_CONTROL_FAILED fallback path.
     assert "MANDATORY_CONTROL_FAILED" not in reasons
@@ -200,11 +209,7 @@ def test_compliledger_unreachable_5_usdc_denies_via_required_assurance_condition
         str(cid).startswith("DC-CIRCLE-ASSURANCE-")
         for cid in {c.get("condition_id") for c in triggered}
     )
-    assert triggered_codes & {
-        "REQUIRED_ASSURANCE_NOT_SATISFIED",
-        "REQUIRED_ASSURANCE_NOT_EVALUABLE",
-        "REQUIRED_ASSURANCE_STALE",
-    }
+    assert "REQUIRED_ASSURANCE_UNAVAILABLE" in triggered_codes
 
 
 def test_wrong_network_5_usdc_denies_delegated_authority_exceeded(
@@ -218,10 +223,17 @@ def test_wrong_network_5_usdc_denies_delegated_authority_exceeded(
     )
     assert result.decision.outcome == DecisionOutcome.DENIED.value
     assert "DELEGATED_AUTHORITY_EXCEEDED" in _reason_codes(result.decision)
+    triggered = json.loads(result.decision.decision_conditions_triggered)
+    assert any(
+        str(c.get("condition_id")).startswith("DC-AGT-AUTH-001-")
+        for c in triggered
+    )
 
 
 # --------------------------------------------------------------------------- #
-# Additional coverage for priorities 20 / 30 (action)
+# Additional coverage for priorities 20 / 30 (action) -- these enforce the
+# AGT-AUTH-001 control's verified/not-revoked/in-scope judgment (module
+# docstring in circle_treasury_package.py).
 # --------------------------------------------------------------------------- #
 def test_revoked_actor_5_usdc_denies_actor_not_verified(db_session, published_package):
     actor = db_session.get(ActorIdentity, seed.CIRCLE_TREASURY_AGENT_ID)
@@ -235,6 +247,11 @@ def test_revoked_actor_5_usdc_denies_actor_not_verified(db_session, published_pa
     )
     assert result.decision.outcome == DecisionOutcome.DENIED.value
     assert "ACTOR_NOT_VERIFIED" in _reason_codes(result.decision)
+    triggered = json.loads(result.decision.decision_conditions_triggered)
+    assert any(
+        str(c.get("condition_id")).startswith("DC-AGT-AUTH-001-")
+        for c in triggered
+    )
 
 
 def test_disallowed_action_5_usdc_denies_delegated_authority_exceeded(
@@ -248,6 +265,33 @@ def test_disallowed_action_5_usdc_denies_delegated_authority_exceeded(
     )
     assert result.decision.outcome == DecisionOutcome.DENIED.value
     assert "DELEGATED_AUTHORITY_EXCEEDED" in _reason_codes(result.decision)
+
+
+def test_healthy_assurance_5_usdc_control_evaluations_reference_agt_auth_001(
+    db_session, published_package
+):
+    """The decision's control evaluations include the new AGT-AUTH-001
+    control -- a formal, standalone control, not a reference to
+    CTL-CIRCLE-LUSD-ASSURANCE or any pre-existing control."""
+    from app.services.canonical import control_evaluation_service
+
+    result = _propose(
+        db_session,
+        registry=_registry_for(_healthy_handler),
+        amount_minor=FIVE_USDC_MINOR,
+    )
+    assert result.decision.outcome == DecisionOutcome.APPROVED.value
+
+    evaluations = control_evaluation_service.list_for_resolution(
+        db_session, ORG, result.policy_resolution.id
+    )
+    control_ids = {ce.control_id for ce in evaluations}
+    assert "AGT-AUTH-001" in control_ids
+    assert "CTL-CIRCLE-LUSD-ASSURANCE" in control_ids
+
+    agt_auth = next(ce for ce in evaluations if ce.control_id == "AGT-AUTH-001")
+    assert agt_auth.result == "SATISFIED"
+    assert agt_auth.mandatory is True
 
 
 # --------------------------------------------------------------------------- #
